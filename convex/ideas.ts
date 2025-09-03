@@ -1,14 +1,16 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { createContributionRequest, updateRequestStatus, getRequestsByIdea, getIncomingRequests } from "./contributionRequests";
 
-// Create a new idea
+// Create a new idea (root or with parent) with proper authorization checks
 export const createIdea = mutation({
   args: {
     title: v.string(),
     description: v.string(),
     category: v.string(),
     visibility: v.string(),
+    parentId: v.optional(v.id("ideas")),
   },
   handler: async (ctx, args) => {
     // Get authenticated user from Clerk
@@ -30,8 +32,8 @@ export const createIdea = mutation({
       throw new Error("Title must be 100 characters or less");
     }
 
-    if (args.description.length > 500) {
-      throw new Error("Description must be 500 characters or less");
+    if (args.description.length > 1200) {
+      throw new Error("Description must be 1200 characters or less");
     }
 
     if (!['public', 'private'].includes(args.visibility)) {
@@ -48,10 +50,42 @@ export const createIdea = mutation({
       throw new Error("User not found");
     }
 
+    // If parentId is provided, validate it and check authorization
+    if (args.parentId) {
+      const parentIdea = await ctx.db.get(args.parentId);
+      if (!parentIdea) {
+        throw new Error("Parent idea not found");
+      }
+
+      // Check if parent idea is deleted
+      if (parentIdea.isDeleted) {
+        throw new Error("Cannot create sub-idea under a deleted idea");
+      }
+
+      // Check authorization: user must be author of parent OR have accepted contribution request
+      const isAuthor = parentIdea.authorId === user._id;
+      if (!isAuthor) {
+        // Check for accepted contribution request
+        const acceptedRequests = await ctx.db
+          .query("contributionRequests")
+          .withIndex("by_contributor_status", (q) =>
+            q.eq("contributorId", user._id).eq("status", "accepted")
+          )
+          .collect();
+
+        // Filter to find accepted request for this specific parent
+        const validRequest = acceptedRequests.find(request => request.ideaId === args.parentId);
+
+        if (!validRequest) {
+          throw new Error("You are not authorized to add ideas under this parent. You must be the author or have an accepted contribution request.");
+        }
+      }
+    }
+
     const now = Date.now();
 
     // Create the idea
-    const ideaId = await ctx.db.insert("ideas", {
+    const ideaData: any = {
       authorId: user._id,
       title: args.title.trim(),
       description: args.description.trim(),
@@ -59,20 +93,30 @@ export const createIdea = mutation({
       visibility: args.visibility,
       sparkCount: 0,
       commentCount: 0,
+      contributionRequestCount: 0,
       createdAt: now,
       updatedAt: now,
-    });
+    };
+
+    // Include parentId if provided
+    if (args.parentId) {
+      ideaData.parentId = args.parentId;
+    }
+
+    const ideaId = await ctx.db.insert("ideas", ideaData);
 
     return { ideaId, message: "Idea created successfully" };
   },
 });
 
-// Get all public ideas (for feed)
+// Get all root public ideas (for feed) - excludes sub-ideas
 export const getPublicIdeas = query({
   handler: async (ctx) => {
     const ideas = await ctx.db
       .query("ideas")
       .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .filter((q) => q.or(q.eq(q.field("parentId"), undefined), q.eq(q.field("parentId"), null)))
       .order("desc")
       .take(20);
 
@@ -107,11 +151,30 @@ export const getIdeaById = query({
       return null;
     }
 
+    // Check if idea is deleted
+    if (idea.isDeleted) {
+      // Get authenticated user to check if they are the author of the deleted idea
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) {
+        return null; // Deleted ideas are private to anonymous users
+      }
+
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+        .unique();
+
+      if (!user || user._id !== idea.authorId) {
+        return null; // Only the author can see their own deleted ideas
+      }
+    }
+
     // Get author information
     const author = await ctx.db.get(idea.authorId);
 
-    // Check if current user has sparked this idea
+    // Check if current user has sparked this idea and is author
     let hasSparked = false;
+    let isAuthor = false;
     const identity = await ctx.auth.getUserIdentity();
     if (identity) {
       const user = await ctx.db
@@ -127,6 +190,9 @@ export const getIdeaById = query({
           )
           .unique();
         hasSparked = spark !== null;
+
+        // Check if current user is the author
+        isAuthor = user._id === idea.authorId;
       }
     }
 
@@ -138,6 +204,7 @@ export const getIdeaById = query({
         username: author.username,
       } : null,
       hasSparked,
+      isAuthor,
     };
   },
 });
@@ -240,6 +307,95 @@ export const toggleSpark = mutation({
   },
 });
 
+// Get idea tree (recursive hierarchical structure)
+export const getIdeaTree = query({
+  args: {
+    rootIdeaId: v.id("ideas"),
+  },
+  handler: async (ctx, args) => {
+    // Get authenticated user for authorization checks
+    const identity = await ctx.auth.getUserIdentity();
+    const userId = identity ? identity.subject : null;
+
+    // Find user by Clerk ID if authenticated
+    let user = null;
+    if (userId) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", userId))
+        .unique();
+    }
+
+    // Recursive function to build the tree
+    const buildIdeaTree = async (ideaId: Id<"ideas">): Promise<any> => {
+      const idea = await ctx.db.get(ideaId);
+      if (!idea) return null;
+
+      // Check if idea is deleted
+      if (idea.isDeleted) {
+        return null;
+      }
+
+      // Check visibility and authorization
+      if (idea.visibility === 'private') {
+        // Private ideas: only author can see
+        if (!user || user._id !== idea.authorId) {
+          return null;
+        }
+      } else {
+        // Public ideas: accessible, but contribution-restricted ideas might have additional checks
+        // For now, public ideas are visible (additional logic could be added for contribution restrictions)
+      }
+
+      // Get author information
+      const author = await ctx.db.get(idea.authorId);
+      if (!author) return null;
+
+      // Get children recursively
+      const childrenIdeas = await ctx.db
+        .query("ideas")
+        .withIndex("by_parent", (q) => q.eq("parentId", ideaId))
+        .filter((q) => q.neq(q.field("isDeleted"), true))
+        .collect();
+
+      // Build children tree
+      const children = [];
+      for (const child of childrenIdeas) {
+        const childTree = await buildIdeaTree(child._id);
+        if (childTree) {
+          children.push(childTree);
+        }
+      }
+
+      // Sort children by creation date (newest first)
+      children.sort((a, b) => b.createdAt - a.createdAt);
+
+      return {
+        ...idea,
+        author: {
+          ...author,
+          name: author.displayName,
+          username: author.username,
+          avatar: author.avatar,
+        },
+        children: children,
+        childrenCount: children.length,
+        // Additional processing for user context
+        isAuthor: user ? user._id === idea.authorId : false,
+      };
+    };
+
+    // Build the root of the tree
+    const rootIdea = await buildIdeaTree(args.rootIdeaId);
+
+    if (!rootIdea) {
+      return null;
+    }
+
+    return rootIdea;
+  },
+});
+
 // Get comments for an idea
 export const getComments = query({
   args: {
@@ -293,8 +449,8 @@ export const addComment = mutation({
       throw new Error("Comment content is required");
     }
 
-    if (args.content.length > 500) {
-      throw new Error("Comment must be 500 characters or less");
+    if (args.content.length > 1200) {
+      throw new Error("Comment must be 1200 characters or less");
     }
 
     // Find user by Clerk ID
@@ -391,6 +547,8 @@ export const updateIdea = mutation({
     ideaId: v.id("ideas"),
     title: v.string(),
     description: v.string(),
+    category: v.string(),
+    visibility: v.string(),
   },
   handler: async (ctx, args) => {
     // Check authentication
@@ -422,8 +580,12 @@ export const updateIdea = mutation({
       throw new Error("Title must be 100 characters or less");
     }
 
-    if (args.description.length > 500) {
-      throw new Error("Description must be 500 characters or less");
+    if (args.description.length > 1200) {
+      throw new Error("Description must be 1200 characters or less");
+    }
+
+    if (!['public', 'private'].includes(args.visibility)) {
+      throw new Error("Invalid visibility setting");
     }
 
     // Get the idea
@@ -441,9 +603,399 @@ export const updateIdea = mutation({
     await ctx.db.patch(idea._id, {
       title: args.title.trim(),
       description: args.description.trim(),
+      category: args.category,
+      visibility: args.visibility,
       updatedAt: Date.now(),
     });
 
     return { message: "Idea updated successfully" };
   },
 });
+
+// Get ideas created by the current user
+export const getUserIdeas = query({
+  handler: async (ctx) => {
+    // Get authenticated user
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Find user by Clerk ID
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Get user's ideas, including deleted ones (so they can see their own deleted ideas)
+    const userIdeas = await ctx.db
+      .query("ideas")
+      .withIndex("by_author", (q) => q.eq("authorId", user._id))
+      .order("desc")
+      .take(50);
+
+    // Get author information is included but should be consistent
+    const ideasWithDetails = await Promise.all(
+      userIdeas.map(async (idea) => {
+        // Count active contribution requests (not including rejected/deleted related)
+        const activeRequestsCount = await ctx.db
+          .query("contributionRequests")
+          .withIndex("by_idea_status_created", (q) =>
+            q.eq("ideaId", idea._id).eq("status", "pending")
+          )
+          .collect();
+
+        return {
+          ...idea,
+          activeContributions: activeRequestsCount.length,
+        };
+      })
+    );
+
+    return ideasWithDetails;
+  },
+});
+
+// Get root ideas (no parent) for the current user
+export const getUserRootIdeas = query({
+  handler: async (ctx) => {
+    // Get authenticated user
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Find user by Clerk ID
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Get user's root ideas (no parent)
+    const rootIdeas = await ctx.db
+      .query("ideas")
+      .withIndex("by_author", (q) => q.eq("authorId", user._id))
+      .filter((q) => q.or(q.eq(q.field("parentId"), undefined), q.eq(q.field("parentId"), null)))
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .order("desc")
+      .take(50);
+
+    // Get author information is included but should be consistent
+    const ideasWithDetails = await Promise.all(
+      rootIdeas.map(async (idea) => {
+        // Count active contribution requests (not including rejected/deleted related)
+        const activeRequestsCount = await ctx.db
+          .query("contributionRequests")
+          .withIndex("by_idea_status_created", (q) =>
+            q.eq("ideaId", idea._id).eq("status", "pending")
+          )
+          .collect();
+
+        // Get children count
+        const childrenCount = await ctx.db
+          .query("ideas")
+          .withIndex("by_parent", (q) => q.eq("parentId", idea._id))
+          .filter((q) => q.neq(q.field("isDeleted"), true))
+          .collect();
+
+        return {
+          ...idea,
+          activeContributions: activeRequestsCount.length,
+          childrenCount: childrenCount.length,
+        };
+      })
+    );
+
+    return ideasWithDetails;
+  },
+});
+
+// Delete an idea (soft delete)
+export const deleteIdea = mutation({
+  args: {
+    ideaId: v.id("ideas"),
+  },
+  handler: async (ctx, args) => {
+    // Check authentication
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Find user by Clerk ID
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Get the idea
+    const idea = await ctx.db.get(args.ideaId);
+    if (!idea) {
+      throw new Error("Idea not found");
+    }
+
+    // Check if user is the author
+    if (idea.authorId !== user._id) {
+      throw new Error("Not authorized to delete this idea");
+    }
+
+    // Check if idea is already deleted
+    if (idea.isDeleted) {
+      throw new Error("This idea has already been deleted");
+    }
+
+    // Handle contribution requests cleanup
+    // Get all pending contribution requests for this idea
+    const pendingRequests = await ctx.db
+      .query("contributionRequests")
+      .withIndex("by_idea_status_created", (q) =>
+        q.eq("ideaId", args.ideaId).eq("status", "pending")
+      )
+      .collect();
+
+    // Update all pending requests for this idea to 'rejected' since idea is being deleted
+    for (const request of pendingRequests) {
+      await ctx.db.patch(request._id, {
+        status: "rejected",
+        updatedAt: Date.now(),
+      });
+    }
+
+    const now = Date.now();
+
+    // Soft delete the idea by setting isDeleted flag
+    await ctx.db.patch(idea._id, {
+      isDeleted: true,
+      visibility: "private", // Set to private to hide from public feeds
+      updatedAt: now,
+    });
+
+    // Note: We don't decrement comment/spark counts here as they're still valid
+    // The frontend should handle showing deleted status appropriately
+    // Attachment cleanup would need external file system handling if implemented
+
+    return {
+      message: "Idea deleted successfully",
+      deletedRequests: pendingRequests.length,
+    };
+  },
+});
+
+// Add sub-idea to a parent idea
+export const addSubIdea = mutation({
+  args: {
+    parentId: v.id("ideas"),
+    title: v.string(),
+    description: v.string(),
+    category: v.string(),
+    visibility: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Get authenticated user from Clerk
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Find user by Clerk ID
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Validate input
+    if (!args.title.trim()) {
+      throw new Error("Title is required");
+    }
+
+    if (!args.description.trim()) {
+      throw new Error("Description is required");
+    }
+
+    if (args.title.length > 100) {
+      throw new Error("Title must be 100 characters or less");
+    }
+
+    if (args.description.length > 1200) {
+      throw new Error("Description must be 1200 characters or less");
+    }
+
+    if (!['public', 'private'].includes(args.visibility)) {
+      throw new Error("Invalid visibility setting");
+    }
+
+    // Check if parent idea exists
+    const parentIdea = await ctx.db.get(args.parentId);
+    if (!parentIdea) {
+      throw new Error("Parent idea not found");
+    }
+
+    // Check if parent idea is deleted
+    if (parentIdea.isDeleted) {
+      throw new Error("Cannot add sub-idea to a deleted idea");
+    }
+
+    // Check authorization: user must be author of parent OR have accepted contribution request
+    const isAuthor = parentIdea.authorId === user._id;
+    let isAcceptedContributor = false;
+
+    if (!isAuthor) {
+      // Check for accepted contribution request
+      const acceptedRequests = await ctx.db
+        .query("contributionRequests")
+        .withIndex("by_contributor_status", (q) =>
+          q.eq("contributorId", user._id).eq("status", "accepted")
+        )
+        .collect();
+
+      // Filter to find accepted request for this specific idea
+      const validRequest = acceptedRequests.find(request => request.ideaId === args.parentId);
+
+      if (!validRequest) {
+        throw new Error("You are not authorized to add sub-ideas to this idea. You must be the author or have an accepted contribution request.");
+      }
+      isAcceptedContributor = true;
+    }
+
+    const now = Date.now();
+
+    // Create the sub-idea
+    const subIdeaId = await ctx.db.insert("ideas", {
+      authorId: user._id,
+      title: args.title.trim(),
+      description: args.description.trim(),
+      category: args.category,
+      visibility: args.visibility,
+      parentId: args.parentId,
+      sparkCount: 0,
+      commentCount: 0,
+      contributionRequestCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return {
+      ideaId: subIdeaId,
+      message: "Sub-idea created successfully",
+      parentId: args.parentId,
+      authorId: user._id
+    };
+  },
+});
+
+// Request contribution (alias for frontend usage)
+export const requestContribution = createContributionRequest;
+
+// Accept contribution request
+export const acceptContribution = mutation({
+  args: {
+    requestId: v.id("contributionRequests"),
+  },
+  handler: async (ctx, args) => {
+    // Get authenticated user
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Authentication required: Please sign in to continue");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) {
+      throw new Error("Request not found");
+    }
+
+    // Only author can update status
+    if (request.authorId !== user._id) {
+      throw new Error("Not authorized to update this request");
+    }
+
+    // Validate status transition
+    if (request.status !== "pending") {
+      throw new Error(`Cannot accept a request that is already ${request.status}`);
+    }
+
+    // Update status
+    await ctx.db.patch(args.requestId, {
+      status: "accepted",
+      updatedAt: Date.now(),
+    });
+
+    return { message: "Request accepted successfully" };
+  },
+});
+
+// Reject contribution request
+export const rejectContribution = mutation({
+  args: {
+    requestId: v.id("contributionRequests"),
+  },
+  handler: async (ctx, args) => {
+    // Get authenticated user
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Authentication required: Please sign in to continue");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) {
+      throw new Error("Request not found");
+    }
+
+    // Only author can update status
+    if (request.authorId !== user._id) {
+      throw new Error("Not authorized to update this request");
+    }
+
+    // Validate status transition
+    if (request.status !== "pending") {
+      throw new Error(`Cannot reject a request that is already ${request.status}`);
+    }
+
+    // Update status
+    await ctx.db.patch(args.requestId, {
+      status: "rejected",
+      updatedAt: Date.now(),
+    });
+
+    return { message: "Request rejected successfully" };
+  },
+});
+
+// Get requests for an idea (for author)
+export const getContributionRequests = getRequestsByIdea;
+
+// Get incoming requests for current user
+export const getIncomingContributionRequests = getIncomingRequests;

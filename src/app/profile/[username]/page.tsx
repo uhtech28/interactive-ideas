@@ -2,9 +2,12 @@
 
 import React, { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { useAuth } from "@clerk/nextjs"
-import { useQuery } from "convex/react"
+import { useUser } from "@clerk/nextjs"
+import { useQuery, useMutation } from "convex/react"
+import { Id } from "../../../../convex/_generated/dataModel"
+import Link from "next/link"
 import { api } from "../../../../convex/_generated/api"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -12,7 +15,8 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AvatarUpload } from "@/components/user/avatar-upload"
-import { Plus, X } from "lucide-react"
+import { RequestStatusCard } from "@/components/requests/request-status-card"
+import { Plus, X, User, CheckCircle, XCircle } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -55,10 +59,15 @@ const mockProfile: UserProfile = {
 export default function ProfilePage() {
   const params = useParams()
   const username = params.username as string
+  const { user } = useUser()
 
   // Convex data
-  const realProfile = useQuery(api.users.getUserProfile, { username })
-  const { isLoaded } = useAuth()
+    const realProfile = useQuery(api.users.getUserProfile, { username })
+    const myRequests = useQuery(api.contributionRequests.getMyRequests)
+    const incomingRequests = useQuery(api.contributionRequests.getIncomingRequests)
+
+  // Check if this is current user's profile
+  const isCurrentUser = user?.username === username
 
   // Local state
   const [loading, setLoading] = useState(false)
@@ -363,29 +372,80 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
+        {/* Contribution Requests Section */}
+        {isCurrentUser && (
+          <>
+            {/* For Contributors: Show outgoing requests */}
+            {myRequests && myRequests.length > 0 && (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle>My Contribution Requests</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {myRequests.map((request) => (
+                      <RequestStatusCard key={request._id} request={request} />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* For Authors: Show incoming requests */}
+            {incomingRequests && incomingRequests.length > 0 && (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle>Incoming Contribution Requests</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {incomingRequests.map((request) => (
+                      <IncomingRequestCard key={request._id} request={request} />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
+
         {/* Action Buttons */}
-        <div className="flex justify-end gap-4">
-          {isEditing ? (
-            <>
-              <Button
-                variant="outline"
-                onClick={handleCancel}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={loading || !formData.displayName.trim()}
-              >
-                {loading ? "Saving..." : "Save Changes"}
-              </Button>
-            </>
-          ) : (
-            <Button onClick={() => setIsEditing(true)} className="px-6">
-              Edit Profile
-            </Button>
-          )}
+        <div className="flex justify-between items-center">
+          <div>
+            {isCurrentUser && !isEditing && (
+              <Link href="/profile/contribution-requests">
+                <Button variant="outline" className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Manage Contribution Requests
+                </Button>
+              </Link>
+            )}
+          </div>
+          <div className="flex gap-4">
+            {isEditing ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleCancel}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={loading || !formData.displayName.trim()}
+                >
+                  {loading ? "Saving..." : "Save Changes"}
+                </Button>
+              </>
+            ) : (
+              isCurrentUser && (
+                <Button onClick={() => setIsEditing(true)} className="px-6">
+                  Edit Profile
+                </Button>
+              )
+            )}
+          </div>
         </div>
 
         {/* Demo Notes */}
@@ -406,3 +466,102 @@ export default function ProfilePage() {
     </div>
   )
 }
+
+// Incoming Request Card for authors
+interface ContributionRequest {
+  _id: Id<"contributionRequests">;
+  contributor: {
+    avatar?: string;
+    displayName: string;
+    username: string;
+  } | null;
+  status: "accepted" | "rejected" | "pending";
+  createdAt: number;
+  idea: {
+    title: string;
+  } | null;
+  message: string;
+}
+
+// Incoming Request Card for authors
+const IncomingRequestCard: React.FC<{ request: ContributionRequest }> = ({ request }) => {
+  const updateStatusMutation = useMutation(api.contributionRequests.updateRequestStatus);
+  const [isUpdating, setIsUpdating] = React.useState(false);
+
+  const handleStatusUpdate = async (status: "accepted" | "rejected") => {
+    try {
+      setIsUpdating(true);
+      await updateStatusMutation({ requestId: request._id, status });
+    } catch (error) {
+      console.error("Failed to update request status:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  return (
+    <div className="border border-border rounded-lg p-4 bg-card">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <Avatar className="w-8 h-8">
+            <AvatarImage src={request.contributor?.avatar} alt={request.contributor?.displayName} />
+            <AvatarFallback>
+              {request.contributor?.displayName?.charAt(0).toUpperCase() || "?"}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="font-medium">{request.contributor?.displayName || "Unknown"}</p>
+            <p className="text-sm text-muted-foreground">@{request.contributor?.username || "unknown"}</p>
+            <p className="text-xs text-muted-foreground">{formatDate(request.createdAt)}</p>
+          </div>
+        </div>
+        <Badge
+          variant={
+            request.status === "accepted" ? "default" :
+            request.status === "rejected" ? "destructive" : "secondary"
+          }
+        >
+          {request.status === "accepted" && <CheckCircle className="w-3 h-3 mr-1" />}
+          {request.status === "rejected" && <XCircle className="w-3 h-3 mr-1" />}
+          {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+        </Badge>
+      </div>
+
+      <div className="mt-3">
+        <p className="text-sm font-medium mb-1">Request for: {request.idea?.title || "Idea"}</p>
+        <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
+          {request.message}
+        </p>
+      </div>
+
+      {request.status === "pending" && (
+        <div className="flex gap-2 mt-3">
+          <Button
+            size="sm"
+            onClick={() => handleStatusUpdate("accepted")}
+            disabled={isUpdating}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            {isUpdating ? "..." : "Accept"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleStatusUpdate("rejected")}
+            disabled={isUpdating}
+          >
+            {isUpdating ? "..." : "Reject"}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};

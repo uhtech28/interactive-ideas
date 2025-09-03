@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server"
 import { v } from "convex/values"
+import { Id } from "./_generated/dataModel"
 
 // TypeScript interfaces for user data
 export interface UserProfile {
@@ -64,32 +65,52 @@ export const createUserProfile = mutation({
     industry: v.optional(v.string()),
   },
   handler: async ({ db, auth }, args): Promise<string> => {
-    // Verify authentication
-    const identity = await auth.getUserIdentity()
-    if (!identity) throw new Error("Unauthorized")
+    try {
+  // Verify authentication
+  const identity = await auth.getUserIdentity()
+  if (!identity) {
+    throw new Error("Authentication required: Please sign in to create your profile")
+  }
 
-    // Check if user already exists
-    const existing = await db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first()
+  // Check if user already has a profile
+  const existing = await db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+    .first()
 
-    if (existing) throw new Error("User profile already exists")
+  if (existing) {
+    console.log("User profile creation attempted for existing profile:", identity.subject)
+    throw new Error("Profile already exists: You've already created your profile")
+  }
 
-    // Check if username is taken
-    const usernameTaken = await db
-      .query("users")
-      .withIndex("by_username", (q) => q.eq("username", args.username))
-      .first()
+  // Validate and normalize username (case-insensitive uniqueness)
+  const normalizedUsername = args.username.toLowerCase().trim()
+  if (normalizedUsername.length < 3 || normalizedUsername.length > 20) {
+    throw new Error("Invalid username: Username must be between 3 and 20 characters long")
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(normalizedUsername)) {
+    throw new Error("Invalid username: Username can only contain letters, numbers, and underscores")
+  }
 
-    if (usernameTaken) throw new Error("Username is already taken")
+  // Check for existing username (case-insensitive)
+  const existingUsername = await db
+    .query("users")
+    .withIndex("by_username", (q) => q.eq("username", normalizedUsername))
+    .first()
 
-    const now = Date.now()
+  if (existingUsername) {
+    console.log("Duplicate username attempted:", normalizedUsername, "by user:", identity.subject)
+    throw new Error(`Username "${normalizedUsername}" is already taken. Please try a different username.`)
+  }
 
-    // Create user profile
-    const userId = await db.insert("users", {
+  const now = Date.now()
+
+  // Create user profile with normalized username
+  let userId: Id<"users">;
+  try {
+    userId = await db.insert("users", {
       clerkId: identity.subject,
-      username: args.username,
+      username: normalizedUsername,
       displayName: args.displayName,
       bio: args.bio,
       avatar: args.avatar,
@@ -101,21 +122,30 @@ export const createUserProfile = mutation({
       completedOnboarding: true,
       createdAt: now,
       updatedAt: now,
-    })
+    });
+  } catch (insertError) {
+    console.error("Failed to insert user profile:", insertError)
+    throw new Error("Profile creation failed: Unable to save your profile. Please try again.")
+  }
 
-    // Add skills efficiently with batch operations
-    if (args.skills.length > 0) {
-      await Promise.all(
-        args.skills.map((skill) =>
-          db.insert("userSkills", {
-            userId,
-            skillName: skill,
-          })
-        )
+  // Add skills efficiently with batch operations
+  if (args.skills.length > 0) {
+    await Promise.all(
+      args.skills.map((skill) =>
+        db.insert("userSkills", {
+          userId,
+          skillName: skill,
+        })
       )
-    }
+    )
+  }
 
-    return userId
+  console.log("Successfully created user profile:", userId, "username:", normalizedUsername)
+  return userId
+    } catch (error) {
+      console.error("Error in createUserProfile:", error)
+      throw error // Re-throw to maintain original error messages
+    }
   },
 })
 
@@ -203,17 +233,18 @@ export const userExists = query({
   },
 })
 
-// Search users by username - optimized with pagination
+// Search users by username - optimized with pagination (case-insensitive)
 export const searchUsers = query({
   args: { query: v.string(), limit: v.optional(v.number()) },
   handler: async ({ db }, { query, limit = 20 }): Promise<
     Array<{ id: string; username: string; displayName: string; avatar?: string }>
   > => {
-    if (!query.trim()) return []
+    const normalizedQuery = query.toLowerCase().trim()
+    if (!normalizedQuery) return []
 
     const results = await db
       .query("users")
-      .withIndex("by_username", (q) => q.eq("username", query))
+      .withIndex("by_username", (q) => q.eq("username", normalizedQuery))
       .take(limit)
 
     return results.map((user) => ({
@@ -254,13 +285,14 @@ export const getUserStats = query({
   },
 })
 
-// Get user profile by username - for public profiles
+// Get user profile by username - for public profiles (case-insensitive)
 export const getUserProfile = query({
   args: { username: v.string() },
   handler: async ({ db }, { username }): Promise<UserProfile | null> => {
+    const normalizedUsername = username.toLowerCase().trim()
     const profile = await db
       .query("users")
-      .withIndex("by_username", (q) => q.eq("username", username))
+      .withIndex("by_username", (q) => q.eq("username", normalizedUsername))
       .first()
 
     if (!profile) return null

@@ -187,7 +187,6 @@ export const TreeNode = ({
   parentPath = [],
   children,
   className,
-  onClick,
   ...props
 }: TreeNodeProps) => {
   const generatedId = useId();
@@ -229,7 +228,7 @@ export const TreeNodeTrigger = ({
   onClick,
   ...props
 }: TreeNodeTriggerProps) => {
-  const { selectedIds, toggleExpanded, handleSelection, indent } = useTree();
+  const { selectedIds, handleSelection, indent } = useTree();
   const { nodeId, level } = useTreeNode();
   const isSelected = selectedIds.includes(nodeId);
 
@@ -242,7 +241,6 @@ export const TreeNodeTrigger = ({
         className
       )}
       onClick={(e) => {
-        toggleExpanded(nodeId);
         handleSelection(nodeId, e.ctrlKey || e.metaKey);
         onClick?.(e);
       }}

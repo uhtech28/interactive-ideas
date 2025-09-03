@@ -67,7 +67,6 @@ function SuccessParticles({
 
 export default function ParticleButton({
     children,
-    onClick: _onClick,
     onSuccess,
     successDuration = 1000,
     variant,

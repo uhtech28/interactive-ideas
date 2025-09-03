@@ -61,8 +61,8 @@ export default function CreateIdeaPage() {
 
     if (!formData.description.trim()) {
       newErrors.description = 'Description is required';
-    } else if (formData.description.length > 500) {
-      newErrors.description = 'Description must be 500 characters or less';
+    } else if (formData.description.length > 1200) {
+      newErrors.description = 'Description must be 1200 characters or less';
     }
 
     if (!formData.category) {
@@ -197,7 +197,7 @@ export default function CreateIdeaPage() {
                     <p className="text-sm text-destructive">{errors.description}</p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    {descriptionCount}/500 characters
+                    {descriptionCount}/1200 characters
                   </p>
                 </div>
 

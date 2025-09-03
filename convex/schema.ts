@@ -21,8 +21,8 @@ export default defineSchema({
     updatedAt: v.number(), // Unix timestamp
   })
     .index("by_clerk_id", ["clerkId"])
-    .index("by_username", ["username"])
-    .index("by_completed_onboarding", ["completedOnboarding"])
+      .index("by_username", ["username"])
+      .index("by_completed_onboarding", ["completedOnboarding"])
     .index("by_created_at", ["createdAt"]),
 
   // User skills table for many-to-many relationship
@@ -51,11 +51,11 @@ export default defineSchema({
     .index("by_user_expires", ["userId", "expiresAt"]),
  
     // Ideas table - stores user-created ideas
-    ideas: defineTable({
-      authorId: v.id("users"), // Reference to users table (author)
-      title: v.string(), // Idea title (required)
-      description: v.string(), // Idea description (required)
-      category: v.string(), // Category selector (Technology, Art, Business, etc.)
+       ideas: defineTable({
+         authorId: v.id("users"), // Reference to users table (author)
+         title: v.string(), // Idea title (required)
+         description: v.string(), // Idea description (required)
+         category: v.string(), // Category selector (Technology, Art, Business, etc.)
       visibility: v.string(), // 'public' or 'private'
       // File attachment URLs (stored in Convex storage)
       attachments: v.optional(v.array(v.object({
@@ -67,15 +67,20 @@ export default defineSchema({
       }))),
       sparkCount: v.number(), // Number of spark/like actions
       commentCount: v.number(), // Number of comments
+      contributionRequestCount: v.optional(v.number()), // Number of contribution requests
       createdAt: v.number(), // Unix timestamp
       updatedAt: v.number(), // Unix timestamp
+      isDeleted: v.optional(v.boolean()), // Soft delete flag
+      parentId: v.optional(v.id("ideas")), // Optional parent idea for hierarchical relationships
     })
       .index("by_author", ["authorId"])
       .index("by_visibility", ["visibility"])
       .index("by_category", ["category"])
       .index("by_created_at", ["createdAt"])
       .index("by_author_visibility", ["authorId", "visibility"])
-      .index("by_category_created", ["category", "createdAt"]),
+      .index("by_category_created", ["category", "createdAt"])
+      .index("by_is_deleted", ["isDeleted"])
+      .index("by_parent", ["parentId"]),
 
   // Comments table - stores comments on ideas
   comments: defineTable({
@@ -99,4 +104,19 @@ export default defineSchema({
    .index("by_user", ["userId"])
    .index("by_idea", ["ideaId"])
    .index("by_user_idea", ["userId", "ideaId"]),
+
+ // Contribution requests table
+  contributionRequests: defineTable({
+    ideaId: v.id("ideas"),
+    contributorId: v.id("users"),
+    authorId: v.id("users"),
+    message: v.string(),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("rejected")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+  .index("by_idea_status_created", ["ideaId", "status", "createdAt"])
+  .index("by_idea_contributor", ["ideaId", "contributorId"])
+  .index("by_contributor_status", ["contributorId", "status"])
+  .index("by_author_created", ["authorId", "createdAt"]) 
 })
