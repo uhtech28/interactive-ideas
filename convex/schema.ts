@@ -76,4 +76,27 @@ export default defineSchema({
       .index("by_created_at", ["createdAt"])
       .index("by_author_visibility", ["authorId", "visibility"])
       .index("by_category_created", ["category", "createdAt"]),
+
+  // Comments table - stores comments on ideas
+  comments: defineTable({
+    ideaId: v.id("ideas"), // Reference to ideas table
+    authorId: v.id("users"), // Reference to users table (comment author)
+    content: v.string(), // Comment content
+    createdAt: v.number(), // Unix timestamp
+    parentCommentId: v.optional(v.id("comments")), // Optional parent comment for nested replies
+  })
+    .index("by_idea", ["ideaId"])
+    .index("by_author", ["authorId"])
+    .index("by_idea_created", ["ideaId", "createdAt"])
+    .index("by_parent", ["parentCommentId"]),
+
+  // User idea sparks table - tracks which users have sparked which ideas
+  userIdeaSparks: defineTable({
+   userId: v.id("users"), // Reference to users table
+   ideaId: v.id("ideas"), // Reference to ideas table
+   createdAt: v.number(), // Unix timestamp when sparked
  })
+   .index("by_user", ["userId"])
+   .index("by_idea", ["ideaId"])
+   .index("by_user_idea", ["userId", "ideaId"]),
+})

@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation";
 import { HeroHeader } from "@/components/header";
 import FooterSection from "@/components/footer";
 import { Button } from "@/components/ui/button";
-import { Plus, Share2, MessageCircle, Users } from "lucide-react";
+import { Plus, MessageCircle, Users } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
+import { Id } from "@convex/_generated/dataModel";
 
 
 type ConvexIdea = {
@@ -75,18 +76,6 @@ const IdeaGridCard: React.FC<{
           </span>
         </div>
 
-        {/* Action Buttons */}
-        <div className="absolute top-3 right-3 flex space-x-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              // Handle share action
-            }}
-            className="w-8 h-8 rounded-full bg-black/20 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-black/30 transition-colors"
-          >
-            <Share2 className="w-4 h-4" />
-          </button>
-        </div>
       </div>
 
       {/* Content */}
@@ -134,10 +123,9 @@ const IdeaGridCard: React.FC<{
                 e.stopPropagation();
                 onSpark?.(idea._id);
               }}
-              className="flex items-center space-x-1 text-muted-foreground hover:text-red-500 transition-colors"
+              className="flex items-center space-x-1 px-3 py-1.5 rounded-full bg-white/40 backdrop-blur-sm border border-white/30 hover:bg-white/60 transition-all hover:shadow-sm text-foreground hover:text-red-600 font-medium text-sm"
             >
-              <span className="text-sm">🔥</span>
-              <span className="text-sm font-medium">{idea.sparkCount || 0}</span>
+              <span className="text-sm">Sparks ✨ {idea.sparkCount || 0}</span>
             </button>
 
             <div className="flex items-center space-x-1 text-muted-foreground">
@@ -166,6 +154,8 @@ export default function FeedPage() {
   const ideasQuery = useQuery(api.ideas.getPublicIdeas);
   const ideas = ideasQuery ?? [];
 
+  const toggleSparkMutation = useMutation(api.ideas.toggleSpark);
+
   // Redirect if not authenticated
   React.useEffect(() => {
     if (isLoaded && !userId) {
@@ -185,9 +175,12 @@ export default function FeedPage() {
     );
   }
 
-  const handleSpark = (ideaId: string) => {
-    console.log('Sparked idea:', ideaId);
-    // Implement spark functionality
+  const handleSpark = async (ideaId: string) => {
+    try {
+      await toggleSparkMutation({ ideaId: ideaId as Id<"ideas"> });
+    } catch (error) {
+      console.error('Error toggling spark:', error);
+    }
   };
 
   const handleIdeaClick = (ideaId: string) => {

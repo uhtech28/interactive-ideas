@@ -1,7 +1,7 @@
 "use client"
 
-import 'ldrs/dist/Reuleaux.css'
 import { Reuleaux } from 'ldrs/react'
+import 'ldrs/react/Reuleaux.css'
 
 // LDRS Reuleaux Spinner (user-requested)
 export function Spinner({ size = 40 }: { size?: number }) {
