@@ -631,10 +631,11 @@ export const getUserIdeas = query({
       throw new Error("User not found");
     }
 
-    // Get user's ideas, including deleted ones (so they can see their own deleted ideas)
+    // Get user's ideas, excluding deleted ones
     const userIdeas = await ctx.db
       .query("ideas")
       .withIndex("by_author", (q) => q.eq("authorId", user._id))
+      .filter((q) => q.neq(q.field("isDeleted"), true))
       .order("desc")
       .take(50);
 

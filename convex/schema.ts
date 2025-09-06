@@ -118,5 +118,20 @@ export default defineSchema({
   .index("by_idea_status_created", ["ideaId", "status", "createdAt"])
   .index("by_idea_contributor", ["ideaId", "contributorId"])
   .index("by_contributor_status", ["contributorId", "status"])
-  .index("by_author_created", ["authorId", "createdAt"]) 
+  .index("by_author_created", ["authorId", "createdAt"]),
+
+ // Todos table - tracks todo items for ideas
+ todos: defineTable({
+   ideaId: v.id("ideas"), // Reference to the idea
+   authorId: v.id("users"), // User who created the todo
+   title: v.string(), // Todo title/description
+   status: v.union(v.literal("todo"), v.literal("in_progress"), v.literal("done")), // Status of the todo
+   order: v.optional(v.number()), // Order for sorting/display
+   createdAt: v.number(), // Unix timestamp
+   updatedAt: v.number(), // Unix timestamp
+ })
+ .index("by_idea", ["ideaId"])
+ .index("by_author", ["authorId"])
+ .index("by_idea_status", ["ideaId", "status"])
+ .index("by_created_at", ["createdAt"])
 })

@@ -7,7 +7,7 @@ import { HeroHeader } from "@/components/header";
 import FooterSection from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { ArrowLeft, Eye, Trash2, Pencil, MessageCircle } from "lucide-react";
+import { ArrowLeft, Eye, Trash2, Pencil, MessageCircle, Check, Plus, Lightbulb, X } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import Link from "next/link";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,7 +39,14 @@ import {
   TreeIcon,
   TreeLabel,
 } from "@/components/ui/kibo-ui/tree";
-import { Lightbulb, Plus } from "lucide-react";
+import {
+  KanbanProvider,
+  KanbanBoard,
+  KanbanHeader,
+  KanbanCards,
+  KanbanCard,
+} from "@/components/ui/kibo-ui/kanban";
+import { CalendarProvider, CalendarDate, CalendarMonthPicker, CalendarYearPicker, CalendarDatePagination, CalendarHeader, CalendarBody, CalendarItem } from '@/components/ui/kibo-ui/calendar';
 
 type ConvexIdea = {
   _id: string;
@@ -97,6 +104,25 @@ type TreeNode = {
   childrenCount: number;
 };
 
+type Todo = {
+  _id: Id<"todos">;
+  title: string;
+  status: "todo" | "in_progress" | "done";
+  createdAt: number;
+  updatedAt: number;
+  order?: number;
+  authorId: string;
+  ideaId: string;
+  author?: {
+    _id: string;
+    name?: string;
+    username?: string;
+    avatar?: string;
+  } | null;
+  canEdit?: boolean;
+  canDelete?: boolean;
+};
+
 export default function IdeaDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { isLoaded, userId } = useAuth();
   const router = useRouter();
@@ -107,6 +133,11 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
   const ideaTreeQuery = useQuery(api.ideas.getIdeaTree, { rootIdeaId: id as Id<"ideas"> });
   const addSubIdeaMutation = useMutation(api.ideas.addSubIdea);
   const userRequestsQuery = useQuery(api.contributionRequests.getMyRequests);
+  const todosQuery = useQuery(api.todos.getTodosForIdea, { ideaId: id as Id<"ideas"> });
+  const createTodoMutation = useMutation(api.todos.createTodo);
+  const updateTodoMutation = useMutation(api.todos.updateTodo);
+  const updateTodoStatusMutation = useMutation(api.todos.updateTodoStatus);
+  const deleteTodoMutation = useMutation(api.todos.deleteTodo);
 
   // Redirect if not authenticated
   React.useEffect(() => {
@@ -157,7 +188,7 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      <main className="flex-1 container mx-auto px-4 py-12">
+      <main className="flex-1 container mx-auto px-4 py-8 sm:py-12">
         {ideaQuery === undefined ? (
           // Loading state
           <div className="flex items-center justify-center py-12">
@@ -183,6 +214,15 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
               userRequests={userRequestsQuery || []}
               addSubIdeaMutation={addSubIdeaMutation}
             />
+            <TodoSection
+              idea={ideaQuery as ConvexIdea}
+              todos={todosQuery || []}
+              createTodoMutation={createTodoMutation}
+              updateTodoMutation={updateTodoMutation}
+              updateTodoStatusMutation={updateTodoStatusMutation}
+              deleteTodoMutation={deleteTodoMutation}
+            />
+            <CalendarSection idea={ideaQuery as ConvexIdea} />
             <ContributionRequestSection idea={ideaQuery as ConvexIdea} />
             <CommentsSection ideaId={ideaQuery._id as Id<"ideas">} commentCount={(ideaQuery as ConvexIdea).commentCount} />
           </>
@@ -388,8 +428,8 @@ const ContributorRequestSection: React.FC<{
   };
 
   return (
-    <div className="max-w-4xl mx-auto mt-8">
-      <div className="bg-card border border-border rounded-xl p-6 transition-colors">
+    <div className="max-w-4xl mx-auto mt-8 px-4">
+      <div className="bg-card border border-border rounded-xl p-4 sm:p-6 transition-colors max-h-[80vh] overflow-hidden flex flex-col">
         <h3 className="text-lg font-semibold mb-4">
           {existingRequest ? "Your Contribution Request" : "Interested in contributing?"}
         </h3>
@@ -656,8 +696,8 @@ const CommentsSection: React.FC<{ ideaId: Id<"ideas">; commentCount: number }> =
   const { roots, replies } = groupByParent(comments || []);
 
   return (
-    <div className="mt-12 max-w-4xl mx-auto">
-      <div className="bg-card border border-border rounded-xl p-6 transition-colors">
+    <div className="max-w-4xl mx-auto px-4">
+      <div className="bg-card border border-border rounded-xl p-4 sm:p-6 transition-colors">
         <h3 className="text-xl font-semibold mb-4">{commentCount} Comments</h3>
         {
           userId ? (
@@ -954,6 +994,347 @@ const IdeaContent: React.FC<{ idea: ConvexIdea }> = ({ idea }) => {
     </div>
   ); }
 
+const TodoSection: React.FC<{
+  idea: ConvexIdea;
+  todos: Todo[];
+  createTodoMutation: (args: { ideaId: Id<"ideas">; title: string }) => Promise<{ todoId: string; message: string }>;
+  updateTodoMutation: (args: { todoId: Id<"todos">; title: string }) => Promise<{ message: string }>;
+  updateTodoStatusMutation: (args: { todoId: Id<"todos">; status: "todo" | "in_progress" | "done" }) => Promise<{ status: "todo" | "in_progress" | "done"; message: string }>;
+  deleteTodoMutation: (args: { todoId: Id<"todos"> }) => Promise<{ message: string }>;
+}> = ({ idea, todos, createTodoMutation, updateTodoMutation, updateTodoStatusMutation, deleteTodoMutation }) => {
+  const { userId } = useAuth();
+  const [newTodoTitle, setNewTodoTitle] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState("");
+  const [editingTodoId, setEditingTodoId] = useState<Id<"todos"> | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Check permissions
+  const isAuthor = idea.isAuthor || false;
+  const hasAcceptedContribution = useQuery(api.contributionRequests.getMyRequests)
+    ?.find(req => req.ideaId === idea._id && req.status === "accepted");
+  const canManageTodos = userId && (isAuthor || hasAcceptedContribution);
+
+  const handleCreateTodo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTodoTitle.trim() || isCreating) return;
+
+    setIsCreating(true);
+    setError("");
+
+    try {
+      await createTodoMutation({
+        ideaId: idea._id as Id<"ideas">,
+        title: newTodoTitle.trim(),
+      });
+      setNewTodoTitle("");
+    } catch (err) {
+      setError("Failed to create todo");
+      console.error(err);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+
+  const handleDeleteTodo = async (todoId: Id<"todos">) => {
+    if (!confirm("Are you sure you want to delete this todo?")) return;
+    try {
+      await deleteTodoMutation({ todoId });
+    } catch (err) {
+      console.error("Failed to delete todo:", err);
+    }
+  };
+
+  const handleEditTodo = (todoId: Id<"todos">, currentTitle: string) => {
+    setEditingTodoId(todoId);
+    setEditingTitle(currentTitle);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingTodoId || !editingTitle.trim()) return;
+
+    setIsUpdating(true);
+    try {
+      await updateTodoMutation({
+        todoId: editingTodoId,
+        title: editingTitle.trim(),
+      });
+      setEditingTodoId(null);
+      setEditingTitle("");
+    } catch (err) {
+      console.error("Failed to update todo:", err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTodoId(null);
+    setEditingTitle("");
+  };
+
+
+  const groupedTodos = todos?.reduce(
+    (acc, todo) => {
+      if (todo.status === "todo") {
+        acc.todo.push(todo);
+      } else if (todo.status === "in_progress") {
+        acc.in_progress.push(todo);
+      } else {
+        acc.done.push(todo);
+      }
+      return acc;
+    },
+    { todo: [] as Todo[], in_progress: [] as Todo[], done: [] as Todo[] }
+  ) || { todo: [], in_progress: [], done: [] };
+
+  // Transform data for kanban component
+  const kanbanColumns = [
+    { id: "todo", name: "Todo" },
+    { id: "in_progress", name: "In Progress" },
+    { id: "done", name: "Done" },
+  ];
+
+  const kanbanData = todos?.map((todo) => ({
+    id: todo._id as string,
+    name: todo.title,
+    column: todo.status,
+    canDelete: todo.canDelete || false,
+  })) || [];
+
+  const handleDataChange = async (newData: typeof kanbanData) => {
+    // Find the changed todo by comparing with current todos
+    const currentTodos = todos || [];
+    const newTodos = newData.map(item => ({
+      id: item.id,
+      status: item.column as "todo" | "in_progress" | "done",
+      canDelete: item.canDelete,
+    }));
+
+    // Find differences
+    for (const newTodo of newTodos) {
+      const existingTodo = currentTodos.find(t => t._id === newTodo.id);
+      if (existingTodo && existingTodo.status !== newTodo.status) {
+        try {
+          await updateTodoStatusMutation({
+            todoId: newTodo.id as Id<"todos">,
+            status: newTodo.status
+          });
+        } catch (err) {
+          console.error("Failed to update todo status:", err);
+        }
+        break; // Only update one at a time to avoid conflicts
+      }
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto mt-8 px-4">
+      <div className="bg-card border border-border rounded-xl p-4 sm:p-6 transition-colors">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Kanban Board</h3>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Check className="w-4 h-4" />
+            <span>{groupedTodos.done.length} done</span>
+            <span className="mx-1">•</span>
+            <span>{groupedTodos.in_progress.length} in progress</span>
+            <span className="mx-1">•</span>
+            <span>{groupedTodos.todo.length} todo</span>
+          </div>
+        </div>
+
+        {/* Create new todo form */}
+        {canManageTodos && (
+          <form onSubmit={handleCreateTodo} className="mb-6">
+            <div className="flex gap-2 flex-col sm:flex-row">
+              <Input
+                placeholder="Add a new todo..."
+                value={newTodoTitle}
+                onChange={(e) => setNewTodoTitle(e.target.value)}
+                className="flex-1"
+                maxLength={200}
+                disabled={isCreating}
+              />
+              <Button
+                type="submit"
+                disabled={!newTodoTitle.trim() || isCreating}
+                className="self-start sm:self-auto"
+              >
+                {isCreating ? <Spinner size={16} /> : <Plus className="w-4 h-4" />}
+              </Button>
+            </div>
+            {error && <p className="text-destructive text-sm mt-2">{error}</p>}
+          </form>
+        )}
+
+        {/* Kanban Board */}
+        {kanbanData.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            {canManageTodos ? (
+              <p>No todos yet. Add your first todo above!</p>
+            ) : (
+              <p>No todos yet.</p>
+            )}
+          </div>
+        ) : (
+          <div className="w-full min-h-[200px] max-h-[400px]">
+            <KanbanProvider
+              className="w-full"
+              columns={kanbanColumns}
+              data={kanbanData}
+              onDataChange={handleDataChange}
+            >
+              {(column) => (
+                <KanbanBoard id={column.id}>
+                  <KanbanHeader>{column.name}</KanbanHeader>
+                  <KanbanCards id={column.id}>
+                    {(item) => {
+                      // Find the full todo data
+                      const todo = todos?.find(t => t._id === item.id);
+
+                      return (
+                        <KanbanCard
+                          key={item.id}
+                          id={item.id}
+                          name={item.name}
+                          column={item.column}
+                          canDelete={item.canDelete}
+                          className="w-full"
+                        >
+                          {editingTodoId === todo?._id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={editingTitle}
+                                onChange={(e) => setEditingTitle(e.target.value)}
+                                className="flex-1 h-8 text-sm"
+                                maxLength={200}
+                                autoFocus
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleSaveEdit}
+                                disabled={!editingTitle.trim() || isUpdating}
+                                className="text-green-600 hover:text-green-700 h-6 w-6 p-0"
+                              >
+                                <Check className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleCancelEdit}
+                                disabled={isUpdating}
+                                className="text-muted-foreground hover:text-foreground h-6 w-6 p-0"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between gap-2">
+                              <span className={`flex-1 text-sm ${
+                                column.id === "done" ? "line-through text-muted-foreground" : ""
+                              }`}>
+                                {item.name}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                {todo?.canEdit && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEditTodo(todo._id as Id<"todos">, todo.title)}
+                                    className="text-muted-foreground hover:text-foreground h-6 w-6 p-0 opacity-60 hover:opacity-100 flex-shrink-0"
+                                  >
+                                    <Pencil className="w-3 h-3" />
+                                  </Button>
+                                )}
+                                {todo?.canDelete && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteTodo(todo._id as Id<"todos">)}
+                                    className="text-destructive hover:text-destructive/80 h-6 w-6 p-0 opacity-70 hover:opacity-100 flex-shrink-0"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </KanbanCard>
+                      );
+                    }}
+                  </KanbanCards>
+                </KanbanBoard>
+              )}
+            </KanbanProvider>
+          </div>
+        )}
+
+        {/* Permission notice */}
+        {!canManageTodos && userId && (
+          <div className="mt-4 p-4 bg-muted/50 rounded-lg border border-border">
+            <div className="flex items-center space-x-2">
+              <Lightbulb className="w-4 h-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                Only the idea author or accepted contributors can add and manage todos.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const CalendarSection: React.FC<{ idea: ConvexIdea }> = ({ idea: _idea }: { idea: ConvexIdea }) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+  const sampleFeatures = [
+    {
+      id: '1',
+      name: 'Feature Meeting',
+      startAt: new Date(2025, 8, 6),
+      endAt: new Date(2025, 8, 6),
+      status: { id: '1', name: 'Scheduled', color: '#007bff' }
+    },
+    {
+      id: '2',
+      name: 'Code Review',
+      startAt: new Date(2025, 8, 10),
+      endAt: new Date(2025, 8, 10),
+      status: { id: '2', name: 'Completed', color: '#28a745' }
+    },
+    {
+      id: '3',
+      name: 'User Testing',
+      startAt: new Date(2025, 8, 15),
+      endAt: new Date(2025, 8, 17),
+      status: { id: '3', name: 'In Progress', color: '#ffc107' }
+    }
+  ];
+
+  return (
+    <div className="max-w-4xl mx-auto mt-8 px-4">
+      <div className="bg-card border border-border rounded-xl p-4 sm:p-6 transition-colors">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Calendar</h3>
+        </div>
+        <CalendarProvider>
+          <CalendarDate>
+            <CalendarMonthPicker />
+            <CalendarYearPicker start={2023} end={2026} />
+            <CalendarDatePagination />
+          </CalendarDate>
+          <CalendarHeader />
+          <CalendarBody features={sampleFeatures}>
+            {({ feature }) => <CalendarItem feature={feature} />}
+          </CalendarBody>
+        </CalendarProvider>
+      </div>
+    </div>
+  );
+};
+
 const HierarchicalIdeasSection: React.FC<{
   idea: ConvexIdea;
   ideaTree: TreeNode | null;
@@ -1247,18 +1628,20 @@ const HierarchicalIdeasSection: React.FC<{
            <p className="text-muted-foreground">No hierarchy data available.</p>
          </div>
        ) : (
-         <TreeProvider
-           showLines={true}
-           showIcons={true}
-           selectable={false}
-           multiSelect={false}
-           animateExpand={true}
-           className="idea-hierarchy-tree"
-         >
-           <TreeView aria-label="Idea hierarchy tree">
-             {renderIdeaTree(ideaTree)}
-           </TreeView>
-         </TreeProvider>
+         <div className="flex-1 overflow-hidden">
+           <TreeProvider
+             showLines={true}
+             showIcons={true}
+             selectable={false}
+             multiSelect={false}
+             animateExpand={true}
+             className="idea-hierarchy-tree h-full"
+           >
+             <TreeView aria-label="Idea hierarchy tree" className="h-full overflow-auto">
+               {renderIdeaTree(ideaTree)}
+             </TreeView>
+           </TreeProvider>
+         </div>
        )}
 
        {!canAddSubIdea && userId && (

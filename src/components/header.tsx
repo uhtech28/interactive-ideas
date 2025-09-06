@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 
 const menuItems = [
     { name: 'Feed', href: '/feed' },
+    { name: 'My Feed', href: '/my-feed' },
     { name: 'My Ideas', href: '/my-ideas' },
     { name: 'Community', href: '#link' },
     { name: 'Profile', href: '/profile-setup' },
