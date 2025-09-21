@@ -177,6 +177,9 @@ export default function ProfileSetupPage() {
 
   const createUserProfile = useMutation(api.users.createUserProfile);
 
+  // Query existing user profile to check if onboarding is completed
+  const existingProfile = useQuery(api.users.getCurrentUser);
+
   // Query user's ideas data - refresh when expanded sections change
   const createdIdeasData = useQuery(api.ideas.getUserIdeas);
   const sparkedIdeasData = useQuery(api.ideas.getUserSparkedIdeas, { limit: expandedSections.sparked ? 20 : 20 });
@@ -388,17 +391,24 @@ export default function ProfileSetupPage() {
                     <Input
                       id="username"
                       value={formData.username}
-                      onChange={(e) => setFormData(prev => ({
+                      onChange={(e) => !existingProfile && setFormData(prev => ({
                         ...prev,
                         username: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '')
                       }))}
                       placeholder="uniqueusername"
-                      className="mt-1"
+                      className={`mt-1 ${existingProfile ? 'bg-muted cursor-not-allowed' : ''}`}
                       maxLength={30}
+                      disabled={!!existingProfile}
+                      readOnly={!!existingProfile}
                     />
                     <p className="text-sm text-muted-foreground mt-1">
                       Only lowercase letters and numbers (3-30 characters)
                     </p>
+                    {existingProfile && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Username cannot be changed after profile completion
+                      </p>
+                    )}
                   </div>
                 </div>
 
