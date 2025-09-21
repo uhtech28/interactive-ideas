@@ -10,6 +10,9 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Users, MapPin, Globe, AlertCircle } from "lucide-react"
 import { useUser } from "@clerk/nextjs"
+import { HeroHeader } from "@/components/header"
+import { Spinner } from "@/components/ui/spinner"
+import FooterSection from "@/components/footer"
 
 // User profile interface
 interface UserProfile {
@@ -42,11 +45,15 @@ export default function CommunityPage() {
    // Loading state
    if (!isClerkUserLoaded || users === undefined) {
      return (
-       <div className="min-h-screen bg-background flex items-center justify-center">
-         <div className="text-center">
-           <Users className="w-8 h-8 animate-spin mx-auto mb-2" />
-           <p>Loading community...</p>
-         </div>
+       <div className="min-h-screen flex flex-col bg-background">
+         <HeroHeader />
+         <main className="flex-1 flex items-center justify-center px-4">
+           <div className="text-center">
+             <Spinner />
+             <p className="text-muted-foreground mt-4">Loading community...</p>
+           </div>
+         </main>
+         <FooterSection />
        </div>
      )
    }
@@ -54,62 +61,74 @@ export default function CommunityPage() {
    // Error state
    if (users === null) {
      return (
-       <div className="min-h-screen bg-background flex items-center justify-center">
-         <Card className="max-w-md w-full">
-           <CardContent className="pt-6">
-             <div className="text-center">
-               <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
-               <h3 className="text-lg font-semibold mb-2">Failed to Load Community</h3>
-               <p className="text-muted-foreground mb-4">
-                 Unable to fetch community data. Please try refreshing the page.
-               </p>
-               <Button onClick={() => window.location.reload()}>
-                 Try Again
-               </Button>
-             </div>
-           </CardContent>
-         </Card>
+       <div className="min-h-screen flex flex-col bg-background">
+         <HeroHeader />
+         <main className="flex-1 flex items-center justify-center px-4">
+           <Card className="max-w-md w-full">
+             <CardContent className="pt-6">
+               <div className="text-center">
+                 <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
+                 <h3 className="text-lg font-semibold mb-2">Failed to Load Community</h3>
+                 <p className="text-muted-foreground mb-4">
+                   Unable to fetch community data. Please try refreshing the page.
+                 </p>
+                 <Button onClick={() => window.location.reload()}>
+                   Try Again
+                 </Button>
+               </div>
+             </CardContent>
+           </Card>
+         </main>
+         <FooterSection />
        </div>
      )
    }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Community</h1>
-          <p className="text-muted-foreground mb-4">
-            Discover amazing creators and innovators in our community
-          </p>
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted rounded-lg">
-            <Users className="w-4 h-4" />
-            <span className="text-sm font-medium">{users?.length || 0} Members</span>
-          </div>
-        </div>
+ return (
+   <div className="min-h-screen flex flex-col bg-background">
+     <HeroHeader />
 
-        {/* Users Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {users?.map((user: UserProfile) => (
-            <UserCard
-              key={user._id}
-              user={user}
-            />
-          ))}
-        </div>
+     <main className="flex-1 container mx-auto px-4 py-12 pt-20">
+       <div className="max-w-7xl mx-auto">
+         {/* Header */}
+         <div className="text-center mb-12">
+           <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+             Community
+           </h1>
+           <p className="text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
+             Discover amazing creators and innovators in our community
+           </p>
+           <div className="inline-flex items-center gap-2 px-6 py-3 bg-muted/50 rounded-full">
+             <Users className="w-5 h-5" />
+             <span className="text-sm font-medium">{users?.length || 0} Members</span>
+           </div>
+         </div>
 
-        {users?.length === 0 && (
-          <div className="text-center py-16">
-            <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No users yet</h3>
-            <p className="text-muted-foreground">
-              Be the first to join our community!
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  )
+         {/* Users Grid */}
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+           {users?.map((user: UserProfile) => (
+             <UserCard
+               key={user._id}
+               user={user}
+             />
+           ))}
+         </div>
+
+         {users?.length === 0 && (
+           <div className="text-center py-20">
+             <Users className="w-16 h-16 mx-auto text-muted-foreground mb-6" />
+             <h3 className="text-2xl font-semibold mb-4">No users yet</h3>
+             <p className="text-muted-foreground text-lg">
+               Be the first to join our community!
+             </p>
+           </div>
+         )}
+       </div>
+     </main>
+
+     <FooterSection />
+   </div>
+ )
 }
 
 // User Card Component

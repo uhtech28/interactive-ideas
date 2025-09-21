@@ -5,6 +5,7 @@ import { useAuth, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,7 @@ import { industryCardOptions, skillCardOptions } from "@/lib/options";
 
 export default function ProfileSetupPage() {
   const { isLoaded, userId } = useAuth();
+  const { toast } = useToast();
 
   // Simple idea card component - Show only title
   type IdeaType = {
@@ -270,7 +272,19 @@ export default function ProfileSetupPage() {
       router.push('/feed');
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to create profile";
-      setError(errorMessage);
+
+      // Special handling for profile already exists error
+      if (errorMessage === "You already have a profile set up!") {
+        toast({
+          title: "Profile Already Exists",
+          description: "You already have a profile set up! Redirecting to your feed...",
+          duration: 3000,
+        });
+        // Redirect to feed after a short delay
+        setTimeout(() => router.push('/feed'), 1000);
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }

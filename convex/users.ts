@@ -90,12 +90,7 @@ export const createUserProfile = mutation({
 
   if (existing) {
     console.log("User profile creation attempted for existing profile:", identity.subject)
-    throw new Error("Profile already exists: You've already created your profile")
-  }
-
-  if (existing) {
-    console.log("User profile creation attempted for existing profile:", identity.subject)
-    throw new Error("Profile already exists: You've already created your profile")
+    throw new Error("You already have a profile set up!")
   }
 
   // Validate and normalize username (case-insensitive uniqueness)
