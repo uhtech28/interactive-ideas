@@ -5,7 +5,6 @@ import { useAuth, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,7 +26,6 @@ import { industryCardOptions, skillCardOptions } from "@/lib/options";
 
 export default function ProfileSetupPage() {
   const { isLoaded, userId } = useAuth();
-  const { toast } = useToast();
 
   // Simple idea card component - Show only title
   type IdeaType = {
@@ -164,6 +162,7 @@ export default function ProfileSetupPage() {
     sparked: false,
     contributed: false,
   });
+  const [profilePopulated, setProfilePopulated] = useState(false);
 
   // Comprehensive profile form data
   const [formData, setFormData] = useState({
@@ -176,6 +175,7 @@ export default function ProfileSetupPage() {
   });
 
   const createUserProfile = useMutation(api.users.createUserProfile);
+  const updateUserProfile = useMutation(api.users.updateUserProfile);
 
   // Query existing user profile to check if onboarding is completed
   const existingProfile = useQuery(api.users.getCurrentUser);
@@ -215,6 +215,21 @@ export default function ProfileSetupPage() {
       });
     }
   }, [user, userId]);
+
+  // Populate form with existing profile data
+  useEffect(() => {
+    if (existingProfile && !profilePopulated) {
+      setFormData(prev => ({
+        ...prev,
+        displayName: existingProfile.displayName || prev.displayName,
+        bio: existingProfile.bio || prev.bio,
+        avatar: existingProfile.avatar || prev.avatar,
+        industry: existingProfile.industry || prev.industry,
+        skills: existingProfile.skills || prev.skills,
+      }));
+      setProfilePopulated(true);
+    }
+  }, [existingProfile, profilePopulated]);
 
   // Form validation
   const validateForm = () => {
@@ -261,33 +276,32 @@ export default function ProfileSetupPage() {
     setError("");
 
     try {
-      // Create comprehensive profile
-      await createUserProfile({
-        username: formData.username,
-        displayName: formData.displayName,
-        bio: formData.bio || undefined,
-        avatar: formData.avatar || undefined,
-        industry: formData.industry || undefined,
-        skills: formData.skills,
-      });
+      if (existingProfile) {
+        // Update existing profile
+        await updateUserProfile({
+          displayName: formData.displayName,
+          bio: formData.bio || undefined,
+          avatar: formData.avatar || undefined,
+          industry: formData.industry || undefined,
+          skills: formData.skills,
+        });
+      } else {
+        // Create new profile
+        await createUserProfile({
+          username: formData.username,
+          displayName: formData.displayName,
+          bio: formData.bio || undefined,
+          avatar: formData.avatar || undefined,
+          industry: formData.industry || undefined,
+          skills: formData.skills,
+        });
+      }
 
       // Redirect to feed
       router.push('/feed');
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to create profile";
-
-      // Special handling for profile already exists error
-      if (errorMessage === "You already have a profile set up!") {
-        toast({
-          title: "Profile Already Exists",
-          description: "You already have a profile set up! Redirecting to your feed...",
-          duration: 3000,
-        });
-        // Redirect to feed after a short delay
-        setTimeout(() => router.push('/feed'), 1000);
-      } else {
-        setError(errorMessage);
-      }
+      const errorMessage = err instanceof Error ? err.message : `Failed to ${existingProfile ? 'update' : 'create'} profile`;
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -349,9 +363,11 @@ export default function ProfileSetupPage() {
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8 mt-12">
-            <h1 className="text-4xl font-bold text-foreground mb-4">Complete Your Profile</h1>
+            <h1 className="text-4xl font-bold text-foreground mb-4">
+              {existingProfile ? "Edit Your Profile" : "Complete Your Profile"}
+            </h1>
             <p className="text-lg text-muted-foreground">
-              Tell us about yourself to personalize your experience
+              {existingProfile ? "Update your profile information and skills" : "Tell us about yourself to personalize your experience"}
             </p>
           </div>
 
@@ -526,16 +542,16 @@ export default function ProfileSetupPage() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={loading || !formData.displayName.trim() || !formData.username.trim()}
+                    disabled={loading || !formData.displayName.trim() || (!existingProfile && !formData.username.trim())}
                     className="flex-1 bg-primary hover:bg-primary/90"
                   >
                     {loading ? (
                       <div className="flex items-center gap-2">
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Creating Profile...
+                        {existingProfile ? "Updating Profile..." : "Creating Profile..."}
                       </div>
                     ) : (
-                      "Complete Profile"
+                      existingProfile ? "Update Profile" : "Complete Profile"
                     )}
                   </Button>
                 </div>
