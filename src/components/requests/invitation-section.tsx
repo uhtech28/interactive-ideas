@@ -17,6 +17,7 @@ type InvitationSectionProps = {
   idea: {
     _id: Id<"ideas">;
     isAuthor: boolean;
+    parentId?: Id<"ideas">;
   };
 };
 
@@ -27,6 +28,9 @@ export const InvitationSection: React.FC<InvitationSectionProps> = ({ idea }) =>
   const acceptInvitationMutation = useMutation(api.invitations.acceptInvitation);
   const rejectInvitationMutation = useMutation(api.invitations.rejectInvitation);
   const invitationsQuery = useQuery(api.invitations.getInvitationsForIdea, { ideaId: idea._id });
+
+  // Only show invitation section for root ideas (ideas without parentId)
+  const isRootIdea = !idea.parentId;
 
   // Always render to show invitations to recipients and sending UI to authors
 
@@ -127,7 +131,7 @@ export const InvitationSection: React.FC<InvitationSectionProps> = ({ idea }) =>
       )}
 
       {/* Author invitation section */}
-      {idea.isAuthor && (
+      {idea.isAuthor && isRootIdea && (
         <div className="bg-card border border-border rounded-xl p-6 transition-colors">
           <h3 className="text-lg font-semibold mb-4">Invite Contributors</h3>
 

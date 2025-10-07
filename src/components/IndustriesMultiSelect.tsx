@@ -73,6 +73,7 @@ interface IndustriesMultiSelectProps {
   placeholder?: string;
   maxSelection?: number;
   singleSelect?: boolean;
+  mandatoryIndustries?: string[];
 }
 
 export function IndustriesMultiSelect({
@@ -81,6 +82,7 @@ export function IndustriesMultiSelect({
   placeholder = "Select industries...",
   maxSelection,
   singleSelect = false,
+  mandatoryIndustries = [],
 }: IndustriesMultiSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -106,10 +108,12 @@ export function IndustriesMultiSelect({
     } else {
       // Multi select mode
       newSelected = selectedIndustries.includes(value)
-        ? selectedIndustries.filter(industry => industry !== value)
+        ? mandatoryIndustries.includes(value)
+          ? selectedIndustries // Cannot remove mandatory industries
+          : selectedIndustries.filter(industry => industry !== value)
         : maxSelection && selectedIndustries.length >= maxSelection
-        ? selectedIndustries
-        : [...selectedIndustries, value];
+          ? selectedIndustries
+          : [...selectedIndustries, value];
     }
 
     onChange(newSelected);

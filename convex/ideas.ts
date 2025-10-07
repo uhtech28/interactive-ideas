@@ -389,25 +389,83 @@ export const getIdeaTree = query({
         .unique();
     }
 
+    // Helper function to find the root parent of an idea
+    const findRootIdea = async (ideaId: Id<"ideas">): Promise<any> => {
+      let current = await ctx.db.get(ideaId);
+      if (!current) return null;
+
+      while (current.parentId) {
+        current = await ctx.db.get(current.parentId);
+        if (!current) break;
+      }
+
+      return current;
+    };
+
     // Recursive function to build the tree
     const buildIdeaTree = async (ideaId: Id<"ideas">): Promise<any> => {
       const idea = await ctx.db.get(ideaId);
-      if (!idea) return null;
-
-      // Check if idea is deleted
-      if (idea.isDeleted) {
+      if (!idea) {
+        console.log("buildIdeaTree: idea not found for id:", ideaId);
         return null;
       }
 
-      // Check visibility and authorization
-      if (idea.visibility === 'private') {
-        // Private ideas: only author can see
-        if (!user || user._id !== idea.authorId) {
+      // Check if idea is deleted - authors can still see their deleted ideas
+      if (idea.isDeleted && (!user || user._id !== idea.authorId)) {
+        console.log("buildIdeaTree: idea is deleted and user is not author:", ideaId);
+        return null;
+      }
+
+      // Check visibility and authorization based on root parent
+      const rootIdea = await findRootIdea(ideaId);
+      if (!rootIdea) {
+        return null; // Invalid tree structure
+      }
+
+      // First check: if user is the root author, they can see everything under their root
+      const isRootAuthor = user && user._id === rootIdea.authorId;
+      console.log("buildIdeaTree: isRootAuthor:", isRootAuthor, "user._id:", user?._id, "rootIdea.authorId:", rootIdea.authorId);
+
+      // Check if user has accepted contribution request for the root
+      let hasAcceptedRequest = false;
+      if (user) {
+        const acceptedRequests = await ctx.db
+          .query("contributionRequests")
+          .withIndex("by_contributor_status", (q) =>
+            q.eq("contributorId", user._id).eq("status", "accepted")
+          )
+          .collect();
+        hasAcceptedRequest = acceptedRequests.some(req => req.ideaId === rootIdea._id);
+      }
+
+      const canSeeAsContributor = hasAcceptedRequest;
+      console.log("buildIdeaTree: canSeeAsContributor:", canSeeAsContributor, "hasAcceptedRequest:", hasAcceptedRequest);
+
+      if (isRootAuthor || canSeeAsContributor) {
+        console.log("buildIdeaTree: allowing access - root author or contributor");
+        // Root author or accepted contributor can see all sub-ideas regardless of visibility
+      } else if (rootIdea.visibility === 'public') {
+        console.log("buildIdeaTree: allowing access - public root");
+        // Sub-ideas of public parents: visible to all users
+        // No additional checks needed
+      } else {
+        console.log("buildIdeaTree: private root, checking further");
+        // Private root: visible to root authors, accepted contributors, or sub-idea authors
+        if (!user) {
+          console.log("buildIdeaTree: denying access - no user");
           return null;
         }
-      } else {
-        // Public ideas: accessible, but contribution-restricted ideas might have additional checks
-        // For now, public ideas are visible (additional logic could be added for contribution restrictions)
+
+        // Check if user is the author of this idea
+        const isSubIdeaAuthor = user._id === idea.authorId;
+        console.log("buildIdeaTree: isSubIdeaAuthor:", isSubIdeaAuthor, "idea.authorId:", idea.authorId);
+
+        // Root authors and accepted contributors can see all sub-ideas under private roots too
+        if (!isRootAuthor && !canSeeAsContributor && !isSubIdeaAuthor) {
+          console.log("buildIdeaTree: denying access - not authorized");
+          return null;
+        }
+        console.log("buildIdeaTree: allowing access - sub-idea author");
       }
 
       // Get author information

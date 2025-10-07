@@ -2,6 +2,7 @@ import React from "react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { InvitationButton } from "@/components/requests/invitation-button"
 
 // Interface matching the UserProfile from profile page
 interface UserProfile {
@@ -31,26 +32,39 @@ export const CompactProfileView: React.FC<CompactProfileViewProps> = ({ profile 
       {/* Profile Header - Compact */}
       <Card className="mb-6">
         <CardHeader className="pb-4">
-          <div className="flex items-center gap-6">
-            <Avatar className="w-20 h-20">
+          <div className="flex flex-col sm:flex-row items-start gap-4">
+            <Avatar className="w-20 h-20 flex-shrink-0">
               <AvatarImage src={profile.avatar} alt={profile.displayName} />
               <AvatarFallback className="text-lg">
                 {profile.displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold">{profile.displayName}</h1>
-              <p className="text-lg text-muted-foreground">@{profile.username}</p>
-              {profile.bio && (
-                <p className="text-gray-600 dark:text-gray-300 mt-2 text-sm max-w-lg line-clamp-3">
-                  {profile.bio}
-                </p>
-              )}
-              {profile.industry && (
-                <Badge variant="secondary" className="mt-2">
-                  {profile.industry}
-                </Badge>
-              )}
+            <div className="flex-1 min-w-0 w-full">
+              <div className="flex flex-col gap-3">
+                <div>
+                  <h1 className="text-2xl font-bold">{profile.displayName}</h1>
+                  <p className="text-lg text-muted-foreground">@{profile.username}</p>
+                  {profile.bio && (
+                    <p className="text-gray-600 dark:text-gray-300 mt-2 text-sm line-clamp-3">
+                      {profile.bio}
+                    </p>
+                  )}
+                  {profile.industry && (
+                    <Badge variant="secondary" className="mt-2">
+                      {profile.industry}
+                    </Badge>
+                  )}
+                </div>
+                <div className="w-full sm:w-auto">
+                  <InvitationButton
+                    targetUser={{
+                      _id: profile._id,
+                      username: profile.username,
+                      displayName: profile.displayName,
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </CardHeader>

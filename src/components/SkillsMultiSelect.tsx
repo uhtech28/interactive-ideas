@@ -52,6 +52,7 @@ interface SkillsMultiSelectProps {
   onChange: (skills: string[]) => void;
   placeholder?: string;
   maxSelection?: number;
+  mandatorySkills?: string[];
 }
 
 export function SkillsMultiSelect({
@@ -59,6 +60,7 @@ export function SkillsMultiSelect({
   onChange,
   placeholder = "Select skills...",
   maxSelection,
+  mandatorySkills = [],
 }: SkillsMultiSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -77,7 +79,9 @@ export function SkillsMultiSelect({
 
   const handleSelect = (value: string) => {
     const newSelected = selectedSkills.includes(value)
-      ? selectedSkills.filter(skill => skill !== value)
+      ? mandatorySkills.includes(value)
+        ? selectedSkills // Cannot remove mandatory skills
+        : selectedSkills.filter(skill => skill !== value)
       : maxSelection && selectedSkills.length >= maxSelection
         ? selectedSkills
         : [...selectedSkills, value];

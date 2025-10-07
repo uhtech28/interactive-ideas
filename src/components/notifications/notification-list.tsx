@@ -8,8 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { CheckCheck, X, Bell, MessageCircle, UserPlus, Sparkles } from 'lucide-react'
+import { X, Bell, MessageCircle, UserPlus, Sparkles } from 'lucide-react'
 
 // Simple utility to format relative time
 const formatRelativeTime = (timestamp: number): string => {
@@ -39,8 +38,6 @@ type Notification = {
   } | null
 }
 
-type FilterType = "all" | "interactions" | "requests"
-type ReadStatusFilter = "all" | "unread" | "read"
 
 interface NotificationItemProps {
   notification: Notification
@@ -154,16 +151,11 @@ const NotificationItem = ({ notification, onMarkAsRead, onDismiss }: Notificatio
 }
 
 export const NotificationList = () => {
-  const [filterType, setFilterType] = useState<FilterType>("all")
-  const [readStatusFilter, setReadStatusFilter] = useState<ReadStatusFilter>("all")
   const [activeTab, setActiveTab] = useState<"all" | "interactions" | "requests">("all")
 
   const notifications = useQuery(api.notifications.getNotifications, {
-    limit: 50,
-    filterType,
-    filterReadStatus: readStatusFilter
+    limit: 50
   })
-  const markAllAsRead = useMutation(api.notifications.markAllAsRead)
   const dismissAllNotifications = useMutation(api.notifications.dismissAllNotifications)
   const markAsRead = useMutation(api.notifications.markAsRead)
   const dismissNotification = useMutation(api.notifications.dismissNotification)
@@ -184,14 +176,10 @@ export const NotificationList = () => {
     await dismissNotification({ notificationId })
   }
 
-  const handleMarkAllAsRead = async () => {
-    await markAllAsRead()
-  }
-
   const handleDismissAll = async () => {
     await dismissAllNotifications({
-      filterType: filterType,
-      filterReadStatus: readStatusFilter
+      filterType: "all",
+      filterReadStatus: "all"
     })
   }
 
@@ -214,7 +202,6 @@ export const NotificationList = () => {
     )
   }
 
-  const unreadCount = notifications.filter((n: Notification) => !n.isRead).length
   const interactions = notifications.filter((n: Notification) =>
     ['spark_received', 'comment_received'].includes(n.type)
   )
@@ -226,40 +213,7 @@ export const NotificationList = () => {
     <div className="p-2 sm:p-4 space-y-2 sm:space-y-4 max-w-full overflow-hidden">
       {/* Filter Controls */}
       <div className="flex flex-col sm:flex-row gap-2">
-        <Select value={filterType} onValueChange={(value: FilterType) => setFilterType(value)}>
-          <SelectTrigger className="w-full sm:w-36 text-xs sm:text-sm">
-            <SelectValue placeholder="Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="interactions">Interactions</SelectItem>
-            <SelectItem value="requests">Requests</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={readStatusFilter} onValueChange={(value: ReadStatusFilter) => setReadStatusFilter(value)}>
-          <SelectTrigger className="w-full sm:w-36 text-xs sm:text-sm">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="unread">Unread Only</SelectItem>
-            <SelectItem value="read">Read Only</SelectItem>
-          </SelectContent>
-        </Select>
-
         <div className="flex gap-1 ml-auto">
-          {unreadCount > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleMarkAllAsRead}
-              className="text-xs sm:text-sm px-2 h-8"
-            >
-              <CheckCheck className="h-3 w-3 mr-1" />
-              Read ({unreadCount})
-            </Button>
-          )}
           <Button
             variant="outline"
             size="sm"

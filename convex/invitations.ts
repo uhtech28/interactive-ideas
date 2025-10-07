@@ -41,6 +41,12 @@ export const sendInvitation = mutation({
         throw new Error("Cannot send invitation for a deleted idea");
       }
 
+      // Check if idea is a root idea (no parent)
+      if (idea.parentId) {
+        console.error("Attempt to send invitation for sub-idea:", args.ideaId);
+        throw new Error("Invitations can only be sent for root ideas, not sub-ideas");
+      }
+
       // Only author can send invitations
       if (inviter._id !== idea.authorId) {
         throw new Error("Only the idea author can send invitations");

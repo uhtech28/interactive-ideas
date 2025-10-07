@@ -56,6 +56,7 @@ type ConvexIdea = {
   title: string;
   description: string;
   category: string;
+  industries?: string;
   visibility: string;
   sparkCount: number;
   commentCount: number;
@@ -1341,6 +1342,7 @@ const HierarchicalIdeasSection: React.FC<{
     title: string;
     description: string;
     category: string;
+    industries?: string;
     visibility: string;
   }) => Promise<{
     ideaId: string;
@@ -1356,6 +1358,8 @@ const HierarchicalIdeasSection: React.FC<{
  const [subIdeaDescription, setSubIdeaDescription] = useState("");
  const [subIdeaSkills, setSubIdeaSkills] = useState<string[]>([]);
  const [subIdeaIndustries, setSubIdeaIndustries] = useState<string[]>([]);
+ const [mandatorySkills, setMandatorySkills] = useState<string[]>([]);
+ const [mandatoryIndustries, setMandatoryIndustries] = useState<string[]>([]);
  const [subIdeaVisibility, setSubIdeaVisibility] = useState("public");
  const [isSubmitting, setIsSubmitting] = useState(false);
  const [error, setError] = useState("");
@@ -1382,7 +1386,7 @@ const HierarchicalIdeasSection: React.FC<{
        title: subIdeaTitle.trim(),
        description: subIdeaDescription.trim(),
        category: subIdeaSkills.join(', '),
-       // industries: subIdeaIndustries.join(', '), // Temporarily commented out due to type generation issue
+       industries: subIdeaIndustries.length > 0 ? subIdeaIndustries.join(', ') : undefined,
        visibility: subIdeaVisibility,
      });
 
@@ -1391,6 +1395,8 @@ const HierarchicalIdeasSection: React.FC<{
      setSubIdeaDescription("");
      setSubIdeaSkills([]);
      setSubIdeaIndustries([]);
+     setMandatorySkills([]);
+     setMandatoryIndustries([]);
      setSubIdeaVisibility("public");
      setIsModalOpen(false);
    } catch (err: unknown) {
@@ -1475,7 +1481,28 @@ const HierarchicalIdeasSection: React.FC<{
        <div className="flex items-center justify-between mb-4">
          <h3 className="text-lg font-semibold">Idea Hierarchy</h3>
          {canAddSubIdea && (
-           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+           <Dialog open={isModalOpen} onOpenChange={(open) => {
+             setIsModalOpen(open);
+             if (open) {
+               // Pre-populate with parent idea's skills and industries
+               const parentSkills = idea.category ? idea.category.split(',').map(s => s.trim()).filter(s => s) : [];
+               const parentIndustries = idea.industries ? idea.industries.split(',').map((s: string) => s.trim()).filter((s: string) => s) : [];
+
+               // Debug logging
+               console.log('Parent idea industries:', idea.industries);
+               console.log('Parsed parent industries:', parentIndustries);
+
+               setMandatorySkills(parentSkills);
+               setMandatoryIndustries(parentIndustries);
+               setSubIdeaSkills(parentSkills);
+               setSubIdeaIndustries(parentIndustries);
+               // Clear other fields
+               setSubIdeaTitle("");
+               setSubIdeaDescription("");
+               setSubIdeaVisibility("public");
+               setError("");
+             }
+           }}>
              <DialogTrigger asChild>
                <Button className="flex items-center gap-2" aria-label="Add sub-idea">
                  <Plus className="w-4 h-4" />
@@ -1532,6 +1559,7 @@ const HierarchicalIdeasSection: React.FC<{
                        selectedSkills={subIdeaSkills}
                        onChange={setSubIdeaSkills}
                        placeholder="Select skills for your sub-idea"
+                       mandatorySkills={mandatorySkills}
                      />
                    </div>
 
@@ -1543,6 +1571,7 @@ const HierarchicalIdeasSection: React.FC<{
                        selectedIndustries={subIdeaIndustries}
                        onChange={setSubIdeaIndustries}
                        placeholder="Select industries for your sub-idea"
+                       mandatoryIndustries={mandatoryIndustries}
                      />
                    </div>
 
