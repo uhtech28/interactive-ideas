@@ -772,11 +772,12 @@ export const getUserIdeas = query({
           return []; // Return empty array instead of throwing
         }
 
-    // Get user's ideas, excluding deleted ones - include both public and private
+    // Get user's root ideas (originally created by user), excluding deleted ones and contributed ideas - include both public and private
     const userIdeas = await ctx.db
       .query("ideas")
       .withIndex("by_author", (q) => q.eq("authorId", user._id))
       .filter((q) => q.neq(q.field("isDeleted"), true))
+      .filter((q) => q.or(q.eq(q.field("parentId"), undefined), q.eq(q.field("parentId"), null)))
       .order("desc")
       .take(50);
 

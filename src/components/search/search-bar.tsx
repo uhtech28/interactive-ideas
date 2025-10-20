@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Search, X, TrendingUp, Clock, User, Lightbulb, Users, User2 } from 'lucide-react'
+import { Search, X, TrendingUp, Lightbulb, User2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -22,6 +22,25 @@ interface SearchSuggestion {
   skills?: string[]
 }
 
+interface UserResult {
+  _id: string
+  displayName: string
+  username: string
+  avatar?: string
+  skills?: string[]
+  ideasCreated?: number
+  ideasSparked?: number
+}
+
+interface IdeaResult {
+  _id: string
+  title: string
+  category: string
+  sparkCount: number
+  author?: { displayName?: string; name?: string }
+  contributionCount?: number
+}
+
 interface SearchBarProps {
   onSearch: (query: string, type?: 'idea' | 'user') => void
   placeholder?: string
@@ -39,10 +58,6 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   const [isFocused, setIsFocused] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(-1)
-  const [searchResults, setSearchResults] = useState<{
-    ideas: SearchSuggestion[]
-    users: SearchSuggestion[]
-  }>({ ideas: [], users: [] })
   const inputRef = useRef<HTMLInputElement>(null)
   const suggestionsRef = useRef<HTMLDivElement>(null)
   const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
@@ -286,7 +301,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                       People ({searchData.users.length})
                     </div>
                   </div>
-                  {searchData.users.map((user: any, index: number) => (
+                  {searchData.users.map((user: UserResult, index: number) => (
                     <button
                       key={`user-${user._id}`}
                       id={`suggestion-user-${index}`}
@@ -348,7 +363,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                       Ideas ({searchData.ideas.length})
                     </div>
                   </div>
-                  {searchData.ideas.map((idea: any, index: number) => (
+                  {searchData.ideas.map((idea: IdeaResult, index: number) => (
                     <button
                       key={`idea-${idea._id}`}
                       id={`suggestion-idea-${index}`}
