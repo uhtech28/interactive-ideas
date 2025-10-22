@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { api } from "@convex/_generated/api";
 import { useToast } from "@/components/ui/use-toast";
 import { Id } from "@convex/_generated/dataModel";
-import { UserPlus, Check } from "lucide-react";
+import { UserPlus } from "lucide-react";
 
 interface InvitationButtonProps {
   targetUser: {
@@ -21,7 +21,6 @@ interface InvitationButtonProps {
 
 export const InvitationButton: React.FC<InvitationButtonProps> = ({ targetUser }) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-  const [selectedIdeaId, setSelectedIdeaId] = useState<Id<"ideas"> | null>(null);
   const [invitationMessage, setInvitationMessage] = useState("");
 
   const { toast } = useToast();
@@ -32,19 +31,10 @@ export const InvitationButton: React.FC<InvitationButtonProps> = ({ targetUser }
   // Send invitation mutation
   const sendInvitationMutation = useMutation(api.invitations.sendInvitation);
 
-  const handleSendInvitation = async () => {
-    if (!selectedIdeaId) {
-      toast({
-        title: "Please select an idea",
-        description: "You need to select an idea to invite the user to collaborate on.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleSendInvitation = async (ideaId: Id<"ideas">) => {
     try {
       await sendInvitationMutation({
-        ideaId: selectedIdeaId,
+        ideaId,
         username: targetUser.username,
         message: invitationMessage.trim() || undefined,
       });
@@ -56,7 +46,6 @@ export const InvitationButton: React.FC<InvitationButtonProps> = ({ targetUser }
 
       // Reset state
       setIsPopoverOpen(false);
-      setSelectedIdeaId(null);
       setInvitationMessage("");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -68,11 +57,6 @@ export const InvitationButton: React.FC<InvitationButtonProps> = ({ targetUser }
     }
   };
 
-  const handleClosePopover = () => {
-    setIsPopoverOpen(false);
-    setSelectedIdeaId(null);
-    setInvitationMessage("");
-  };
 
   if (!myIdeas) {
     return (
@@ -129,12 +113,8 @@ export const InvitationButton: React.FC<InvitationButtonProps> = ({ targetUser }
                 {myIdeas.map((idea) => (
                   <div
                     key={idea._id}
-                    className={`border rounded-lg p-3 cursor-pointer transition-colors ${
-                      selectedIdeaId === idea._id
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    }`}
-                    onClick={() => setSelectedIdeaId(idea._id)}
+                    className="border rounded-lg p-3 cursor-pointer transition-colors border-border hover:border-primary/50"
+                    onClick={() => handleSendInvitation(idea._id)}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
@@ -154,9 +134,6 @@ export const InvitationButton: React.FC<InvitationButtonProps> = ({ targetUser }
                           </Badge>
                         </div>
                       </div>
-                      {selectedIdeaId === idea._id && (
-                        <Check className="w-5 h-5 text-primary flex-shrink-0" />
-                      )}
                     </div>
                   </div>
                 ))}
@@ -172,7 +149,7 @@ export const InvitationButton: React.FC<InvitationButtonProps> = ({ targetUser }
                 rows={3}
                 placeholder={`Hi ${targetUser.displayName}, I'd love for you to contribute to this idea...`}
                 value={invitationMessage}
-                onChange={(e) => setInvitationMessage(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInvitationMessage(e.target.value)}
                 maxLength={500}
               />
               <p className="text-xs text-muted-foreground mt-1">
@@ -180,18 +157,6 @@ export const InvitationButton: React.FC<InvitationButtonProps> = ({ targetUser }
               </p>
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={handleClosePopover}>
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleSendInvitation}
-                disabled={!selectedIdeaId}
-              >
-                Send Invitation
-              </Button>
-            </div>
           </div>
         </PopoverContent>
       </Popover>

@@ -11,6 +11,7 @@ import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { UserPlus, X } from "lucide-react";
 import { SearchableUserDropdown } from "./searchable-user-dropdown";
+import { useToast } from "@/components/ui/use-toast";
 
 
 type InvitationSectionProps = {
@@ -22,22 +23,25 @@ type InvitationSectionProps = {
 };
 
 export const InvitationSection: React.FC<InvitationSectionProps> = ({ idea }) => {
-  const sendInvitationMutation = useMutation(api.invitations.sendInvitation);
-  const cancelInvitationMutation = useMutation(api.invitations.cancelInvitation);
-  const myInvitationsQuery = useQuery(api.invitations.getMyInvitations);
-  const acceptInvitationMutation = useMutation(api.invitations.acceptInvitation);
-  const rejectInvitationMutation = useMutation(api.invitations.rejectInvitation);
-  const invitationsQuery = useQuery(api.invitations.getInvitationsForIdea, { ideaId: idea._id });
+   const sendInvitationMutation = useMutation(api.invitations.sendInvitation);
+   const cancelInvitationMutation = useMutation(api.invitations.cancelInvitation);
+   const myInvitationsQuery = useQuery(api.invitations.getMyInvitations);
+   const acceptInvitationMutation = useMutation(api.invitations.acceptInvitation);
+   const rejectInvitationMutation = useMutation(api.invitations.rejectInvitation);
+   const invitationsQuery = useQuery(api.invitations.getInvitationsForIdea, { ideaId: idea._id });
+   const { toast } = useToast();
 
-  // Only show invitation section for root ideas (ideas without parentId)
-  const isRootIdea = !idea.parentId;
+   // Only show invitation section for root ideas (ideas without parentId)
+   const isRootIdea = !idea.parentId;
 
-  // Always render to show invitations to recipients and sending UI to authors
+   // Always render to show invitations to recipients and sending UI to authors
 
-  const [username, setUsername] = useState("");
-  const [message, setMessage] = useState("");
-  const [isSending, setIsSending] = useState(false);
-  const [error, setError] = useState("");
+   const [username, setUsername] = useState("");
+   const [message, setMessage] = useState("");
+   const [isSending, setIsSending] = useState(false);
+   const [error, setError] = useState("");
+   const [isAccepting, setIsAccepting] = useState<Id<"invitations"> | null>(null);
+   const [isRejecting, setIsRejecting] = useState<Id<"invitations"> | null>(null);
 
   const handleSendInvitation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,19 +76,45 @@ export const InvitationSection: React.FC<InvitationSectionProps> = ({ idea }) =>
   };
 
   const handleAcceptInvitation = async (invitationId: Id<"invitations">) => {
+    if (!confirm("Are you sure you want to accept this invitation?")) return;
     try {
+      setIsAccepting(invitationId);
       await acceptInvitationMutation({ invitationId });
+      toast({
+        title: "Invitation accepted!",
+        description: "You've successfully joined the idea as a contributor.",
+      });
     } catch (err) {
       console.error("Failed to accept invitation:", err);
+      toast({
+        title: "Failed to accept invitation",
+        description: err instanceof Error ? err.message : "An error occurred while accepting the invitation.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAccepting(null);
     }
   };
 
   const handleRejectInvitation = async (invitationId: Id<"invitations">) => {
     if (!confirm("Are you sure you want to decline this invitation?")) return;
     try {
+      setIsRejecting(invitationId);
       await rejectInvitationMutation({ invitationId });
+      toast({
+        title: "Invitation declined",
+        description: "The invitation has been declined.",
+        variant: "destructive",
+      });
     } catch (err) {
       console.error("Failed to reject invitation:", err);
+      toast({
+        title: "Failed to decline invitation",
+        description: err instanceof Error ? err.message : "An error occurred while declining the invitation.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRejecting(null);
     }
   };
 
@@ -116,15 +146,17 @@ export const InvitationSection: React.FC<InvitationSectionProps> = ({ idea }) =>
           <div className="flex gap-2">
             <Button
               onClick={() => handleAcceptInvitation(myPendingInvitation._id)}
+              disabled={isAccepting === myPendingInvitation._id}
               className="bg-green-600 hover:bg-green-700"
             >
-              Accept Invitation
+              {isAccepting === myPendingInvitation._id ? <Spinner size={16} /> : "Accept Invitation"}
             </Button>
             <Button
               variant="outline"
               onClick={() => handleRejectInvitation(myPendingInvitation._id)}
+              disabled={isRejecting === myPendingInvitation._id}
             >
-              Decline
+              {isRejecting === myPendingInvitation._id ? <Spinner size={16} /> : "Decline"}
             </Button>
           </div>
         </div>
@@ -156,13 +188,18 @@ export const InvitationSection: React.FC<InvitationSectionProps> = ({ idea }) =>
             </Button>
           </div>
           <div>
-            <Input
-              placeholder="Optional invitation message..."
+            <textarea
+              className="w-full p-3 border border-border rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+              rows={3}
+              placeholder={`Hi there, I'd love for you to contribute to this idea...`}
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)}
               maxLength={500}
               disabled={isSending}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              {message.length}/500 characters
+            </p>
           </div>
           {error && <p className="text-destructive text-sm">{error}</p>}
         </form>

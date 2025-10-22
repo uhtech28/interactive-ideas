@@ -69,6 +69,22 @@ export const createContributionRequest = mutation({
         throw new Error("You've already sent a contribution request for this idea");
       }
 
+      // Check for existing invitation to prevent duplicates
+      const existingInvitation = await ctx.db
+        .query("invitations")
+        .withIndex("by_invitee_status", (q) =>
+          q.eq("inviteeId", user._id).eq("status", "pending")
+        )
+        .collect()
+        .then(invitations =>
+          invitations.find(inv => inv.ideaId === args.ideaId)
+        );
+
+      if (existingInvitation) {
+        console.log("Duplicate invitation exists for user:", user.username, "on idea:", args.ideaId);
+        throw new Error("An invitation is already pending for you on this idea");
+      }
+
       // Create the contribution request
       const requestId = await ctx.db.insert("contributionRequests", {
         ideaId: args.ideaId,

@@ -89,6 +89,18 @@ export const sendInvitation = mutation({
         throw new Error("An invitation is already pending for this user on this idea");
       }
 
+      // Check for existing active contribution request to prevent duplicates
+      const existingRequest = await ctx.db
+        .query("contributionRequests")
+        .withIndex("by_idea_contributor", (q) =>
+          q.eq("ideaId", args.ideaId).eq("contributorId", invitee._id)
+        )
+        .unique();
+
+      if (existingRequest && (existingRequest.status === "pending" || existingRequest.status === "accepted")) {
+        throw new Error("A contribution request already exists for this user on this idea");
+      }
+
       // Create the invitation
       const invitationId = await ctx.db.insert("invitations", {
         ideaId: args.ideaId,
@@ -303,18 +315,35 @@ export const acceptInvitation = mutation({
         updatedAt: now,
       });
 
-      // Create contribution request
+      // Create contribution request with accepted status (skip author approval)
       const requestId = await ctx.db.insert("contributionRequests", {
         ideaId: invitation.ideaId,
         contributorId: user._id,
         authorId: invitation.inviterId,
-        message: invitation.message || "Invitation accepted - ready to contribute!",
-        status: "pending",
+        message: invitation.message?.trim() || "Invitation accepted - ready to contribute!",
+        status: "accepted", // Direct acceptance for invitations
         createdAt: now,
         updatedAt: now,
       });
 
-      console.log("Created contribution request:", requestId, "from accepted invitation:", args.invitationId);
+      console.log("Created accepted contribution request:", requestId, "from accepted invitation:", args.invitationId);
+
+      // Get idea title for notification
+      const idea = await ctx.db.get(invitation.ideaId);
+      const ideaTitle = idea ? idea.title : "the idea";
+
+      // Create notification for the invitee (invitation accepted confirmation)
+       await ctx.db.insert("notifications", {
+         recipientId: user._id,
+         senderId: invitation.inviterId,
+         type: "contribution_request_accepted",
+         message: `You are now a contributor to "${ideaTitle}"`,
+         relatedId: invitation.ideaId,
+         isRead: false,
+         createdAt: now,
+       });
+
+      // Note: Contributor count increment is handled elsewhere (e.g., when request status changes)
 
       // Create notification for the inviter
        await ctx.db.insert("notifications", {

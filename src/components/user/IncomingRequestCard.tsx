@@ -5,7 +5,9 @@ import { api } from "../../../convex/_generated/api"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Spinner } from "@/components/ui/spinner"
 import { CheckCircle, XCircle } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 
 interface ContributionRequest {
   _id: Id<"contributionRequests">;
@@ -28,14 +30,25 @@ interface IncomingRequestCardProps {
 
 export const IncomingRequestCard: React.FC<IncomingRequestCardProps> = ({ request }) => {
   const updateStatusMutation = useMutation(api.contributionRequests.updateRequestStatus);
+  const { toast } = useToast();
   const [isUpdating, setIsUpdating] = React.useState(false);
 
   const handleStatusUpdate = async (status: "accepted" | "rejected") => {
     try {
       setIsUpdating(true);
       await updateStatusMutation({ requestId: request._id, status });
+      toast({
+        title: status === "accepted" ? "Request Accepted" : "Request Rejected",
+        description: `The contribution request has been ${status} successfully.`,
+        variant: status === "accepted" ? "default" : "destructive",
+      });
     } catch (error) {
       console.error("Failed to update request status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update request status. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsUpdating(false);
     }
@@ -88,19 +101,27 @@ export const IncomingRequestCard: React.FC<IncomingRequestCardProps> = ({ reques
         <div className="flex gap-2 mt-3">
           <Button
             size="sm"
-            onClick={() => handleStatusUpdate("accepted")}
+            onClick={() => {
+              if (confirm("Are you sure you want to accept this contribution request?")) {
+                handleStatusUpdate("accepted");
+              }
+            }}
             disabled={isUpdating}
             className="bg-green-600 hover:bg-green-700"
           >
-            {isUpdating ? "..." : "Accept"}
+            {isUpdating ? <Spinner size={14} /> : "Accept"}
           </Button>
           <Button
             size="sm"
             variant="outline"
-            onClick={() => handleStatusUpdate("rejected")}
+            onClick={() => {
+              if (confirm("Are you sure you want to reject this contribution request?")) {
+                handleStatusUpdate("rejected");
+              }
+            }}
             disabled={isUpdating}
           >
-            {isUpdating ? "..." : "Reject"}
+            {isUpdating ? <Spinner size={14} /> : "Reject"}
           </Button>
         </div>
       )}

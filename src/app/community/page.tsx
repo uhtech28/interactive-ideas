@@ -112,7 +112,7 @@ export default function CommunityPage() {
 
           {/* Users Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {users?.map((user: UserProfile) => (
+            {users?.filter(user => user.clerkId !== clerkUser?.id).map((user: UserProfile) => (
               <UserCard
                 key={user._id}
                 user={user}
