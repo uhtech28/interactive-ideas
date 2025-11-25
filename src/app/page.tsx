@@ -5,13 +5,17 @@ import FooterSection from "@/components/footer";
 
 export default function Home() {
   return (
-    <div className="max-w-[720px] mx-auto px-4">
-      <HeroSection />
-      <FAQsTwo />
-      <div className="max-w-4xl mx-auto">
-        <WallOfLoveSection />
+    <div className="min-h-screen">
+      <div className="max-w-[720px] mx-auto px-4">
+        <HeroSection />
+        <FAQsTwo />
       </div>
-      <FooterSection />
+      
+      <WallOfLoveSection />
+      
+      <div className="max-w-[720px] mx-auto px-4">
+        <FooterSection />
+      </div>
     </div>
   );
 }
