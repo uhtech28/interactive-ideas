@@ -9,7 +9,9 @@ import {
   Plus, 
   User, 
   Palette, 
-  LogOut
+  LogOut,
+  MessageCircle,
+  Sparkles
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useClerk } from "@clerk/nextjs";
@@ -48,20 +50,6 @@ export function RightSidebar({
       <div className="flex flex-col gap-6 mt-16">
         <TooltipProvider delayDuration={0}>
           
-          {/* Create Idea */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button asChild variant="ghost" size="icon" className="rounded-full w-10 h-10 hover:bg-primary/10 hover:text-primary">
-                <Link href="/create-idea">
-                  <Plus className="w-5 h-5" />
-                </Link>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-              <p>Create Idea</p>
-            </TooltipContent>
-          </Tooltip>
-
           {/* Filter */}
           <Popover open={filterOpen} onOpenChange={setFilterOpen}>
             <Tooltip>
@@ -89,6 +77,48 @@ export function RightSidebar({
             </PopoverContent>
           </Popover>
 
+          {/* Community */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button asChild variant="ghost" size="icon" className="rounded-full w-10 h-10 hover:bg-primary/10 hover:text-primary">
+                <Link href="/community">
+                  <MessageCircle className="w-5 h-5" />
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              <p>Community</p>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* My Feed */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button asChild variant="ghost" size="icon" className="rounded-full w-10 h-10 hover:bg-primary/10 hover:text-primary">
+                <Link href="/my-feed">
+                  <Sparkles className="w-5 h-5" />
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              <p>My Feed</p>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Profile */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button asChild variant="ghost" size="icon" className="rounded-full w-10 h-10 hover:bg-primary/10 hover:text-primary">
+                <Link href="/profile">
+                  <User className="w-5 h-5" />
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              <p>Profile</p>
+            </TooltipContent>
+          </Tooltip>
+
           {/* Theme Toggle */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -106,17 +136,17 @@ export function RightSidebar({
             </TooltipContent>
           </Tooltip>
 
-          {/* Profile */}
+          {/* Create Idea */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button asChild variant="ghost" size="icon" className="rounded-full w-10 h-10 hover:bg-primary/10 hover:text-primary">
-                <Link href="/profile">
-                  <User className="w-5 h-5" />
+              <Button asChild variant="default" size="icon" className="rounded-full w-10 h-10 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md">
+                <Link href="/create-idea">
+                  <Plus className="w-5 h-5" />
                 </Link>
               </Button>
             </TooltipTrigger>
             <TooltipContent side="left">
-              <p>Profile</p>
+              <p>Create Idea</p>
             </TooltipContent>
           </Tooltip>
 

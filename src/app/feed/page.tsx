@@ -143,7 +143,7 @@ export default function FeedPage() {
       />
 
       <main className="flex-1 container mx-auto px-4 py-12 pt-20 pr-20"> {/* Added pr-20 for sidebar */}
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           {/* Header Section - Simplified */}
           <div className="flex flex-col gap-2 mb-12">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">

@@ -108,27 +108,7 @@ export const HeroHeader = () => {
                             </SignedOut>
                             <SignedIn>
                                 <NotificationBell />
-                                <UserButton
-                                    afterSignOutUrl="/"
-                                    appearance={{
-                                        elements: {
-                                            avatarBox: "w-8 h-8"
-                                        }
-                                    }}
-                                />
-                                <Button
-                                    asChild
-                                    variant="ghost"
-                                    size="sm"
-                                    className="p-2 h-8 w-8"
-                                    title="Create new idea"
-                                >
-                                    <Link href="/create-idea">
-                                        <Plus className="w-4 h-4" />
-                                    </Link>
-                                </Button>
                             </SignedIn>
-                            <ThemeToggle />
                         </div>
 
                         {/* Mobile Menu Button */}

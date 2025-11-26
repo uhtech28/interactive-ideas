@@ -57,7 +57,7 @@ export default function WallOfLoveSection() {
             {/* Background decorative elements */}
             <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent opacity-50" />
             
-            <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <div className="mx-auto max-w-5xl px-6 lg:px-8">
                 <div className="mx-auto max-w-2xl text-center mb-16">
                     <motion.h2 
                         initial={{ opacity: 0, y: 20 }}
@@ -79,7 +79,7 @@ export default function WallOfLoveSection() {
                     </motion.p>
                 </div>
 
-                <div className="mx-auto grid max-w-2xl grid-cols-1 gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-3">
+                <div className="mx-auto grid max-w-2xl grid-cols-1 gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-2">
                     {testimonials.map((testimonial, index) => (
                         <motion.div
                             key={index}
