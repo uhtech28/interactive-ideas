@@ -5,7 +5,10 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Eye, Lightbulb, Users, Sparkles, Heart, MapPin, Link2 } from "lucide-react"
+import { Eye, Lightbulb, Users, Sparkles, Heart, MapPin, Link2, ChevronRight } from "lucide-react"
+import { useRouter } from "next/navigation";
+import { ProfileStatsDialog } from "./ProfileStatsDialog";
+import { Id } from "@convex/_generated/dataModel";
 
 interface UserProfile {
   _id: string;
@@ -44,205 +47,254 @@ export const CompactProfileView: React.FC<CompactProfileViewProps> = ({
   publicIdeas,
   onInvite 
 }) => {
+  const router = useRouter();
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [dialogType, setDialogType] = React.useState<"created" | "sparked" | "contributed" | null>(null);
+
   const metrics = {
     ideasCreated: profile.ideasCreated || 0,
     ideasSparked: profile.ideasSparked || 0,
     ideasContributed: profile.ideasContributed || 0,
   };
 
+  const openDialog = (type: "created" | "sparked" | "contributed") => {
+    setDialogType(type);
+    setDialogOpen(true);
+  };
+
+  const handleIdeaClick = (ideaId: string) => {
+    router.push(`/idea/${ideaId}`);
+  };
+
   return (
-    <div className="max-w-4xl mx-auto px-4 pb-12">
-      {/* Compact Header with Overlapping Avatar */}
-      <div className="relative mb-12">
-        {/* Banner */}
-        <div className="h-32 w-full bg-gradient-to-r from-primary/10 to-primary/5 rounded-b-3xl border-b border-border/50"></div>
+    <div className="max-w-6xl mx-auto px-4 pb-12">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         
-        {/* Profile Info Container - Overlapping Design */}
-        <div className="relative -mt-16 px-4 md:px-8">
-          <div className="flex flex-col md:flex-row gap-6 items-start">
-            {/* Avatar with Online Status */}
-            <div className="relative shrink-0">
-              <div className="rounded-full p-1 bg-background shadow-xl">
-                <Avatar className="w-28 h-28 md:w-32 md:h-32 border-4 border-background shadow-sm">
+        {/* 1. Identity Card (Span 2) */}
+        <Card className="md:col-span-2 shadow-sm border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden relative flex flex-col">
+          <div className="absolute top-0 left-0 w-full h-20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent"></div>
+          <CardContent className="p-5 pt-6 relative flex-1">
+            <div className="flex flex-col sm:flex-row gap-5 items-start h-full">
+              <div className="relative shrink-0">
+                <Avatar className="w-20 h-20 border-4 border-background shadow-md">
                   <AvatarImage src={profile.avatar} alt={profile.displayName} className="object-cover" />
-                  <AvatarFallback className="text-4xl bg-primary/10 text-primary">
+                  <AvatarFallback className="text-xl bg-primary/10 text-primary">
                     {profile.displayName?.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
+                <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-background"></div>
               </div>
-              <div className="absolute bottom-2 right-2 w-6 h-6 bg-green-500 rounded-full border-4 border-background"></div>
-            </div>
-
-            {/* Name, Bio, and Meta - Side by Side with Avatar */}
-            <div className="flex-1 pt-8 md:pt-12">
-              <div className="flex flex-col gap-4">
-                <div className="flex-1">
-                  <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">{profile.displayName}</h1>
-                  <p className="text-muted-foreground font-medium mb-3">@{profile.username}</p>
-                  
-                  {/* Bio */}
-                  {profile.bio && (
-                    <p className="text-foreground/80 leading-relaxed mb-3">{profile.bio}</p>
-                  )}
-                  
-                  {/* Location and Links */}
-                  <div className="flex flex-wrap gap-3 text-sm text-muted-foreground items-center mb-3">
-                    {profile.location && (
-                      <div className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5" />
-                        {profile.location}
-                      </div>
-                    )}
-                    {profile.website && (
-                      <a href={profile.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-primary transition-colors">
-                        <Link2 className="w-3.5 h-3.5" />
-                        Website
-                      </a>
-                    )}
-                  </div>
-
-                  {/* Skills and Industry - Below Bio with Different Colors */}
-                  <div className="flex flex-wrap gap-2">
-                    {profile.industry && (
-                      <Badge className="bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20 hover:bg-purple-500/20">
-                        {profile.industry}
-                      </Badge>
-                    )}
-                    {profile.skills && profile.skills.map((skill: string, index: number) => (
-                      <Badge 
-                        key={index} 
-                        className="bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20 hover:bg-blue-500/20"
-                      >
-                        {skill}
-                      </Badge>
-                    ))}
-                  </div>
+              
+              <div className="flex-1 space-y-3">
+                <div>
+                  <h1 className="text-xl font-bold text-foreground leading-tight">{profile.displayName}</h1>
+                  <p className="text-muted-foreground font-medium text-sm">@{profile.username}</p>
                 </div>
 
-                {/* Invitation Button */}
+                {profile.bio && (
+                  <p className="text-foreground/80 text-sm leading-relaxed max-w-xl line-clamp-2">
+                    {profile.bio}
+                  </p>
+                )}
+
+                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground items-center pt-0.5">
+                  {profile.location && (
+                    <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded-md">
+                      <MapPin className="w-3 h-3" />
+                      {profile.location}
+                    </div>
+                  )}
+                  {profile.website && (
+                    <a href={profile.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-primary transition-colors bg-muted/50 px-2 py-1 rounded-md">
+                      <Link2 className="w-3 h-3" />
+                      Website
+                    </a>
+                  )}
+                </div>
+
+                {/* Skills & Industries moved here */}
+                <div className="pt-1.5 space-y-2">
+                   {(profile.industry || (profile.skills && profile.skills.length > 0)) && (
+                     <div className="flex flex-wrap gap-1.5">
+                        {profile.industry && (
+                          <Badge variant="secondary" className="rounded-md px-2 py-0 text-[10px] font-medium h-5">
+                            {profile.industry}
+                          </Badge>
+                        )}
+                        {profile.skills && profile.skills.slice(0, 5).map((skill, index) => (
+                          <Badge 
+                            key={index} 
+                            variant="outline" 
+                            className="rounded-md px-2 py-0 text-[10px] font-normal bg-background/50 h-5"
+                          >
+                            {skill}
+                          </Badge>
+                        ))}
+                        {profile.skills && profile.skills.length > 5 && (
+                          <Badge variant="outline" className="rounded-md px-2 py-0 text-[10px] font-normal bg-background/50 h-5">
+                            +{profile.skills.length - 5}
+                          </Badge>
+                        )}
+                     </div>
+                   )}
+                </div>
+
                 {onInvite && (
-                  <div className="w-full md:w-auto">
-                    <Button onClick={onInvite} className="w-full md:w-auto">
+                  <div className="pt-1">
+                    <Button onClick={onInvite} size="sm" className="rounded-full px-5 h-8 text-xs">
                       Send Invitation
                     </Button>
                   </div>
                 )}
               </div>
             </div>
-          </div>
+          </CardContent>
+        </Card>
+
+        {/* 2. Stats Column (Span 1) */}
+        <div className="md:col-span-1 grid grid-rows-3 gap-3">
+          <Card 
+            className="shadow-sm border-border/40 hover:bg-muted/30 transition-all cursor-pointer group active:scale-[0.98]"
+            onClick={() => openDialog("created")}
+          >
+            <CardContent className="p-4 flex items-center justify-between h-full">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                  <Lightbulb className="w-4 h-4 text-primary" />
+                </div>
+                <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Created</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold text-foreground">{metrics.ideasCreated}</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card 
+            className="shadow-sm border-border/40 hover:bg-muted/30 transition-all cursor-pointer group active:scale-[0.98]"
+            onClick={() => openDialog("sparked")}
+          >
+            <CardContent className="p-4 flex items-center justify-between h-full">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-500/10 rounded-full group-hover:bg-orange-500/20 transition-colors">
+                  <Sparkles className="w-4 h-4 text-orange-500" />
+                </div>
+                <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Sparked</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold text-foreground">{metrics.ideasSparked}</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="shadow-sm border-border/40 hover:bg-muted/30 transition-all cursor-pointer group active:scale-[0.98]"
+            onClick={() => openDialog("contributed")}
+          >
+            <CardContent className="p-4 flex items-center justify-between h-full">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-500/10 rounded-full group-hover:bg-green-500/20 transition-colors">
+                  <Users className="w-4 h-4 text-green-500" />
+                </div>
+                <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Contributed</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold text-foreground">{metrics.ideasContributed}</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
 
-      {/* Enhanced Metrics */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <Card className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-primary/50">
-          <CardContent className="text-center py-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full mb-3">
-              <Lightbulb className="w-6 h-6 text-primary" />
+        {/* 3. Public Ideas Feed (Span 3 - Full Width) */}
+        <Card className="md:col-span-3 shadow-sm border-border/40 min-h-[300px]">
+          <CardHeader className="border-b border-border/40 bg-muted/10 py-3 px-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Eye className="w-4 h-4 text-muted-foreground" />
+                Public Ideas
+              </CardTitle>
+              {publicIdeas && publicIdeas.length > 0 && (
+                 <Badge variant="secondary" className="rounded-full px-2 h-5 text-[10px]">
+                   {publicIdeas.length}
+                 </Badge>
+              )}
             </div>
-            <div className="text-3xl font-bold text-primary mb-1">{metrics.ideasCreated}</div>
-            <div className="text-sm text-muted-foreground font-medium">Ideas Created</div>
-          </CardContent>
-        </Card>
-        <Card className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-orange-500/50">
-          <CardContent className="text-center py-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-orange-500/10 rounded-full mb-3">
-              <Sparkles className="w-6 h-6 text-orange-500" />
-            </div>
-            <div className="text-3xl font-bold text-orange-600 mb-1">{metrics.ideasSparked}</div>
-            <div className="text-sm text-muted-foreground font-medium">Ideas Sparked</div>
-          </CardContent>
-        </Card>
-        <Card className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-green-500/50">
-          <CardContent className="text-center py-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-green-500/10 rounded-full mb-3">
-              <Users className="w-6 h-6 text-green-500" />
-            </div>
-            <div className="text-3xl font-bold text-green-600 mb-1">{metrics.ideasContributed}</div>
-            <div className="text-sm text-muted-foreground font-medium">Contributed To</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Public Ideas Section - List Format */}
-      {publicIdeas && publicIdeas.length > 0 ? (
-        <Card className="mb-6 shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Eye className="w-5 h-5" />
-              Public Ideas
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Ideas shared publicly by {profile.displayName}
-            </p>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {publicIdeas.slice(0, 6).map((idea) => (
-                <Card key={idea._id} className="hover:shadow-md transition-all duration-200 hover:border-primary/30">
-                  <CardContent className="p-4">
+          <CardContent className="p-0">
+            {publicIdeas && publicIdeas.length > 0 ? (
+              <div className="divide-y divide-border/40">
+                {publicIdeas.slice(0, 5).map((idea) => (
+                  <div 
+                    key={idea._id} 
+                    className="p-4 hover:bg-muted/20 transition-colors group cursor-pointer"
+                    onClick={() => handleIdeaClick(idea._id)}
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-lg mb-1 truncate">{idea.title}</h4>
-                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                          {idea.description}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <Badge variant="outline" className="text-xs">
-                            {idea.visibility === "public" ? "Public" : "Private"}
-                          </Badge>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
+                            {idea.title}
+                          </h4>
                           {idea.category && (
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge variant="secondary" className="text-[10px] h-5 px-1.5 rounded-sm font-normal text-muted-foreground">
                               {idea.category}
                             </Badge>
                           )}
-                          <span>•</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                          {idea.description}
+                        </p>
+                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                           <span>{new Date(idea.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground shrink-0">
-                        <div className="flex items-center gap-1">
-                          <Heart className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-                          <span>{idea.sparkCount || 0}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Users className="w-4 h-4" />
-                          <span>{idea.contributionCount || 0}</span>
-                        </div>
+                      
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                         <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+                            <Heart className="w-3 h-3" />
+                            {idea.sparkCount || 0}
+                         </div>
+                         <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+                            <Users className="w-3 h-3" />
+                            {idea.contributionCount || 0}
+                         </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            {publicIdeas.length > 6 && (
-              <div className="mt-4 text-center">
-                <Button variant="outline" asChild>
-                  <a href={`/profile/${profile.username}?tab=ideas`}>
-                    View All {publicIdeas.length} Ideas
-                  </a>
-                </Button>
+                  </div>
+                ))}
+                {publicIdeas.length > 5 && (
+                  <div className="p-3 text-center bg-muted/5">
+                    <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground h-8">
+                      View All Ideas
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : publicIdeas === undefined ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary mb-2"></div>
+                <p className="text-xs">Loading ideas...</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/50">
+                <Eye className="w-8 h-8 mb-2 opacity-20" />
+                <p className="text-xs font-medium">No public ideas shared yet</p>
               </div>
             )}
           </CardContent>
         </Card>
-      ) : publicIdeas === undefined ? (
-        <Card className="mb-6 shadow-lg">
-          <CardContent className="text-center py-8">
-            <div className="flex justify-center mb-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-            </div>
-            <p className="text-sm text-muted-foreground">Loading public ideas...</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="mb-6 shadow-lg">
-          <CardContent className="text-center py-12">
-            <Eye className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-            <p className="text-muted-foreground">No public ideas yet</p>
-          </CardContent>
-        </Card>
-      )}
+
+      </div>
+
+      <ProfileStatsDialog 
+        userId={profile._id as Id<"users">} 
+        type={dialogType}
+        isOpen={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </div>
   )
 }

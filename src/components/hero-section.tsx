@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { TextEffect } from '@/components/ui/text-effect'
 import { AnimatedGroup } from '@/components/ui/animated-group'
 import { HeroHeader } from '@/components/header'
+import { SignedIn, SignedOut, SignInButton, SignUpButton } from '@clerk/nextjs'
 
 const transitionVariants = {
     hidden: {
@@ -71,6 +72,29 @@ export default function HeroSection() {
                                         </div>
                                     </Link>
                                 </AnimatedGroup>
+
+                                <div className="mt-8 flex items-center justify-center gap-4">
+                                    <SignedOut>
+                                        <SignInButton mode="modal">
+                                            <Button variant="outline" size="sm">
+                                                Login
+                                            </Button>
+                                        </SignInButton>
+                                        <SignUpButton mode="modal">
+                                            <Button size="sm">
+                                                Sign Up
+                                            </Button>
+                                        </SignUpButton>
+                                    </SignedOut>
+                                    <SignedIn>
+                                        <Button asChild size="sm">
+                                            <Link href="/feed">
+                                                Go to Feed
+                                                <ArrowRight className="ml-2 size-4" />
+                                            </Link>
+                                        </Button>
+                                    </SignedIn>
+                                </div>
 
                                 <TextEffect
                                     preset="fade-in-blur"

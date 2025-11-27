@@ -125,6 +125,7 @@ interface CategoryMultiSelectProps {
   onChange: (categories: string[]) => void;
   placeholder?: string;
   maxSelection?: number;
+  inline?: boolean;
 }
 
 export function CategoryMultiSelect({
@@ -132,6 +133,7 @@ export function CategoryMultiSelect({
   onChange,
   placeholder = "Select categories...",
   maxSelection,
+  inline = false,
 }: CategoryMultiSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -161,6 +163,74 @@ export function CategoryMultiSelect({
     ? `${selectedCategories.length} selected`
     : placeholder;
 
+  const CommandContent = (
+    <Command>
+      <CommandInput
+        placeholder="Search categories..."
+        value={searchValue}
+        onValueChange={setSearchValue}
+      />
+      <CommandList>
+        <CommandEmpty>No categories found.</CommandEmpty>
+        {filteredCategories.map(group => (
+          <CommandGroup key={group.group} heading={group.group} className="hidden md:block">
+            {group.items.map(item => (
+              <CommandItem
+                key={item.value}
+                value={item.value}
+                onSelect={() => handleSelect(item.value)}
+                className="cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedCategories.includes(item.value)}
+                  className="mr-2"
+                  readOnly
+                />
+                {item.label}
+                {selectedCategories.includes(item.value) && (
+                  <Check className="ml-auto h-4 w-4 opacity-50" />
+                )}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        ))}
+        {/* Mobile view with collapsed groups */}
+        <div className="md:hidden">
+          <CommandGroup>
+            <div className="px-1 py-2 text-sm font-semibold text-muted-foreground">All Categories</div>
+            {filteredCategories.flatMap(group =>
+              group.items.map(item => (
+                <CommandItem
+                  key={item.value}
+                  value={item.value}
+                  onSelect={() => handleSelect(item.value)}
+                  className="cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedCategories.includes(item.value)}
+                    className="mr-2"
+                    readOnly
+                  />
+                  <span className="text-xs text-muted-foreground mr-2">[{group.group}]</span>
+                  {item.label}
+                  {selectedCategories.includes(item.value) && (
+                    <Check className="ml-auto h-4 w-4 opacity-50" />
+                  )}
+                </CommandItem>
+              ))
+            )}
+          </CommandGroup>
+        </div>
+      </CommandList>
+    </Command>
+  );
+
+  if (inline) {
+    return CommandContent;
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -175,67 +245,7 @@ export function CategoryMultiSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
-        <Command>
-          <CommandInput
-            placeholder="Search categories..."
-            value={searchValue}
-            onValueChange={setSearchValue}
-          />
-          <CommandList>
-            <CommandEmpty>No categories found.</CommandEmpty>
-            {filteredCategories.map(group => (
-              <CommandGroup key={group.group} heading={group.group} className="hidden md:block">
-                {group.items.map(item => (
-                  <CommandItem
-                    key={item.value}
-                    value={item.value}
-                    onSelect={() => handleSelect(item.value)}
-                    className="cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedCategories.includes(item.value)}
-                      className="mr-2"
-                      readOnly
-                    />
-                    {item.label}
-                    {selectedCategories.includes(item.value) && (
-                      <Check className="ml-auto h-4 w-4 opacity-50" />
-                    )}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            ))}
-            {/* Mobile view with collapsed groups */}
-            <div className="md:hidden">
-              <CommandGroup>
-                <div className="px-1 py-2 text-sm font-semibold text-muted-foreground">All Categories</div>
-                {filteredCategories.flatMap(group =>
-                  group.items.map(item => (
-                    <CommandItem
-                      key={item.value}
-                      value={item.value}
-                      onSelect={() => handleSelect(item.value)}
-                      className="cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedCategories.includes(item.value)}
-                        className="mr-2"
-                        readOnly
-                      />
-                      <span className="text-xs text-muted-foreground mr-2">[{group.group}]</span>
-                      {item.label}
-                      {selectedCategories.includes(item.value) && (
-                        <Check className="ml-auto h-4 w-4 opacity-50" />
-                      )}
-                    </CommandItem>
-                  ))
-                )}
-              </CommandGroup>
-            </div>
-          </CommandList>
-        </Command>
+        {CommandContent}
       </PopoverContent>
     </Popover>
   );

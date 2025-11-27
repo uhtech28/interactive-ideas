@@ -7,11 +7,10 @@ import { Button } from "@/components/ui/button";
 import { 
   Filter, 
   Plus, 
-  User, 
-  Palette, 
   LogOut,
   MessageCircle,
-  Sparkles
+  Sun,
+  Moon
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useClerk } from "@clerk/nextjs";
@@ -23,6 +22,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CategoryMultiSelect } from "@/components/CategoryMultiSelect";
+import { useChat } from "@/components/chat/ChatContext";
 
 interface RightSidebarProps {
   filterOpen: boolean;
@@ -39,15 +39,14 @@ export function RightSidebar({
 }: RightSidebarProps) {
   const { theme, setTheme } = useTheme();
   const { signOut } = useClerk();
-
+  const { toggleChat, isOpen: isChatOpen } = useChat();
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
   return (
-    <div className="fixed right-0 top-0 h-screen w-16 bg-card border-l border-border flex flex-col items-center py-6 z-50 shadow-lg">
-      <div className="flex flex-col gap-6 mt-16">
+    <div className="fixed right-6 top-1/2 -translate-y-1/2 flex flex-col items-center py-6 px-2 z-50 bg-card/80 backdrop-blur-md border border-border/50 shadow-2xl rounded-2xl gap-6">
         <TooltipProvider delayDuration={0}>
           
           {/* Filter */}
@@ -58,13 +57,13 @@ export function RightSidebar({
                   <Button 
                     variant={selectedCategories.length > 0 ? "default" : "ghost"} 
                     size="icon" 
-                    className={`rounded-full w-10 h-10 ${selectedCategories.length > 0 ? 'bg-primary text-primary-foreground' : 'hover:bg-primary/10 hover:text-primary'}`}
+                    className={`rounded-xl w-10 h-10 transition-all duration-200 ${selectedCategories.length > 0 ? 'bg-primary text-primary-foreground shadow-md' : 'hover:bg-primary/10 hover:text-primary'}`}
                   >
                     <Filter className="w-5 h-5" />
                   </Button>
                 </PopoverTrigger>
               </TooltipTrigger>
-              <TooltipContent side="left">
+              <TooltipContent side="left" className="mr-2">
                 <p>Filter Ideas</p>
               </TooltipContent>
             </Tooltip>
@@ -73,49 +72,27 @@ export function RightSidebar({
                 selectedCategories={selectedCategories}
                 onChange={setSelectedCategories}
                 placeholder="Select categories to filter..."
+                inline={true}
               />
             </PopoverContent>
           </Popover>
 
-          {/* Community */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button asChild variant="ghost" size="icon" className="rounded-full w-10 h-10 hover:bg-primary/10 hover:text-primary">
-                <Link href="/community">
-                  <MessageCircle className="w-5 h-5" />
-                </Link>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-              <p>Community</p>
-            </TooltipContent>
-          </Tooltip>
 
-          {/* My Feed */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button asChild variant="ghost" size="icon" className="rounded-full w-10 h-10 hover:bg-primary/10 hover:text-primary">
-                <Link href="/my-feed">
-                  <Sparkles className="w-5 h-5" />
-                </Link>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-              <p>My Feed</p>
-            </TooltipContent>
-          </Tooltip>
 
-          {/* Profile */}
+          {/* Chat Toggle */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button asChild variant="ghost" size="icon" className="rounded-full w-10 h-10 hover:bg-primary/10 hover:text-primary">
-                <Link href="/profile">
-                  <User className="w-5 h-5" />
-                </Link>
+              <Button 
+                variant={isChatOpen ? "default" : "ghost"}
+                size="icon" 
+                className={`rounded-xl w-10 h-10 transition-all duration-200 ${isChatOpen ? 'bg-primary text-primary-foreground shadow-md' : 'hover:bg-primary/10 hover:text-primary'}`}
+                onClick={toggleChat}
+              >
+                <MessageCircle className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="left">
-              <p>Profile</p>
+            <TooltipContent side="left" className="mr-2">
+              <p>Chat</p>
             </TooltipContent>
           </Tooltip>
 
@@ -125,13 +102,17 @@ export function RightSidebar({
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="rounded-full w-10 h-10 hover:bg-primary/10 hover:text-primary"
+                className="rounded-xl w-10 h-10 hover:bg-primary/10 hover:text-primary transition-all duration-200"
                 onClick={toggleTheme}
               >
-                <Palette className="w-5 h-5" />
+                {theme === "dark" ? (
+                  <Moon className="w-5 h-5" />
+                ) : (
+                  <Sun className="w-5 h-5" />
+                )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="left">
+            <TooltipContent side="left" className="mr-2">
               <p>Toggle Theme</p>
             </TooltipContent>
           </Tooltip>
@@ -139,39 +120,37 @@ export function RightSidebar({
           {/* Create Idea */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button asChild variant="default" size="icon" className="rounded-full w-10 h-10 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md">
+              <Button asChild variant="default" size="icon" className="rounded-xl w-10 h-10 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:scale-105 transition-all duration-200">
                 <Link href="/create-idea">
                   <Plus className="w-5 h-5" />
                 </Link>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="left">
+            <TooltipContent side="left" className="mr-2">
               <p>Create Idea</p>
             </TooltipContent>
           </Tooltip>
 
-        </TooltipProvider>
-      </div>
+          <div className="w-8 h-[1px] bg-border/50 my-1" />
 
-      <div className="mt-auto flex flex-col gap-4">
-         <TooltipProvider delayDuration={0}>
-            <Tooltip>
+          {/* Sign Out */}
+          <Tooltip>
               <TooltipTrigger asChild>
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="rounded-full w-10 h-10 hover:bg-red-50 hover:text-red-500"
+                  className="rounded-xl w-10 h-10 hover:bg-red-500/10 hover:text-red-500 transition-all duration-200"
                   onClick={() => signOut()}
                 >
                   <LogOut className="w-5 h-5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="left">
+              <TooltipContent side="left" className="mr-2">
                 <p>Sign Out</p>
               </TooltipContent>
             </Tooltip>
-         </TooltipProvider>
-      </div>
+
+        </TooltipProvider>
     </div>
   );
 }

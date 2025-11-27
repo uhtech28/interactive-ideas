@@ -86,32 +86,6 @@ export const HeroHeader = () => {
                                 ))}
                             </nav>
                         </div>
-
-                        {/* Desktop Actions */}
-                        <div className="hidden lg:flex lg:items-center lg:space-x-3">
-                            <SignedOut>
-                                <SignInButton>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-muted-foreground hover:text-foreground">
-                                        Login
-                                    </Button>
-                                </SignInButton>
-                                <SignUpButton>
-                                    <Button
-                                        size="sm"
-                                        className="shadow-sm">
-                                        Sign Up
-                                    </Button>
-                                </SignUpButton>
-                            </SignedOut>
-                            <SignedIn>
-                                <NotificationBell />
-                            </SignedIn>
-                        </div>
-
-                        {/* Mobile Menu Button */}
                         <button
                             onClick={handleMenuToggle}
                             aria-label={menuState ? 'Close menu' : 'Open menu'}

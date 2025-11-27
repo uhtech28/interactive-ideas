@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
+import { CheckCircle, AlertCircle } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { HeroHeader } from "@/components/header";
@@ -13,7 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import Link from "next/link";
 import { SkillsMultiSelect } from "@/components/SkillsMultiSelect";
 import { IndustriesMultiSelect } from "@/components/IndustriesMultiSelect";
 import { useProfileCompletion } from "@/lib/hooks/use-profile-completion";
@@ -157,27 +156,18 @@ export default function CreateIdeaPage() {
     <div className="min-h-screen flex flex-col bg-background">
       <HeroHeader />
 
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-4 py-6 pt-24">
         <div className="max-w-4xl mx-auto">
-          {/* Header with Back Button */}
-          <div className="flex items-center gap-4 mb-8 mt-6 md:mt-8">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/feed">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Feed
-              </Link>
-            </Button>
-          </div>
-
           {/* Main Card */}
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-3xl text-center">Create New Idea</CardTitle>
+          <Card className="shadow-md border-border/50">
+            <CardHeader className="pb-2 pt-4">
+              <CardTitle className="text-2xl text-center">Create New Idea</CardTitle>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
+            <CardContent className="p-4 md:p-6">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                
                 {/* Idea Title */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="title" className="text-sm font-medium">
                     Idea Title <span className="text-destructive">*</span>
                   </Label>
@@ -186,19 +176,21 @@ export default function CreateIdeaPage() {
                     type="text"
                     value={formData.title}
                     onChange={(e) => handleInputChange('title', e.target.value)}
-                    placeholder="Enter a compelling title for your idea"
-                    className={errors.title ? 'border-destructive' : ''}
+                    placeholder="Enter a compelling title"
+                    className={`h-9 ${errors.title ? 'border-destructive' : ''}`}
                   />
-                  {errors.title && (
-                    <p className="text-sm text-destructive">{errors.title}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    {titleCount}/100 characters
-                  </p>
+                  <div className="flex justify-between items-center text-xs">
+                    {errors.title ? (
+                      <span className="text-destructive">{errors.title}</span>
+                    ) : (
+                      <span className="text-muted-foreground"></span>
+                    )}
+                    <span className="text-muted-foreground">{titleCount}/100</span>
+                  </div>
                 </div>
 
                 {/* Description */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="description" className="text-sm font-medium">
                     Description <span className="text-destructive">*</span>
                   </Label>
@@ -207,117 +199,125 @@ export default function CreateIdeaPage() {
                     value={formData.description}
                     onChange={(e) => handleInputChange('description', e.target.value)}
                     placeholder="Describe your idea in detail..."
-                    rows={6}
-                    className={errors.description ? 'border-destructive' : ''}
+                    rows={4}
+                    className={`resize-none ${errors.description ? 'border-destructive' : ''}`}
                   />
-                  {errors.description && (
-                    <p className="text-sm text-destructive">{errors.description}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    {descriptionCount}/1200 characters
-                  </p>
-                </div>
-
-                {/* Skills */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">
-                    Skills <span className="text-destructive">*</span>
-                  </Label>
-                  <SkillsMultiSelect
-                    selectedSkills={formData.skills}
-                    onChange={(skills) => handleInputChange('skills', skills)}
-                  />
-                  {errors.skills && (
-                    <p className="text-sm text-destructive">{errors.skills}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Select one or more skills that best describe your idea
-                  </p>
-                </div>
-
-                {/* Industries */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">
-                    Industries <span className="text-destructive">*</span>
-                  </Label>
-                  <IndustriesMultiSelect
-                    selectedIndustries={formData.industries}
-                    onChange={(industries) => handleInputChange('industries', industries)}
-                  />
-                  {errors.industries && (
-                    <p className="text-sm text-destructive">{errors.industries}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Select one or more industries that your idea targets
-                  </p>
-                </div>
-
-
-                {/* Visibility */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">
-                    Visibility <span className="text-destructive">*</span>
-                  </Label>
-                  <div className="space-y-2">
-                    <label className="flex items-center space-x-3">
-                      <input
-                        type="radio"
-                        name="visibility"
-                        value="public"
-                        checked={formData.visibility === 'public'}
-                        onChange={(e) => handleInputChange('visibility', e.target.value as 'public' | 'private')}
-                        className="w-4 h-4 text-primary border-border focus:ring-ring focus:ring-2"
-                      />
-                      <div>
-                        <div className="font-medium text-sm">Public</div>
-                        <div className="text-xs text-muted-foreground">Visible to all users</div>
-                      </div>
-                    </label>
-                    <label className="flex items-center space-x-3">
-                      <input
-                        type="radio"
-                        name="visibility"
-                        value="private"
-                        checked={formData.visibility === 'private'}
-                        onChange={(e) => handleInputChange('visibility', e.target.value as 'public' | 'private')}
-                        className="w-4 h-4 text-primary border-border focus:ring-ring focus:ring-2"
-                      />
-                      <div>
-                        <div className="font-medium text-sm">Private</div>
-                        <div className="text-xs text-muted-foreground">Visible only to your connections</div>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Submit Error */}
-                {errors.submit && (
-                  <div className="flex items-center space-x-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-                    <AlertCircle className="w-4 h-4 text-destructive" />
-                    <p className="text-sm text-destructive">{errors.submit}</p>
-                  </div>
-                )}
-
-                {/* Submit Button */}
-                <div className="pt-4">
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                        Creating Your Idea...
-                      </>
+                  <div className="flex justify-between items-center text-xs">
+                    {errors.description ? (
+                      <span className="text-destructive">{errors.description}</span>
                     ) : (
-                      <>
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Create Idea
-                      </>
+                      <span className="text-muted-foreground"></span>
                     )}
-                  </Button>
+                    <span className="text-muted-foreground">{descriptionCount}/1200</span>
+                  </div>
                 </div>
+
+                {/* Skills & Industries Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Skills */}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">
+                      Skills <span className="text-destructive">*</span>
+                    </Label>
+                    <SkillsMultiSelect
+                      selectedSkills={formData.skills}
+                      onChange={(skills) => handleInputChange('skills', skills)}
+                    />
+                    {errors.skills ? (
+                      <p className="text-xs text-destructive mt-1">{errors.skills}</p>
+                    ) : (
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Select relevant skills
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Industries */}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">
+                      Industries <span className="text-destructive">*</span>
+                    </Label>
+                    <IndustriesMultiSelect
+                      selectedIndustries={formData.industries}
+                      onChange={(industries) => handleInputChange('industries', industries)}
+                    />
+                    {errors.industries ? (
+                      <p className="text-xs text-destructive mt-1">{errors.industries}</p>
+                    ) : (
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Select target industries
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Visibility & Submit Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end pt-2">
+                  {/* Visibility */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      Visibility <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center space-x-2 cursor-pointer border rounded-lg p-2 hover:bg-accent/50 transition-colors flex-1">
+                        <input
+                          type="radio"
+                          name="visibility"
+                          value="public"
+                          checked={formData.visibility === 'public'}
+                          onChange={(e) => handleInputChange('visibility', e.target.value as 'public' | 'private')}
+                          className="w-3.5 h-3.5 text-primary border-border focus:ring-ring focus:ring-1"
+                        />
+                        <div>
+                          <div className="font-medium text-xs">Public</div>
+                          <div className="text-[10px] text-muted-foreground">Visible to all</div>
+                        </div>
+                      </label>
+                      <label className="flex items-center space-x-2 cursor-pointer border rounded-lg p-2 hover:bg-accent/50 transition-colors flex-1">
+                        <input
+                          type="radio"
+                          name="visibility"
+                          value="private"
+                          checked={formData.visibility === 'private'}
+                          onChange={(e) => handleInputChange('visibility', e.target.value as 'public' | 'private')}
+                          className="w-3.5 h-3.5 text-primary border-border focus:ring-ring focus:ring-1"
+                        />
+                        <div>
+                          <div className="font-medium text-xs">Private</div>
+                          <div className="text-[10px] text-muted-foreground">Connections only</div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <div>
+                    {errors.submit && (
+                      <div className="flex items-center space-x-2 p-2 mb-2 bg-destructive/10 border border-destructive/20 rounded-md">
+                        <AlertCircle className="w-3 h-3 text-destructive" />
+                        <p className="text-xs text-destructive">{errors.submit}</p>
+                      </div>
+                    )}
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full h-10"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-2"></div>
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Create Idea
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
               </form>
             </CardContent>
           </Card>

@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { ConvexClientProvider } from '@/lib/convex/providers';
 import { Toaster } from '@/components/ui/toaster';
 import ChatWidget from "@/components/chat/ChatWidget";
+import { ChatProvider } from "@/components/chat/ChatContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -49,9 +50,11 @@ export default function RootLayout({
             className={`${geistSans.variable} ${geistMono.variable} antialiased`}
           >
             <ThemeProvider>
-              {children}
-              <Toaster />
-              <ChatWidget />
+              <ChatProvider>
+                {children}
+                <Toaster />
+                <ChatWidget />
+              </ChatProvider>
             </ThemeProvider>
           </body>
         </html>

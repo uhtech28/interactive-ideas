@@ -16,7 +16,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { type VariantProps } from "class-variance-authority";
-import { MousePointerClick } from "lucide-react";
+
 
 interface ParticleButtonProps
   extends React.ComponentProps<"button">,
@@ -110,7 +110,6 @@ export default function ParticleButton({
                 disabled={disabled}
             >
                 {children}
-                <MousePointerClick className="h-4 w-4" />
             </Button>
         </>
     );

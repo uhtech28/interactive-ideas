@@ -1,6 +1,7 @@
 import React from "react";
 import Image from "next/image";
-import { MessageCircle, Users } from "lucide-react";
+import { MessageCircle, Users, Sparkles } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 export type ConvexIdea = {
   _id: string;
@@ -55,9 +56,9 @@ export const IdeaGridCard: React.FC<IdeaGridCardProps> = ({
     <div
       ref={innerRef}
       onClick={onClick}
-      className="group relative overflow-hidden rounded-2xl border border-border bg-card text-card-foreground transition-all duration-300 cursor-pointer hover:shadow-xl hover:shadow-primary/5 hover:border-primary/20 hover:-translate-y-1 flex flex-col h-full"
+      className="group relative overflow-hidden rounded-3xl border border-border/50 bg-card text-card-foreground transition-all duration-300 cursor-pointer hover:shadow-2xl hover:shadow-primary/5 hover:border-primary/20 hover:-translate-y-1 flex flex-col h-full"
     >
-      {/* Image or Gradient Background */}
+      {/* Image or Gradient Background - Top Section */}
       <div className="relative h-48 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-pink-500/5 overflow-hidden shrink-0">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 flex items-center justify-center group-hover:scale-105 transition-transform duration-700 ease-out">
           <div className="w-20 h-20 rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-4xl font-bold text-foreground/80 shadow-2xl ring-1 ring-white/30">
@@ -65,90 +66,106 @@ export const IdeaGridCard: React.FC<IdeaGridCardProps> = ({
           </div>
         </div>
 
-        {/* Tags - Top Left - Clean & Minimal */}
-        <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 max-w-[90%]">
-          {/* Combine and limit tags to reduce clutter */}
-          {[...industries, ...skills].slice(0, 2).map((tag, i) => (
-            <span key={`tag-${i}`} className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-background/40 backdrop-blur-md text-foreground/90 border border-white/10 shadow-sm">
-              {tag}
-            </span>
-          ))}
-          {([...industries, ...skills].length > 2) && (
-            <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-background/20 backdrop-blur-md text-foreground/80 border border-white/10">
-              +{([...industries, ...skills].length - 2)}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-5 flex flex-col flex-1">
-        {/* Title */}
-        <h3 className="text-lg font-bold mb-2 line-clamp-2 leading-tight group-hover:text-primary transition-colors">
-          {idea.title}
-        </h3>
-
-        {/* Description */}
-        <p className="text-sm text-muted-foreground line-clamp-3 mb-6 leading-relaxed flex-1">
-          {idea.description}
-        </p>
-
-        {/* Footer: Author (Left) and Actions (Right) */}
-        <div className="flex items-end justify-between mt-auto pt-4 border-t border-border/50">
-          
-          {/* Bottom Left: Author */}
-          <div className="flex items-center space-x-2">
-            {idea.author?.avatar ? (
+        {/* Top Left: Author */}
+        <div className="absolute top-4 left-4 flex items-center gap-2 bg-background/30 backdrop-blur-md px-2 py-1 rounded-full border border-white/10 shadow-sm z-10 max-w-[45%]">
+           {idea.author?.avatar ? (
               <Image
                 src={idea.author.avatar}
                 alt={idea.author?.name || idea.author?.username || 'User'}
-                className="w-8 h-8 rounded-full object-cover border border-border"
-                width={32}
-                height={32}
+                className="w-6 h-6 rounded-full object-cover border border-white/20 shrink-0"
+                width={24}
+                height={24}
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-bold border border-border">
-                {getInitials(idea.author?.name || idea.author?.username || 'Unknown')}
+              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary border border-white/20 shrink-0">
+                {getInitials(idea.author?.name || idea.author?.username || 'U')}
               </div>
             )}
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-foreground">
+           <div className="flex flex-col min-w-0">
+              <span className="text-[10px] font-semibold text-foreground/90 leading-none truncate">
                 {idea.author?.name || idea.author?.username || 'Unknown'}
               </span>
-              <span className="text-[10px] text-muted-foreground">
-                @{idea.author?.username || 'user'}
-              </span>
-            </div>
-          </div>
+           </div>
+        </div>
+
+        {/* Top Right: Title */}
+        <div className="absolute top-4 right-4 max-w-[50%] flex justify-end z-10">
+          <h3 className="text-xs font-bold leading-tight text-foreground/90 bg-background/30 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 shadow-sm truncate text-right">
+             {idea.title}
+          </h3>
+        </div>
+      </div>
+
+      {/* Content Body */}
+      <div className="p-5 flex flex-col flex-1 gap-3">
+        
+        {/* Description */}
+
+        {/* Description */}
+        <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
+          {idea.description}
+        </p>
+
+        {/* Tags Section - Below Content */}
+        <div className="flex flex-wrap gap-2 mt-auto">
+           {/* Industries - Purple/Pink Theme */}
+           {industries.slice(0, 2).map((tag, i) => (
+            <span key={`ind-${i}`} className="text-[10px] font-medium px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-600 border border-purple-500/20">
+              {tag}
+            </span>
+          ))}
+          
+          {/* Skills - Blue/Indigo Theme */}
+          {skills.slice(0, 2).map((tag, i) => (
+            <span key={`skill-${i}`} className="text-[10px] font-medium px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 border border-blue-500/20">
+              {tag}
+            </span>
+          ))}
+
+          {/* More Tag */}
+          {([...industries, ...skills].length > 4) && (
+            <span className="text-[10px] font-medium px-2 py-1 rounded-lg bg-muted text-muted-foreground border border-border">
+              +{([...industries, ...skills].length - 4)}
+            </span>
+          )}
+        </div>
+
+        {/* Footer: Date (Left) and Actions (Right) */}
+        <div className="flex items-center justify-between pt-4 border-t border-border/50 mt-2">
+          
+          {/* Bottom Left: Date */}
+          <span className="text-[10px] font-medium text-muted-foreground">
+            {formatDistanceToNow(idea.createdAt, { addSuffix: true })}
+          </span>
 
           {/* Bottom Right: Actions (Icons & Numbers separated) */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             
             {/* Sparks */}
-            <div className="flex flex-col items-center gap-0.5">
+            <div className="flex items-center gap-1">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onSpark?.(idea._id);
                 }}
-                className="p-1.5 rounded-full hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors"
+                className="p-1.5 rounded-full hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors group/spark"
                 title="Spark this idea"
               >
-                <span className="text-lg">✨</span>
+                <Sparkles className="w-4 h-4 group-hover/spark:fill-red-500 transition-all" />
               </button>
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
                   // TODO: Show list of sparkers
                 }}
-                className="text-[10px] font-bold text-muted-foreground hover:text-foreground hover:underline"
+                className="text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:underline min-w-[12px] text-center"
               >
                 {idea.sparkCount || 0}
               </button>
             </div>
 
             {/* Comments */}
-            <div className="flex flex-col items-center gap-0.5">
+            <div className="flex items-center gap-1">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -164,14 +181,14 @@ export const IdeaGridCard: React.FC<IdeaGridCardProps> = ({
                   e.stopPropagation();
                   // TODO: Show list of comments
                 }}
-                className="text-[10px] font-bold text-muted-foreground hover:text-foreground hover:underline"
+                className="text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:underline min-w-[12px] text-center"
               >
                 {idea.commentCount || 0}
               </button>
             </div>
 
             {/* Contributors */}
-            <div className="flex flex-col items-center gap-0.5">
+            <div className="flex items-center gap-1">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -187,7 +204,7 @@ export const IdeaGridCard: React.FC<IdeaGridCardProps> = ({
                   e.stopPropagation();
                   // TODO: Show list of contributors
                 }}
-                className="text-[10px] font-bold text-muted-foreground hover:text-foreground hover:underline"
+                className="text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:underline min-w-[12px] text-center"
               >
                 {contributorsCount}
               </button>

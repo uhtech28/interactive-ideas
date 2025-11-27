@@ -3,21 +3,23 @@
 import React, { useState, memo, lazy, Suspense, useCallback } from "react";
 import { useQuery, useConvexAuth, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
-import { Button } from "@/components/ui/button";
+import { usePathname } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
+import { useChat } from "./ChatContext";
 
 const ChatThread = lazy(() => import("./ChatThread"));
 const UserList = lazy(() => import("./UserList"));
 
 const ChatWidget: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, setIsOpen } = useChat();
   const [selectedConversationId, setSelectedConversationId] = useState<Id<"conversations"> | null>(null);
   const [selectedReceiverId, setSelectedReceiverId] = useState<Id<"users"> | null>(null);
 
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const { user } = useUser();
+  const pathname = usePathname();
 
   const conversations = useQuery(api.chat.getUserConversations, isAuthenticated ? {} : "skip");
   const createConversation = useMutation(api.chat.createConversation);
@@ -53,77 +55,47 @@ const ChatWidget: React.FC = () => {
     setIsOpen(false);
     setSelectedConversationId(null);
     setSelectedReceiverId(null);
-  }, []);
+  }, [setIsOpen]);
 
-  if (authLoading) {
-    return (
-      <div className="fixed bottom-4 left-4 md:left-auto md:right-4 z-50">
-        <Button
-          size="icon"
-          className="w-12 h-12 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg opacity-50"
-          disabled
-        >
-          <ChatIcon />
-        </Button>
-      </div>
-    );
+  // Determine positioning class based on page
+  // On profile pages, move to the left (as requested "to the left part a bit")
+  // On other pages, keep default behavior (left on mobile, right on desktop)
+  const isProfilePage = pathname?.includes('/profile') || pathname?.includes('/profile-setup');
+  const positionClass = isProfilePage 
+    ? "fixed bottom-20 left-4 z-50" 
+    : "fixed bottom-20 left-4 md:left-auto md:right-20 z-50";
+
+  if (authLoading || !isAuthenticated || !user) {
+    return null;
   }
 
-  if (!isAuthenticated || !user) {
-    return null; // Don't show chat widget if not authenticated
-  }
+  // Only render the chat window if open. The trigger button is now in RightSidebar.
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 md:left-auto md:right-4 z-50">
-      {isOpen && (
-        <Card className="w-80 h-96 mb-2 shadow-lg bg-card border transition-all duration-300 ease-in-out overflow-hidden">
-          <Suspense fallback={<div className="p-4 text-center">Loading...</div>}>
-            {selectedConversationId ? (
-               <ChatThread
-                 conversationId={selectedConversationId}
-                 onBack={handleBackToUsers}
-                 onClose={handleClose}
-                 receiverId={selectedReceiverId}
-               />
-             ) : (
-              <UserList
-                onSelectUser={handleSelectUser}
-                onSelectConversation={handleSelectConversation}
-                conversations={conversations || []}
+    <div className={positionClass}>
+      <Card className="w-80 h-96 shadow-lg bg-card border transition-all duration-300 ease-in-out overflow-hidden">
+        <Suspense fallback={<div className="p-4 text-center">Loading...</div>}>
+          {selectedConversationId ? (
+              <ChatThread
+                conversationId={selectedConversationId}
+                onBack={handleBackToUsers}
                 onClose={handleClose}
-                currentUserId={user?.id as Id<"users"> || null}
+                receiverId={selectedReceiverId}
               />
-            )}
-          </Suspense>
-        </Card>
-      )}
-      <Button
-        onClick={() => setIsOpen(!isOpen)}
-        size="icon"
-        className="w-12 h-12 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
-        aria-label="Toggle chat"
-      >
-        <ChatIcon />
-      </Button>
+            ) : (
+            <UserList
+              onSelectUser={handleSelectUser}
+              onSelectConversation={handleSelectConversation}
+              conversations={conversations || []}
+              onClose={handleClose}
+              currentUserId={user?.id as Id<"users"> || null}
+            />
+          )}
+        </Suspense>
+      </Card>
     </div>
   );
 };
-
-const ChatIcon = () => (
-  <svg
-    className="w-6 h-6"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-    />
-  </svg>
-);
 
 export default memo(ChatWidget);

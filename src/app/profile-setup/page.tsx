@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { HeroHeader } from "@/components/header";
 import FooterSection from "@/components/footer";
 import { AvatarUpload } from "@/components/user/avatar-upload";
@@ -304,53 +304,48 @@ export default function ProfileSetupPage() {
     if (!formData.username || existingProfile) return null;
 
     return (
-      <div className="mt-3 p-4 rounded-lg border bg-card space-y-3">
+      <div className="mt-1 space-y-1 bg-background/80 backdrop-blur-sm z-10 rounded-md">
         {/* Availability Status */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {usernameValidation.checking ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Checking availability...</span>
+              <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground">Checking...</span>
             </>
           ) : usernameValidation.available === true ? (
             <>
-              <CheckCircle className="w-4 h-4 text-green-600" />
-              <span className="text-sm text-green-600 font-medium">Username is available!</span>
+              <CheckCircle className="w-3 h-3 text-green-600" />
+              <span className="text-[10px] text-green-600 font-medium">Available</span>
             </>
           ) : usernameValidation.available === false ? (
             <>
-              <XCircle className="w-4 h-4 text-destructive" />
-              <span className="text-sm text-destructive font-medium">Username is taken</span>
+              <XCircle className="w-3 h-3 text-destructive" />
+              <span className="text-[10px] text-destructive font-medium">Taken</span>
             </>
           ) : null}
         </div>
 
         {/* Error Messages */}
         {usernameValidation.error && (
-          <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
-            <p className="text-sm text-destructive">{usernameValidation.error}</p>
-          </div>
+          <p className="text-[10px] text-destructive leading-tight">{usernameValidation.error}</p>
         )}
 
         {/* Suggestions */}
         {usernameValidation.available === false && usernameValidation.suggestions.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground font-medium">Try these suggestions:</p>
-            <div className="flex flex-wrap gap-2">
+          <div className="space-y-1 pt-0.5">
+            <p className="text-[10px] text-muted-foreground font-medium">Suggestions:</p>
+            <div className="flex flex-wrap gap-1.5">
               {usernameValidation.suggestions.map((suggestion, index) => (
                 <button
                   key={index}
                   type="button"
                   onClick={() => handleUsernameChange(suggestion)}
-                  className="px-3 py-1.5 text-sm bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-md transition-colors duration-200 hover:shadow-sm"
+                  className="px-1.5 py-0.5 text-[10px] bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded transition-colors duration-200"
                 >
                   {suggestion}
                 </button>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Click any suggestion to use it as your username
-            </p>
           </div>
         )}
       </div>
@@ -377,152 +372,144 @@ export default function ProfileSetupPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background overflow-hidden">
       <HeroHeader />
 
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-8 mt-12">
-            <h1 className="text-4xl font-bold text-foreground mb-4">
+      <main className="flex-1 container mx-auto px-4 flex items-center justify-center py-4 pt-24">
+        <div className="max-w-5xl w-full">
+          <div className="text-center mb-4">
+            <h1 className="text-2xl font-bold text-foreground">
               {existingProfile ? "Edit Your Profile" : "Complete Your Profile"}
             </h1>
-            <p className="text-lg text-muted-foreground">
-              {existingProfile ? "Update your profile information and skills" : "Tell us about yourself to personalize your experience"}
+            <p className="text-sm text-muted-foreground">
+              {existingProfile ? "Update your profile information" : "Tell us about yourself"}
             </p>
           </div>
 
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle>Profile Setup</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-8">
-              {/* Avatar Upload Section */}
-              <div className="flex justify-center">
-                <AvatarUpload
-                  currentAvatar={formData.avatar}
-                  onAvatarChange={(avatarUrl: string) =>
-                    setFormData(prev => ({ ...prev, avatar: avatarUrl }))
-                  }
-                  displayName={formData.displayName || "User"}
-                />
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Basic Information */}
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="displayName">Full Name</Label>
-                    <Input
-                      id="displayName"
-                      value={formData.displayName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
-                      placeholder="Your full name"
-                      className="mt-1"
-                      maxLength={100}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="username">Username *</Label>
-                    <Input
-                      id="username"
-                      value={formData.username}
-                      onChange={(e) => !existingProfile && handleUsernameChange(e.target.value)}
-                      placeholder="uniqueusername"
-                      className={`mt-1 ${existingProfile ? 'bg-muted cursor-not-allowed' : ''}`}
-                      maxLength={30}
-                      disabled={!!existingProfile}
-                      readOnly={!!existingProfile}
-                    />
-
-                    {/* Enhanced Username Validation Status Area */}
-                    <UsernameValidationStatus />
-
-                    {existingProfile && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Username cannot be changed after profile completion
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Bio */}
-                <div>
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    value={formData.bio}
-                    onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
-                    placeholder="Tell us about yourself, your interests, or what you're working on..."
-                    className="mt-1 min-h-[100px] resize-none"
-                    maxLength={500}
-                  />
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {formData.bio.length}/500 characters
-                  </p>
-                </div>
-
-                {/* Industries */}
-                <div>
-                  <Label>Industries</Label>
-                  <div className="mt-1">
-                    <IndustriesMultiSelect
-                      selectedIndustries={formData.industries}
-                      onChange={(newIndustries) => 
-                        setFormData(prev => ({ ...prev, industries: newIndustries }))
+          <Card className="shadow-lg border-border/50">
+            <CardContent className="p-6">
+              <form onSubmit={handleSubmit}>
+                <div className="flex flex-col md:flex-row gap-6">
+                  {/* Left Column: Avatar */}
+                  <div className="flex-shrink-0 flex flex-col items-center justify-start pt-2">
+                    <AvatarUpload
+                      currentAvatar={formData.avatar}
+                      onAvatarChange={(avatarUrl: string) =>
+                        setFormData(prev => ({ ...prev, avatar: avatarUrl }))
                       }
+                      displayName={formData.displayName || "User"}
                     />
                   </div>
-                </div>
 
-                {/* Skills */}
-                <div>
-                  <Label>Skills</Label>
-                  <div className="mt-1">
-                    <SkillsMultiSelect
-                      selectedSkills={formData.skills}
-                      onChange={(newSkills) => 
-                        setFormData(prev => ({ ...prev, skills: newSkills }))
-                      }
-                    />
-                  </div>
-                </div>
+                  {/* Right Column: Form Fields */}
+                  <div className="flex-1 space-y-3">
+                    {/* Row 1: Name & Username */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="displayName" className="text-xs font-medium">Full Name</Label>
+                        <Input
+                          id="displayName"
+                          value={formData.displayName}
+                          onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
+                          placeholder="Your full name"
+                          className="h-8 text-sm"
+                          maxLength={100}
+                        />
+                      </div>
 
-                {/* Error Display */}
-                {error && (
-                  <div className="p-4 rounded-md bg-destructive/10 border border-destructive/20">
-                    <p className="text-sm text-destructive font-medium">Please fix the following errors:</p>
-                    <ul className="text-sm text-destructive mt-1 list-disc list-inside">
-                      {error.split('. ').map((err, index) => (
-                        <li key={index}>{err}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                      <div className="space-y-1 relative">
+                        <Label htmlFor="username" className="text-xs font-medium">Username *</Label>
+                        <Input
+                          id="username"
+                          value={formData.username}
+                          onChange={(e) => !existingProfile && handleUsernameChange(e.target.value)}
+                          placeholder="uniqueusername"
+                          className={`h-8 text-sm ${existingProfile ? 'bg-muted cursor-not-allowed' : ''}`}
+                          maxLength={30}
+                          disabled={!!existingProfile}
+                          readOnly={!!existingProfile}
+                        />
+                        <div className="absolute top-full left-0 w-full mt-0.5">
+                           <UsernameValidationStatus />
+                        </div>
+                      </div>
+                    </div>
 
-                {/* Action Buttons */}
-                <div className="flex justify-end gap-4 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleCancel}
-                    disabled={loading}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={loading || (usernameValidation.available === false && !existingProfile)}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      existingProfile ? "Update Profile" : "Complete Setup"
+                    {/* Row 2: Bio */}
+                    <div className="space-y-1 pt-1">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="bio" className="text-xs font-medium">Bio</Label>
+                        <span className="text-[10px] text-muted-foreground">{formData.bio.length}/500</span>
+                      </div>
+                      <Textarea
+                        id="bio"
+                        value={formData.bio}
+                        onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+                        placeholder="Tell us about yourself..."
+                        className="min-h-[60px] h-[60px] resize-none text-sm py-2"
+                        maxLength={500}
+                      />
+                    </div>
+
+                    {/* Row 3: Industries & Skills */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-medium">Industries</Label>
+                        <IndustriesMultiSelect
+                          selectedIndustries={formData.industries}
+                          onChange={(newIndustries) => 
+                            setFormData(prev => ({ ...prev, industries: newIndustries }))
+                          }
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-xs font-medium">Skills</Label>
+                        <SkillsMultiSelect
+                          selectedSkills={formData.skills}
+                          onChange={(newSkills) => 
+                            setFormData(prev => ({ ...prev, skills: newSkills }))
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    {/* Error Display */}
+                    {error && (
+                      <div className="p-2 rounded-md bg-destructive/10 border border-destructive/20">
+                        <p className="text-xs text-destructive font-medium">{error}</p>
+                      </div>
                     )}
-                  </Button>
+
+                    {/* Action Buttons */}
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCancel}
+                        disabled={loading}
+                        size="sm"
+                        className="h-8 px-4"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={loading || (usernameValidation.available === false && !existingProfile)}
+                        size="sm"
+                        className="h-8 px-4"
+                      >
+                        {loading ? (
+                          <>
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          existingProfile ? "Update Profile" : "Complete Setup"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </form>
             </CardContent>

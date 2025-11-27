@@ -195,21 +195,9 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
     <div className="min-h-screen flex flex-col bg-background">
       <HeroHeader />
 
-      {/* Back Button */}
-      <div className="border-b border-border pt-16 pb-4 rounded-b-xl">
-        <div className="container mx-auto px-4 rounded-xl">
-          <Button
-          variant="ghost"
-          onClick={() => router.push('/feed')}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Feed
-          </Button>
-        </div>
-      </div>
 
-      <main className="flex-1 container mx-auto px-4 py-8 sm:py-12">
+
+      <main className="flex-1 container mx-auto px-4 pb-8 pt-48 sm:pb-12">
         {ideaQuery === undefined ? (
           // Loading state
           <div className="flex items-center justify-center py-12">
