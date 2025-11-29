@@ -357,3 +357,33 @@ export const markMessagesRead = mutation({
     );
   },
 });
+
+export const getDirectConversationId = query({
+  args: { receiverId: v.id("users") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const userDoc = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!userDoc) return null;
+    const userId = userDoc._id;
+
+    let convoDoc = await ctx.db
+      .query("conversations")
+      .withIndex("by_participants", (q) => q.eq("participant1", userId).eq("participant2", args.receiverId))
+      .first();
+
+    if (!convoDoc) {
+      convoDoc = await ctx.db
+        .query("conversations")
+        .withIndex("by_participants", (q) => q.eq("participant1", args.receiverId).eq("participant2", userId))
+        .first();
+    }
+
+    return convoDoc?._id || null;
+  },
+});

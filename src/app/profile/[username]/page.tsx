@@ -1,12 +1,11 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React from "react"
 import { useParams } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import { useQuery } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { CompactProfileView } from "@/components/user/CompactProfileView"
-import { DetailedProfileView } from "@/components/user/DetailedProfileView"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { HeroHeader } from "@/components/header"
@@ -14,79 +13,21 @@ import { Spinner } from "@/components/ui/spinner"
 import FooterSection from "@/components/footer"
 import type { UserProfile } from "../../../../convex/users"
 
-// Mock profile removed - using only real data from Convex
-
 export default function ProfilePage() {
   const params = useParams()
   const username = params.username as string
   const { user } = useUser()
 
   // Convex data
-    const realProfile = useQuery(api.users.getUserProfile, { username })
-    const myRequests = useQuery(api.contributionRequests.getMyRequests)
-    const incomingRequests = useQuery(api.contributionRequests.getIncomingRequests)
-    const publicIdeas = useQuery(api.ideas.getPublicIdeasForUser, realProfile ? { userId: realProfile._id } : "skip")
-
-  // At this point, realProfile is loaded and not null, so profileData is safe to use
+  const realProfile = useQuery(api.users.getUserProfile, { username })
+  const myRequests = useQuery(api.contributionRequests.getMyRequests)
+  const incomingRequests = useQuery(api.contributionRequests.getIncomingRequests)
+  const publicIdeas = useQuery(api.ideas.getPublicIdeasForUser, realProfile ? { userId: realProfile._id } : "skip")
 
   // Check if this is current user's profile
-  const isCurrentUser = user?.username === username
+  const isCurrentUser = user?.username?.toLowerCase() === username?.toLowerCase()
 
-  // Local state
-  const [isEditing, setIsEditing] = useState(false)
-  const [profile, setProfile] = useState<UserProfile | null>(() => {
-    // Use only real Convex data
-    return realProfile as UserProfile || null
-  })
 
-  // At this point, realProfile is loaded and not null, so profileData is safe to use
-
-  // Remove the old profileData declaration since it's now declared earlier
-
-  const [formData, setFormData] = useState({
-    displayName: "",
-    bio: "",
-    avatar: "",
-    location: "",
-    website: "",
-    github: "",
-    linkedin: "",
-    twitter: "",
-    industry: "",
-    industries: [] as string[],
-    skills: [] as string[],
-    username: "",
-  })
-
-  // Update profile when Convex data loads
-  useEffect(() => {
-    console.log('Profile page loading:', { username, realProfile });
-    if (realProfile) {
-      console.log('🎯 Found real user profile from Convex:', realProfile);
-      setProfile(realProfile as UserProfile);
-    }
-  }, [realProfile, username]);
-
-  // Initialize form data when profile loads
-  useEffect(() => {
-    if (profile) {
-      console.log('🎯 Initializing form with profile:', profile);
-      setFormData({
-        displayName: profile.displayName,
-        bio: profile.bio || "",
-        avatar: profile.avatar || "",
-        location: profile.location || "",
-        website: profile.website || "",
-        github: profile.github || "",
-        linkedin: profile.linkedin || "",
-        twitter: profile.twitter || "",
-        industry: profile.industry || "",
-        industries: profile.industries || [],
-        skills: profile.skills || [],
-        username: profile.username,
-      })
-    }
-  }, [profile])
 
 
   // Loading state - show spinner while fetching profile
@@ -136,24 +77,16 @@ return (
     <HeroHeader />
 
     <main className="flex-1 container mx-auto px-4 py-12 pt-20">
-      {isCurrentUser ? (
-        <DetailedProfileView
-          profile={profileData}
-          isEditing={isEditing}
-          setIsEditing={setIsEditing}
-          formData={formData}
-          setFormData={setFormData}
-          myRequests={myRequests}
-          incomingRequests={incomingRequests}
-        />
-      ) : (
-        <CompactProfileView profile={profileData} publicIdeas={publicIdeas || []} />
-      )}
-
+      <CompactProfileView 
+        profile={profileData} 
+        publicIdeas={publicIdeas || []} 
+        isOwner={isCurrentUser}
+        myRequests={myRequests}
+        incomingRequests={incomingRequests}
+      />
     </main>
 
     <FooterSection />
   </div>
   )
 }
-

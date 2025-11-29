@@ -3,7 +3,7 @@
 import React, { memo, useEffect, useRef, useCallback, useState } from "react";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Triangle } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import MessageBubble from "./MessageBubble";
@@ -23,7 +23,12 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
 
   const { isAuthenticated } = useConvexAuth();
 
-  const messages = useQuery(api.chat.getConversationMessages, isAuthenticated && conversationId ? { conversationId } : "skip");
+  // Resolve conversation ID for direct chats if not provided
+  const directConversationId = useQuery(api.chat.getDirectConversationId, isAuthenticated && receiverId && !conversationId ? { receiverId } : "skip");
+  
+  const activeConversationId = conversationId || directConversationId;
+
+  const messages = useQuery(api.chat.getConversationMessages, isAuthenticated && activeConversationId ? { conversationId: activeConversationId } : "skip");
   const sendMessage = useMutation(api.chat.sendMessage);
   const users = useQuery(api.chat.getAllUsers, isAuthenticated ? {} : "skip");
   const currentUserDoc = useQuery(api.chat.getUserByClerkId, isAuthenticated ? {} : "skip");
@@ -59,7 +64,7 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
         await sendMessage({
           receiverId,
           content,
-          conversationId: conversationId || undefined,
+          conversationId: activeConversationId || undefined,
         });
       } else {
         // Try to infer context from existing messages if no explicit context
@@ -75,7 +80,7 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
              await sendMessage({
                 receiverId: recId,
                 content,
-                conversationId: conversationId || undefined,
+                conversationId: activeConversationId || undefined,
             });
         } else {
             setSendError("Cannot determine chat context");
@@ -88,27 +93,39 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
       setSendError("Failed to send message. Please try again.");
     } finally {
     }
-  }, [sendMessage, messages, currentUserId, receiverId, conversationId, ideaId]);
+  }, [sendMessage, messages, currentUserId, receiverId, conversationId, activeConversationId, ideaId]);
 
   return (
     <div className="flex flex-col h-full bg-background max-w-full">
-      <div className="p-4 border-b flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={onBack}>
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
-        <h3 className="font-semibold text-foreground">Conversation</h3>
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <Triangle className="w-4 h-4 rotate-90" />
+      <div className="px-4 py-3 border-b flex items-center justify-between bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 -ml-2 hover:bg-muted/50">
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <h3 className="font-semibold text-sm text-foreground">Conversation</h3>
+        </div>
+        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 -mr-2 hover:bg-muted/50">
+          <X className="w-4 h-4" />
         </Button>
       </div>
       <div className="flex-1 p-4 max-w-full overflow-y-auto" ref={scrollAreaRef}>
-        <div className="space-y-1 max-w-full overflow-x-auto">
-          {!messages ? (
-            <div className="text-center text-muted-foreground mt-8">
-              Loading messages...
-            </div>
+        <div className="space-y-4 max-w-full overflow-x-auto pb-2">
+          {messages === undefined ? (
+             receiverId && !conversationId && directConversationId === undefined ? (
+                <div className="text-center text-muted-foreground mt-8 text-sm">
+                  Loading conversation...
+                </div>
+             ) : receiverId && !conversationId && directConversationId === null ? (
+                <div className="text-center text-muted-foreground mt-8 text-sm">
+                  No messages yet. Start the conversation!
+                </div>
+             ) : (
+                <div className="text-center text-muted-foreground mt-8 text-sm">
+                  Loading messages...
+                </div>
+             )
           ) : messages.length === 0 ? (
-            <div className="text-center text-muted-foreground mt-8">
+            <div className="text-center text-muted-foreground mt-8 text-sm">
               No messages yet. Start the conversation!
             </div>
           ) : (
@@ -135,14 +152,16 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
         </div>
       </div>
       {sendError && (
-        <div className="px-4 py-2 bg-destructive/10 text-destructive text-sm border-t">
+        <div className="px-4 py-2 bg-destructive/10 text-destructive text-xs border-t">
           {sendError}
         </div>
       )}
-      <ChatInput
-        onSend={handleSendMessage}
-        typingUsers={[]}
-      />
+      <div className="p-3 border-t bg-card/50 backdrop-blur-sm">
+        <ChatInput
+          onSend={handleSendMessage}
+          typingUsers={[]}
+        />
+      </div>
     </div>
   );
 });

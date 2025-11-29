@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, User, LogOut } from 'lucide-react'
+import { User, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { Logo } from '@/components/logo'
 import { Menu, X } from 'lucide-react'
@@ -22,7 +22,13 @@ const menuItems = [
     { name: 'Community', href: '/community' },
 ]
 
-export const HeroHeader = () => {
+export const HeroHeader = ({ 
+    searchQuery, 
+    onSearchChange 
+}: { 
+    searchQuery?: string;
+    onSearchChange?: (query: string) => void;
+}) => {
     const [menuState, setMenuState] = React.useState(false)
     const [isScrolled, setIsScrolled] = React.useState(false)
     const { signOut } = useClerk()
@@ -51,7 +57,7 @@ export const HeroHeader = () => {
                     'mx-auto px-4 sm:px-6 lg:px-8 transition-all duration-300 ease-in-out',
                     isScrolled
                         ? 'mt-2 max-w-5xl bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-lg shadow-black/5'
-                        : 'mt-0 max-w-7xl bg-transparent'
+                        : 'mt-0 max-w-5xl bg-transparent'
                 )}>
                     <div className="flex items-center justify-between h-16 lg:h-18">
                         {/* Logo */}
@@ -70,8 +76,10 @@ export const HeroHeader = () => {
                             {/* Search Bar */}
                             <div className="max-w-md w-full mr-8">
                                 <SearchBar
+                                    value={searchQuery}
                                     onSearch={(query, type) => {
                                         console.log('Search query:', query, 'type:', type)
+                                        onSearchChange?.(query)
                                         // TODO: Navigate to search results page
                                     }}
                                     placeholder="Search for ideas, people, and more..."
@@ -112,18 +120,6 @@ export const HeroHeader = () => {
                                 <div className="flex items-center gap-3">
                                     <NotificationBell />
                                     
-                                    <Button
-                                        asChild
-                                        variant="ghost"
-                                        size="sm"
-                                        className="p-2 h-8 w-8"
-                                        title="Create new idea"
-                                    >
-                                        <Link href="/create-idea">
-                                            <Plus className="w-4 h-4" />
-                                        </Link>
-                                    </Button>
-
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -162,7 +158,6 @@ export const HeroHeader = () => {
                                     </Popover>
                                 </div>
                             </SignedIn>
-                            <ThemeToggle />
                         </div>
 
                         <button
@@ -209,8 +204,10 @@ export const HeroHeader = () => {
                             {/* Mobile Search */}
                             <div className="space-y-2">
                                 <SearchBar
+                                    value={searchQuery}
                                     onSearch={(query, type) => {
                                         console.log('Mobile search query:', query, 'type:', type)
+                                        onSearchChange?.(query)
                                         closeMenu()
                                     }}
                                     placeholder="Search for ideas, people, and more..."
@@ -264,17 +261,6 @@ export const HeroHeader = () => {
                                                     }
                                                 }}
                                             />
-                                            <Button
-                                                asChild
-                                                variant="ghost"
-                                                size="sm"
-                                                className="p-2 h-8 w-8"
-                                                title="Create new idea"
-                                            >
-                                                <Link href="/create-idea">
-                                                    <Plus className="w-4 h-4" />
-                                                </Link>
-                                            </Button>
                                         </div>
                                     </SignedIn>
                                     <ThemeToggle />

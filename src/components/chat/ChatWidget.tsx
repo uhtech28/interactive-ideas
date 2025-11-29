@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, memo, lazy, Suspense, useCallback } from "react";
+import React, { memo, lazy, Suspense, useCallback } from "react";
 import { useConvexAuth } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
@@ -13,33 +13,31 @@ const ChatThread = lazy(() => import("./ChatThread"));
 const GroupList = lazy(() => import("./GroupList"));
 
 const ChatWidget: React.FC = () => {
-  const { isOpen, setIsOpen } = useChat();
-  const [selectedConversationId, setSelectedConversationId] = useState<Id<"conversations"> | null>(null);
-  const [selectedIdeaId, setSelectedIdeaId] = useState<Id<"ideas"> | null>(null);
+  const { 
+    isOpen, 
+    selectedConversationId, 
+    selectedIdeaId, 
+    selectedReceiverId,
+    closeChat,
+    resetSelection,
+    openGroupChat
+  } = useChat();
 
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const { user } = useUser();
   const pathname = usePathname();
 
   const handleSelectGroup = useCallback((conversationId: Id<"conversations"> | undefined, ideaId: Id<"ideas">) => {
-    setSelectedIdeaId(ideaId);
-    if (conversationId) {
-      setSelectedConversationId(conversationId);
-    } else {
-      setSelectedConversationId(null);
-    }
-  }, []);
+    openGroupChat(ideaId, conversationId);
+  }, [openGroupChat]);
 
   const handleBackToGroups = useCallback(() => {
-    setSelectedConversationId(null);
-    setSelectedIdeaId(null);
-  }, []);
+    resetSelection();
+  }, [resetSelection]);
 
   const handleClose = useCallback(() => {
-    setIsOpen(false);
-    setSelectedConversationId(null);
-    setSelectedIdeaId(null);
-  }, [setIsOpen]);
+    closeChat();
+  }, [closeChat]);
 
   // Determine positioning class based on page
   // On profile pages, move to the left (as requested "to the left part a bit")
@@ -60,12 +58,13 @@ const ChatWidget: React.FC = () => {
     <div className={positionClass}>
       <Card className="w-80 h-96 shadow-lg bg-card border transition-all duration-300 ease-in-out overflow-hidden">
         <Suspense fallback={<div className="p-4 text-center">Loading...</div>}>
-          {selectedIdeaId || selectedConversationId ? (
+          {selectedIdeaId || selectedConversationId || selectedReceiverId ? (
               <ChatThread
                 conversationId={selectedConversationId}
                 onBack={handleBackToGroups}
                 onClose={handleClose}
                 ideaId={selectedIdeaId}
+                receiverId={selectedReceiverId}
               />
             ) : (
             <GroupList

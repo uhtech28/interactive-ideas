@@ -4,7 +4,7 @@ import React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Lightbulb, Sparkles, UserPlus, Check } from "lucide-react";
+import { Lightbulb, Sparkles, UserPlus, Check, GitPullRequest } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface UserProfile {
@@ -17,6 +17,7 @@ interface UserProfile {
   skills: string[];
   ideasCreated?: number;
   ideasSparked?: number;
+  ideasContributed?: number;
 }
 
 interface CollaboratorCardProps {
@@ -72,20 +73,27 @@ export const CollaboratorCard: React.FC<CollaboratorCardProps> = ({
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 gap-3 mb-6 relative z-10">
-        <div className="bg-muted/30 rounded-xl p-3 flex flex-col items-center justify-center border border-border/50 group-hover:border-primary/10 transition-colors">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-            <Lightbulb className="w-3.5 h-3.5" />
+      <div className="grid grid-cols-3 gap-2 mb-6 relative z-10">
+        <div className="bg-muted/30 rounded-xl p-2 flex flex-col items-center justify-center border border-border/50 group-hover:border-primary/10 transition-colors">
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
+            <Lightbulb className="w-3 h-3" />
             <span>Created</span>
           </div>
-          <span className="font-bold text-lg">{profile.ideasCreated || 0}</span>
+          <span className="font-bold text-base">{profile.ideasCreated || 0}</span>
         </div>
-        <div className="bg-muted/30 rounded-xl p-3 flex flex-col items-center justify-center border border-border/50 group-hover:border-primary/10 transition-colors">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-            <Sparkles className="w-3.5 h-3.5 text-orange-500" />
+        <div className="bg-muted/30 rounded-xl p-2 flex flex-col items-center justify-center border border-border/50 group-hover:border-primary/10 transition-colors">
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
+            <Sparkles className="w-3 h-3 text-orange-500" />
             <span>Sparked</span>
           </div>
-          <span className="font-bold text-lg">{profile.ideasSparked || 0}</span>
+          <span className="font-bold text-base">{profile.ideasSparked || 0}</span>
+        </div>
+        <div className="bg-muted/30 rounded-xl p-2 flex flex-col items-center justify-center border border-border/50 group-hover:border-primary/10 transition-colors">
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
+            <GitPullRequest className="w-3 h-3 text-blue-500" />
+            <span>Contrib</span>
+          </div>
+          <span className="font-bold text-base">{profile.ideasContributed || 0}</span>
         </div>
       </div>
 

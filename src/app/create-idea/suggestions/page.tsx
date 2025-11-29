@@ -107,7 +107,7 @@ export default function SuggestionsPage() {
       <HeroHeader />
 
       <main className="flex-1 container mx-auto px-4 py-12 pt-24">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           {/* Header Section */}
           <motion.div 
             initial={{ opacity: 0, y: -20 }}

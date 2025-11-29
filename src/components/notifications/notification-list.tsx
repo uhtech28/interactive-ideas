@@ -1,16 +1,14 @@
 'use client'
 
-import { useQuery, useMutation } from 'convex/react'
-import { api } from '@convex/_generated/api'
-import { Id } from '@convex/_generated/dataModel'
-import { useEffect, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
-import { X, Bell, MessageCircle, UserPlus, Sparkles } from 'lucide-react'
+import { useState, useEffect } from "react"
+import { useQuery, useMutation } from "convex/react"
+import { api } from "../../../convex/_generated/api"
+import { Id } from "../../../convex/_generated/dataModel"
+import { Sparkles, MessageCircle, UserPlus, Bell, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
-// Simple utility to format relative time
 const formatRelativeTime = (timestamp: number): string => {
   const now = Date.now()
   const diff = now - timestamp
@@ -99,54 +97,66 @@ const NotificationItem = ({ notification, onMarkAsRead, onDismiss }: Notificatio
   }
 
   return (
-    <Card
-      className={`p-2 sm:p-4 cursor-pointer hover:bg-muted/50 transition-colors w-full max-w-full overflow-hidden ${
-        !notification.isRead ? 'bg-blue-50 dark:bg-blue-950/20 border-l-3 border-l-blue-500' : ''
+    <div
+      className={`p-3 sm:p-4 cursor-pointer hover:bg-muted/50 transition-colors w-full relative group ${
+        !notification.isRead ? 'bg-blue-50/50 dark:bg-blue-950/10' : ''
       }`}
       onClick={handleClick}
     >
-      <div className="flex items-start space-x-2 w-full min-w-0">
-        <div className="flex items-center space-x-1.5 flex-shrink-0">
-          {getNotificationIcon(notification.type)}
-          <Avatar className="h-6 w-6 sm:h-7 sm:w-7">
+      <div className="flex items-start gap-3 w-full">
+        <div className="relative shrink-0 mt-0.5">
+          <Avatar className="h-9 w-9 border border-border/50">
             <AvatarImage src={notification.sender?.avatar} />
             <AvatarFallback className="text-xs">
               {notification.sender?.name?.charAt(0).toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
+          <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5 shadow-sm border border-border/50">
+            {getNotificationIcon(notification.type)}
+          </div>
         </div>
 
-        <div className="flex-1 min-w-0">
-           <div className="flex items-center justify-between mb-1 min-w-0">
-            <Badge variant="outline" className={`text-xs truncate max-w-28 flex-shrink-0 ${getNotificationBadgeColor(notification.type)}`}>
-              {notification.type.replace('_', ' ')}
+        <div className="flex-1 min-w-0 space-y-1">
+           <div className="flex items-start justify-between gap-2">
+            <p className="text-sm text-foreground leading-snug">
+              <span className="font-semibold">{notification.sender?.name || 'Someone'}</span>{' '}
+              <span className="text-muted-foreground">
+                {notification.message.replace(notification.sender?.name || '', '').trim()}
+              </span>
+            </p>
+            <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap mt-0.5">
+              {formatRelativeTime(notification.createdAt)}
+            </span>
+          </div>
+          
+          <div className="flex items-center justify-between">
+             <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 h-5 font-normal ${getNotificationBadgeColor(notification.type)}`}>
+              {notification.type.replace(/_/g, ' ')}
             </Badge>
-            <div className="flex items-center space-x-1 flex-shrink-0">
-              {!notification.isRead && (
-                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+            
+            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+               {!notification.isRead && (
+                <div className="w-2 h-2 bg-blue-500 rounded-full" title="Unread" />
               )}
               <Button
                 variant="ghost"
-                size="sm"
-                className="p-0 h-5 w-5 hover:bg-red-100 hover:text-red-600"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-full"
                 onClick={(e) => {
                   e.stopPropagation()
                   onDismiss(notification._id)
                 }}
               >
-                <X className="h-2.5 w-2.5" />
+                <X className="h-3 w-3" />
               </Button>
             </div>
           </div>
-          <p className="text-xs sm:text-sm text-foreground break-words overflow-hidden mb-1 leading-tight max-w-full line-clamp-3">
-            {notification.message}
-          </p>
-          <p className="text-xs text-muted-foreground break-words overflow-hidden max-w-full">
-            {formatRelativeTime(notification.createdAt)}
-          </p>
         </div>
       </div>
-    </Card>
+      {!notification.isRead && (
+         <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
+      )}
+    </div>
   )
 }
 
@@ -194,10 +204,17 @@ export const NotificationList = () => {
 
   if (notifications.length === 0) {
     return (
-      <div className="p-8 text-center text-muted-foreground">
-        <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-        <p className="text-sm">No notifications yet</p>
-        <p className="text-xs mt-1">When someone interacts with your ideas, you'll see it here.</p>
+      <div className="flex flex-col h-full bg-background">
+         <div className="flex items-center justify-between px-4 py-3 border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+            <h3 className="font-semibold text-sm">Notifications</h3>
+         </div>
+         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
+            <div className="bg-muted/50 p-4 rounded-full mb-4">
+              <Bell className="h-8 w-8 opacity-50" />
+            </div>
+            <p className="text-sm font-medium">No notifications yet</p>
+            <p className="text-xs mt-1 max-w-[200px]">When someone interacts with your ideas, you'll see it here.</p>
+         </div>
       </div>
     )
   }
@@ -210,116 +227,131 @@ export const NotificationList = () => {
   )
 
   return (
-    <div className="p-2 sm:p-4 space-y-2 sm:space-y-4 max-w-full overflow-hidden">
-      {/* Filter Controls */}
-      <div className="flex flex-col sm:flex-row gap-2">
-        <div className="flex gap-1 ml-auto">
+    <div className="flex flex-col h-full bg-background">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+        <h3 className="font-semibold text-sm">Notifications</h3>
+        {notifications.length > 0 && (
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => handleDismissAll()}
-            className="text-xs sm:text-sm px-2 h-8 text-red-600 hover:text-red-700"
+            className="h-7 text-xs text-muted-foreground hover:text-red-600 hover:bg-red-50 px-2"
           >
-            <X className="h-3 w-3 mr-1" />
-            Clear
+            Clear all
           </Button>
-        </div>
+        )}
       </div>
 
-      {/* Tab Navigation */}
-      <div className="w-full overflow-hidden">
-        <div className="flex h-10 items-center rounded-md bg-muted p-0.5 text-muted-foreground">
+      {/* Tabs */}
+      <div className="px-4 pt-3 pb-2 bg-background border-b">
+        <div className="flex p-1 bg-muted/50 rounded-lg">
           <button
-            className={`flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-sm px-2 py-1.5 text-xs sm:text-sm font-medium transition-all min-w-0 ${
-              activeTab === 'all' ? 'bg-background text-foreground shadow-sm' : 'hover:bg-background/50'
+            className={`flex-1 flex items-center justify-center py-1.5 text-xs font-medium rounded-md transition-all ${
+              activeTab === 'all' 
+                ? 'bg-background text-foreground shadow-sm' 
+                : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
             }`}
             onClick={() => setActiveTab('all')}
           >
-            <span className="truncate">All ({notifications.length})</span>
+            All
+            <span className="ml-1.5 text-[10px] opacity-70 bg-muted-foreground/10 px-1.5 py-0.5 rounded-full">
+              {notifications.length}
+            </span>
           </button>
           <button
-            className={`flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-sm px-2 py-1.5 text-xs sm:text-sm font-medium transition-all min-w-0 ${
-              activeTab === 'interactions' ? 'bg-background text-foreground shadow-sm' : 'hover:bg-background/50'
+            className={`flex-1 flex items-center justify-center py-1.5 text-xs font-medium rounded-md transition-all ${
+              activeTab === 'interactions' 
+                ? 'bg-background text-foreground shadow-sm' 
+                : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
             }`}
             onClick={() => setActiveTab('interactions')}
           >
-            <span className="hidden sm:inline truncate">Interactions ({interactions.length})</span>
-            <span className="sm:hidden truncate">Inter. ({interactions.length})</span>
+            Interactions
+            {interactions.length > 0 && (
+              <span className="ml-1.5 text-[10px] opacity-70 bg-muted-foreground/10 px-1.5 py-0.5 rounded-full">
+                {interactions.length}
+              </span>
+            )}
           </button>
           <button
-            className={`flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-sm px-2 py-1.5 text-xs sm:text-sm font-medium transition-all min-w-0 ${
-              activeTab === 'requests' ? 'bg-background text-foreground shadow-sm' : 'hover:bg-background/50'
+            className={`flex-1 flex items-center justify-center py-1.5 text-xs font-medium rounded-md transition-all ${
+              activeTab === 'requests' 
+                ? 'bg-background text-foreground shadow-sm' 
+                : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
             }`}
             onClick={() => setActiveTab('requests')}
           >
-            <span className="hidden sm:inline truncate">Requests ({requests.length})</span>
-            <span className="sm:hidden truncate">Req. ({requests.length})</span>
+            Requests
+            {requests.length > 0 && (
+              <span className="ml-1.5 text-[10px] opacity-70 bg-muted-foreground/10 px-1.5 py-0.5 rounded-full">
+                {requests.length}
+              </span>
+            )}
           </button>
         </div>
+      </div>
 
-        <div className="mt-3 space-y-2 w-full overflow-hidden">
-          {activeTab === 'all' && (
-            <div className="space-y-2 w-full">
-              {notifications.map((notification: Notification) => (
-                <div key={notification._id} className="w-full overflow-hidden">
-                  <NotificationItem
-                    notification={notification}
-                    onMarkAsRead={handleMarkAsRead}
-                    onDismiss={handleDismiss}
-                  />
-                </div>
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        {activeTab === 'all' && (
+          <div className="divide-y divide-border/50">
+             {notifications.map((notification: Notification) => (
+                <NotificationItem
+                  key={notification._id}
+                  notification={notification}
+                  onMarkAsRead={handleMarkAsRead}
+                  onDismiss={handleDismiss}
+                />
               ))}
-            </div>
-          )}
+          </div>
+        )}
 
-          {activeTab === 'interactions' && (
-            <div className="w-full">
-              {interactions.length > 0 ? (
-                <div className="space-y-2 w-full">
-                  {interactions.map((notification: Notification) => (
-                    <div key={notification._id} className="w-full overflow-hidden">
-                      <NotificationItem
-                        notification={notification}
-                        onMarkAsRead={handleMarkAsRead}
-                        onDismiss={handleDismiss}
-                      />
-                    </div>
-                  ))}
+        {activeTab === 'interactions' && (
+          <div className="divide-y divide-border/50">
+            {interactions.length > 0 ? (
+              interactions.map((notification: Notification) => (
+                <NotificationItem
+                  key={notification._id}
+                  notification={notification}
+                  onMarkAsRead={handleMarkAsRead}
+                  onDismiss={handleDismiss}
+                />
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center text-muted-foreground">
+                <div className="bg-muted/50 p-3 rounded-full mb-3">
+                  <MessageCircle className="h-6 w-6 opacity-50" />
                 </div>
-              ) : (
-                <div className="p-6 text-center text-muted-foreground">
-                  <MessageCircle className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No interaction notifications</p>
-                  <p className="text-xs mt-1">When someone sparks or comments on your ideas, they'll appear here.</p>
-                </div>
-              )}
-            </div>
-          )}
+                <p className="text-sm font-medium">No interactions yet</p>
+                <p className="text-xs mt-1 max-w-[200px]">When someone sparks or comments on your ideas, they'll appear here.</p>
+              </div>
+            )}
+          </div>
+        )}
 
-          {activeTab === 'requests' && (
-            <div className="w-full">
-              {requests.length > 0 ? (
-                <div className="space-y-2 w-full">
-                  {requests.map((notification: Notification) => (
-                    <div key={notification._id} className="w-full overflow-hidden">
-                      <NotificationItem
-                        notification={notification}
-                        onMarkAsRead={handleMarkAsRead}
-                        onDismiss={handleDismiss}
-                      />
-                    </div>
-                  ))}
+        {activeTab === 'requests' && (
+          <div className="divide-y divide-border/50">
+            {requests.length > 0 ? (
+              requests.map((notification: Notification) => (
+                <NotificationItem
+                  key={notification._id}
+                  notification={notification}
+                  onMarkAsRead={handleMarkAsRead}
+                  onDismiss={handleDismiss}
+                />
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center text-muted-foreground">
+                <div className="bg-muted/50 p-3 rounded-full mb-3">
+                  <UserPlus className="h-6 w-6 opacity-50" />
                 </div>
-              ) : (
-                <div className="p-6 text-center text-muted-foreground">
-                  <UserPlus className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No request notifications</p>
-                  <p className="text-xs mt-1">When someone requests to contribute or invites you, they'll appear here.</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                <p className="text-sm font-medium">No requests yet</p>
+                <p className="text-xs mt-1 max-w-[200px]">Contribution requests and invitations will appear here.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

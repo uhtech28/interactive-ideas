@@ -45,14 +45,14 @@ interface SearchBarProps {
   onSearch: (query: string, type?: 'idea' | 'user') => void
   placeholder?: string
   className?: string
-
+  value?: string
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
   onSearch,
   placeholder = "Search for ideas, people, and more...",
   className,
-
+  value,
 }) => {
   const [query, setQuery] = useState('')
   const [isFocused, setIsFocused] = useState(false)
@@ -96,6 +96,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       setSelectedIndex(-1)
     }
   }, [query, debouncedOnSearch])
+
+  // Sync query with value prop if provided
+  useEffect(() => {
+    if (value !== undefined) {
+      setQuery(value)
+    }
+  }, [value])
 
   // Handle outside click to close suggestions
   useEffect(() => {

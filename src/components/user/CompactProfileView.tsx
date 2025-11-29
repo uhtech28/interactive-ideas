@@ -1,16 +1,19 @@
 "use client";
 
 import React from "react"
+import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Eye, Lightbulb, Users, Sparkles, Heart, MapPin, Link2, ChevronRight } from "lucide-react"
+import { Lightbulb, Users, Sparkles, MapPin, Link2, ChevronRight, Edit2, MessageCircle } from "lucide-react"
 import { useRouter } from "next/navigation";
 import { ProfileStatsDialog } from "./ProfileStatsDialog";
 import { Id } from "@convex/_generated/dataModel";
+import { RequestStatusCard, ContributionRequest } from "@/components/requests/request-status-card"
+import { useChat } from "@/components/chat/ChatContext";
 
-interface UserProfile {
+export interface UserProfile {
   _id: string;
   username: string;
   displayName: string;
@@ -40,21 +43,26 @@ interface CompactProfileViewProps {
   profile: UserProfile;
   publicIdeas?: Idea[];
   onInvite?: () => void;
+  isOwner?: boolean;
+  myRequests?: ContributionRequest[];
+  incomingRequests?: ContributionRequest[];
 }
 
-export const CompactProfileView: React.FC<CompactProfileViewProps> = ({ 
-  profile, 
-  publicIdeas,
-  onInvite 
+export const CompactProfileView: React.FC<CompactProfileViewProps> = ({
+  profile,
+  publicIdeas: _publicIdeas,
+  onInvite,
+  isOwner,
+  myRequests,
+  incomingRequests
 }) => {
   const router = useRouter();
+  const { openChatWithUser } = useChat();
   const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [dialogType, setDialogType] = React.useState<"created" | "sparked" | "contributed" | null>(null);
+  const [dialogType, setDialogType] = React.useState<"created" | "sparked" | "contributed">("created");
 
-  const metrics = {
-    ideasCreated: profile.ideasCreated || 0,
-    ideasSparked: profile.ideasSparked || 0,
-    ideasContributed: profile.ideasContributed || 0,
+  const handleEditProfile = () => {
+    router.push("/profile-setup");
   };
 
   const openDialog = (type: "created" | "sparked" | "contributed") => {
@@ -62,8 +70,14 @@ export const CompactProfileView: React.FC<CompactProfileViewProps> = ({
     setDialogOpen(true);
   };
 
-  const handleIdeaClick = (ideaId: string) => {
-    router.push(`/idea/${ideaId}`);
+  const handleSendMessage = () => {
+    openChatWithUser(profile._id as Id<"users">);
+  };
+
+  const metrics = {
+    ideasCreated: profile.ideasCreated || 0,
+    ideasSparked: profile.ideasSparked || 0,
+    ideasContributed: profile.ideasContributed || 0,
   };
 
   return (
@@ -86,9 +100,39 @@ export const CompactProfileView: React.FC<CompactProfileViewProps> = ({
               </div>
               
               <div className="flex-1 space-y-3">
-                <div>
-                  <h1 className="text-xl font-bold text-foreground leading-tight">{profile.displayName}</h1>
-                  <p className="text-muted-foreground font-medium text-sm">@{profile.username}</p>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h1 className="text-xl font-bold text-foreground leading-tight">{profile.displayName}</h1>
+                    <p className="text-muted-foreground font-medium text-sm">@{profile.username}</p>
+                  </div>
+                  {isOwner ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleEditProfile}
+                      className="gap-2 h-8"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      Edit Profile
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="default" 
+                        size="sm" 
+                        onClick={handleSendMessage}
+                        className="gap-2 h-8"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        Message
+                      </Button>
+                      {onInvite && (
+                        <Button onClick={onInvite} variant="outline" size="sm" className="h-8 text-xs">
+                          Send Invitation
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {profile.bio && (
@@ -138,14 +182,6 @@ export const CompactProfileView: React.FC<CompactProfileViewProps> = ({
                      </div>
                    )}
                 </div>
-
-                {onInvite && (
-                  <div className="pt-1">
-                    <Button onClick={onInvite} size="sm" className="rounded-full px-5 h-8 text-xs">
-                      Send Invitation
-                    </Button>
-                  </div>
-                )}
               </div>
             </div>
           </CardContent>
@@ -208,86 +244,70 @@ export const CompactProfileView: React.FC<CompactProfileViewProps> = ({
           </Card>
         </div>
 
-        {/* 3. Public Ideas Feed (Span 3 - Full Width) */}
-        <Card className="md:col-span-3 shadow-sm border-border/40 min-h-[300px]">
-          <CardHeader className="border-b border-border/40 bg-muted/10 py-3 px-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Eye className="w-4 h-4 text-muted-foreground" />
-                Public Ideas
-              </CardTitle>
-              {publicIdeas && publicIdeas.length > 0 && (
-                 <Badge variant="secondary" className="rounded-full px-2 h-5 text-[10px]">
-                   {publicIdeas.length}
-                 </Badge>
+      </div>
+
+      {/* Contribution Requests (Only visible to owner) */}
+      {isOwner && (
+        <div className="mt-16 pt-8 border-t">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">Contribution Requests</h2>
+              <Link href="/profile/contribution-requests">
+                <Button variant="outline" size="sm" className="gap-2">
+                  Manage Requests
+                </Button>
+              </Link>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Outgoing Requests */}
+              {myRequests && myRequests.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">My Requests</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {myRequests.slice(0, 3).map((request) => (
+                        <RequestStatusCard key={request._id} request={request} />
+                      ))}
+                      {myRequests.length > 3 && (
+                        <Button variant="link" className="w-full text-xs">View all {myRequests.length} requests</Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Incoming Requests */}
+              {incomingRequests && incomingRequests.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Incoming Requests</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {incomingRequests.slice(0, 3).map((request) => (
+                        <div key={request._id} className="border rounded-lg p-3 bg-muted/20 text-sm">
+                          <p className="font-medium truncate">{request.idea?.title || "Idea"}</p>
+                          <p className="text-muted-foreground truncate">{request.message}</p>
+                        </div>
+                      ))}
+                        {incomingRequests.length > 3 && (
+                        <Button variant="link" className="w-full text-xs">View all {incomingRequests.length} incoming</Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {(!myRequests?.length && !incomingRequests?.length) && (
+                <div className="col-span-full text-center py-8 text-muted-foreground bg-muted/10 rounded-lg border border-dashed">
+                  No active contribution requests.
+                </div>
               )}
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            {publicIdeas && publicIdeas.length > 0 ? (
-              <div className="divide-y divide-border/40">
-                {publicIdeas.slice(0, 5).map((idea) => (
-                  <div 
-                    key={idea._id} 
-                    className="p-4 hover:bg-muted/20 transition-colors group cursor-pointer"
-                    onClick={() => handleIdeaClick(idea._id)}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
-                            {idea.title}
-                          </h4>
-                          {idea.category && (
-                            <Badge variant="secondary" className="text-[10px] h-5 px-1.5 rounded-sm font-normal text-muted-foreground">
-                              {idea.category}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                          {idea.description}
-                        </p>
-                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                          <span>{new Date(idea.createdAt).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-col items-end gap-2 shrink-0">
-                         <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
-                            <Heart className="w-3 h-3" />
-                            {idea.sparkCount || 0}
-                         </div>
-                         <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
-                            <Users className="w-3 h-3" />
-                            {idea.contributionCount || 0}
-                         </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {publicIdeas.length > 5 && (
-                  <div className="p-3 text-center bg-muted/5">
-                    <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground h-8">
-                      View All Ideas
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ) : publicIdeas === undefined ? (
-              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary mb-2"></div>
-                <p className="text-xs">Loading ideas...</p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/50">
-                <Eye className="w-8 h-8 mb-2 opacity-20" />
-                <p className="text-xs font-medium">No public ideas shared yet</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-      </div>
+        </div>
+      )}
 
       <ProfileStatsDialog 
         userId={profile._id as Id<"users">} 

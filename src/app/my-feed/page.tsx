@@ -15,7 +15,10 @@ import { Id } from "@convex/_generated/dataModel";
 import { useProfileCompletion } from "@/lib/hooks/use-profile-completion";
 import { useToast } from "@/components/ui/use-toast";
 import { RightSidebar } from "@/components/RightSidebar";
-import { IdeaGridCard } from "@/components/IdeaGridCard";
+import { IdeaGridCard, ConvexIdea } from "@/components/IdeaGridCard";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { CommentsSection } from "@/components/comments/CommentsSection";
+import { ContributionRequestModal } from "@/components/requests/ContributionRequestModal";
 
 export default function MyFeedPage() {
   const { isLoaded, userId } = useAuth();
@@ -28,6 +31,9 @@ export default function MyFeedPage() {
   // Filter states
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCommentIdea, setActiveCommentIdea] = useState<ConvexIdea | null>(null);
+  const [activeContributeIdea, setActiveContributeIdea] = useState<ConvexIdea | null>(null);
 
   // Fetch user's ideas from Convex
   const ideasQuery = useQuery(api.ideas.getUserIdeas);
@@ -88,19 +94,56 @@ export default function MyFeedPage() {
 
   const isLoading = ideasQuery === undefined;
 
+  const handleCommentClick = (ideaId: string) => {
+    const idea = ideas.find(i => i._id === ideaId);
+    if (idea) {
+      // Construct full idea object for local user
+      const fullIdea = {
+        ...idea,
+        author: {
+          _id: userId,
+          name: 'You',
+          username: '',
+        }
+      } as unknown as ConvexIdea;
+      setActiveCommentIdea(fullIdea);
+    }
+  };
+
+  const handleContributeClick = (ideaId: string) => {
+    const idea = ideas.find(i => i._id === ideaId);
+    if (idea) {
+      const fullIdea = {
+        ...idea,
+        author: {
+          _id: userId,
+          name: 'You',
+          username: '',
+        }
+      } as unknown as ConvexIdea;
+      setActiveContributeIdea(fullIdea);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <HeroHeader />
+      <HeroHeader searchQuery={searchQuery} onSearchChange={setSearchQuery} />
       
-      <RightSidebar 
-        filterOpen={filterOpen}
-        setFilterOpen={setFilterOpen}
-        selectedCategories={selectedCategories}
-        setSelectedCategories={setSelectedCategories}
-      />
+      <main className="flex-1 w-full py-12 pt-24">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          
+          {/* Right Sidebar - Positioned relative to content */}
+          <div className="absolute top-0 -right-24 h-full hidden xl:block z-50">
+            <div className="sticky top-32">
+              <RightSidebar 
+                filterOpen={filterOpen}
+                setFilterOpen={setFilterOpen}
+                selectedCategories={selectedCategories}
+                setSelectedCategories={setSelectedCategories}
+              />
+            </div>
+          </div>
 
-      <main className="flex-1 container mx-auto px-4 py-12 pt-20 pr-20"> {/* Added pr-20 for sidebar */}
-        <div className="max-w-5xl mx-auto">
           {/* Header Section - Simplified to match Feed */}
           <div className="flex flex-col gap-2 mb-12">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
@@ -128,7 +171,7 @@ export default function MyFeedPage() {
           )}
 
           {/* Ideas Grid - Max 3 columns to match Feed */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
             {isLoading ? (
               // Loading state
               <div className="col-span-full text-center py-12">
@@ -150,6 +193,9 @@ export default function MyFeedPage() {
                   onClick={() => handleIdeaClick(idea._id)}
                   onSpark={handleSpark}
                   contributorsCount={idea.activeContributions || 0}
+                  onTagClick={(tag) => setSearchQuery(tag)}
+                  onCommentClick={handleCommentClick}
+                  onContributeClick={handleContributeClick}
                 />
               ))
             ) : selectedCategories.length > 0 ? (
@@ -169,6 +215,38 @@ export default function MyFeedPage() {
           </div>
        
         </div>
+
+        {/* Comments Dialog */}
+        <Dialog open={!!activeCommentIdea} onOpenChange={(open) => !open && setActiveCommentIdea(null)}>
+          <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
+             <div className="mb-4">
+                <h2 className="text-xl font-bold">Comments</h2>
+                <p className="text-sm text-muted-foreground">
+                  {activeCommentIdea?.title}
+                </p>
+             </div>
+             {activeCommentIdea && (
+                <CommentsSection 
+                  ideaId={activeCommentIdea._id as Id<"ideas">} 
+                  commentCount={activeCommentIdea.commentCount || 0} 
+                />
+             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Contribution Request Dialog */}
+        <Dialog open={!!activeContributeIdea} onOpenChange={(open) => !open && setActiveContributeIdea(null)}>
+          <DialogContent className="sm:max-w-[500px]">
+             {activeContributeIdea && (
+                <ContributionRequestModal
+                  ideaId={activeContributeIdea._id as Id<"ideas">}
+                  ideaTitle={activeContributeIdea.title}
+                  authorName={activeContributeIdea.author?.name || activeContributeIdea.author?.username}
+                  onClose={() => setActiveContributeIdea(null)}
+                />
+             )}
+          </DialogContent>
+        </Dialog>
       </main>
 
       <FooterSection />

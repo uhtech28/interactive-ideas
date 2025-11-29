@@ -1,3 +1,4 @@
+
 import React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -8,8 +9,7 @@ import {
   MessageCircle,
   Sun,
   Moon,
-  Plus,
-  LogOut
+  Plus
 } from "lucide-react";
 import {
   Tooltip,
@@ -26,6 +26,7 @@ interface IdeaSideNavProps {
   onOpenTodos: () => void;
   onOpenCalendar: () => void;
   todoCount?: number;
+  className?: string;
 }
 
 export function IdeaSideNav({
@@ -33,9 +34,10 @@ export function IdeaSideNav({
   onOpenTodos,
   onOpenCalendar,
   todoCount = 0,
+  className,
 }: IdeaSideNavProps) {
   const { theme, setTheme } = useTheme();
-  const { signOut } = useClerk();
+  const { } = useClerk();
   const { toggleChat, isOpen: isChatOpen } = useChat();
 
   const toggleTheme = () => {
@@ -43,9 +45,28 @@ export function IdeaSideNav({
   };
 
   return (
-    <div className="fixed right-6 top-1/2 -translate-y-1/2 flex flex-col items-center py-4 px-2 z-50 bg-card/80 backdrop-blur-md border border-border/50 shadow-2xl rounded-2xl gap-4">
+    <div className={`flex flex-col items-center py-4 px-2 bg-card/80 backdrop-blur-md border border-border/50 shadow-2xl rounded-2xl gap-4 ${className}`}>
       <TooltipProvider delayDuration={0}>
         
+        {/* Create Idea - Moved to top */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className="rounded-xl w-10 h-10 hover:bg-primary/10 hover:text-primary transition-all duration-200"
+            >
+              <Link href="/create-idea">
+                <Plus className="w-5 h-5" />
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left">Create Idea</TooltipContent>
+        </Tooltip>
+
+        <div className="w-8 h-[1px] bg-border/50 my-1" />
+
         {/* Idea Specific Actions */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -116,35 +137,6 @@ export function IdeaSideNav({
           </TooltipTrigger>
           <TooltipContent side="left">Toggle Theme</TooltipContent>
         </Tooltip>
-
-        {/* Create Idea */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button asChild variant="default" size="icon" className="rounded-xl w-10 h-10 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:scale-105 transition-all duration-200">
-              <Link href="/create-idea">
-                <Plus className="w-5 h-5" />
-              </Link>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="left">Create Idea</TooltipContent>
-        </Tooltip>
-
-        <div className="w-8 h-[1px] bg-border/50 my-1" />
-
-        {/* Sign Out */}
-        <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="rounded-xl w-10 h-10 hover:bg-red-500/10 hover:text-red-500 transition-all duration-200"
-                onClick={() => signOut()}
-              >
-                <LogOut className="w-5 h-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left">Sign Out</TooltipContent>
-          </Tooltip>
 
       </TooltipProvider>
     </div>

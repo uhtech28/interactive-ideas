@@ -7,7 +7,6 @@ import { api } from "../../../convex/_generated/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Users, AlertCircle, Lightbulb, Sparkles, Send } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import { HeroHeader } from "@/components/header";
@@ -127,13 +126,12 @@ interface UserCardProps {
 
 const UserCard: React.FC<UserCardProps> = ({ user, currentUserId }) => {
   const isCurrentUser = currentUserId === user.clerkId;
-  const { toggleChat } = useChat();
+  const { openChatWithUser } = useChat();
 
   const handleMessageClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    toggleChat();
-    // TODO: Implement direct messaging logic to open chat with specific user
+    openChatWithUser(user._id);
   };
 
   return (
@@ -168,34 +166,46 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUserId }) => {
             </p>
           )}
 
-          {/* Industry Badge */}
-          <div className="mb-2">
-             {user.industry ? (
-               <Badge variant="secondary" className="rounded-md px-2 py-0 text-[10px] font-medium bg-muted text-muted-foreground hover:bg-muted/80 h-5">
-                 {user.industry}
-               </Badge>
-             ) : (
-               <div className="h-5"></div> // Spacer if no industry
-             )}
-          </div>
-
-          {/* Skills */}
-          <div className="flex flex-wrap gap-1 mb-4 h-10 content-start overflow-hidden">
-            {user.skills.length > 0 ? (
-              <>
-                {user.skills.slice(0, 3).map((skill) => (
-                  <Badge key={skill} variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-background/50">
-                    {skill}
-                  </Badge>
+          {/* Tags Section */}
+          <div className="flex flex-col gap-2 mb-4 mt-auto">
+            {/* Industry - Purple Theme */}
+            {user.industry && (
+              <div className="flex flex-wrap gap-1.5 items-center">
+                {user.industry.split(',').map(s => s.trim()).slice(0, 2).map((ind, i) => (
+                  <span 
+                    key={`ind-${i}`}
+                    className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 border border-purple-500/20 truncate max-w-[100px]"
+                  >
+                    {ind}
+                  </span>
                 ))}
-                {user.skills.length > 3 && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-background/50">
-                    +{user.skills.length - 3}
-                  </Badge>
+                {user.industry.split(',').length > 2 && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-purple-500/5 text-purple-600/70 border border-purple-500/10">
+                    +{user.industry.split(',').length - 2}
+                  </span>
                 )}
-              </>
+              </div>
+            )}
+
+            {/* Skills - Blue Theme */}
+            {user.skills.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 items-center">
+                {user.skills.slice(0, 2).map((skill, i) => (
+                  <span 
+                    key={`skill-${i}`}
+                    className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 border border-blue-500/20 truncate max-w-[100px]"
+                  >
+                    {skill}
+                  </span>
+                ))}
+                {user.skills.length > 2 && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-blue-500/5 text-blue-600/70 border border-blue-500/10">
+                    +{user.skills.length - 2}
+                  </span>
+                )}
+              </div>
             ) : (
-               <p className="text-[10px] text-muted-foreground italic">No skills listed</p>
+              <p className="text-[10px] text-muted-foreground italic">No skills listed</p>
             )}
           </div>
 

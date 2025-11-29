@@ -30,6 +30,9 @@ interface IdeaGridCardProps {
   onSpark?: (ideaId: string) => void;
   contributorsCount?: number;
   innerRef?: React.Ref<HTMLDivElement>;
+  onTagClick?: (tag: string) => void;
+  onCommentClick?: (ideaId: string) => void;
+  onContributeClick?: (ideaId: string) => void;
 }
 
 export const IdeaGridCard: React.FC<IdeaGridCardProps> = ({ 
@@ -37,7 +40,10 @@ export const IdeaGridCard: React.FC<IdeaGridCardProps> = ({
   onClick, 
   onSpark, 
   contributorsCount = 0, 
-  innerRef 
+  innerRef,
+  onTagClick,
+  onCommentClick,
+  onContributeClick
 }) => {
   const getInitials = (name: string) => {
     return name
@@ -66,8 +72,15 @@ export const IdeaGridCard: React.FC<IdeaGridCardProps> = ({
           </div>
         </div>
 
-        {/* Top Left: Author */}
-        <div className="absolute top-4 left-4 flex items-center gap-2 bg-background/30 backdrop-blur-md px-2 py-1 rounded-full border border-white/10 shadow-sm z-10 max-w-[45%]">
+        {/* Top Left: Title */}
+        <div className="absolute top-4 left-4 max-w-[50%] z-10">
+          <h3 className="text-xs font-bold leading-tight text-foreground/90 bg-background/30 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 shadow-sm truncate text-left">
+             {idea.title}
+          </h3>
+        </div>
+
+        {/* Top Right: Author */}
+        <div className="absolute top-4 right-4 flex items-center gap-2 bg-background/30 backdrop-blur-md px-2 py-1 rounded-full border border-white/10 shadow-sm z-10 max-w-[45%]">
            {idea.author?.avatar ? (
               <Image
                 src={idea.author.avatar}
@@ -87,13 +100,6 @@ export const IdeaGridCard: React.FC<IdeaGridCardProps> = ({
               </span>
            </div>
         </div>
-
-        {/* Top Right: Title */}
-        <div className="absolute top-4 right-4 max-w-[50%] flex justify-end z-10">
-          <h3 className="text-xs font-bold leading-tight text-foreground/90 bg-background/30 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 shadow-sm truncate text-right">
-             {idea.title}
-          </h3>
-        </div>
       </div>
 
       {/* Content Body */}
@@ -107,26 +113,52 @@ export const IdeaGridCard: React.FC<IdeaGridCardProps> = ({
         </p>
 
         {/* Tags Section - Below Content */}
-        <div className="flex flex-wrap gap-2 mt-auto">
+        {/* Tags Section - Below Content */}
+        <div className="flex flex-col gap-2 mt-auto">
            {/* Industries - Purple/Pink Theme */}
-           {industries.slice(0, 2).map((tag, i) => (
-            <span key={`ind-${i}`} className="text-[10px] font-medium px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-600 border border-purple-500/20">
-              {tag}
-            </span>
-          ))}
+           {industries.length > 0 && (
+             <div className="flex flex-wrap gap-2 items-center">
+               {industries.slice(0, 2).map((tag, i) => (
+                <button 
+                  key={`ind-${i}`} 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTagClick?.(tag);
+                  }}
+                  className="text-[10px] font-medium px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-600 border border-purple-500/20 hover:bg-purple-500/20 transition-colors truncate max-w-[120px]"
+                >
+                  {tag}
+                </button>
+              ))}
+              {industries.length > 2 && (
+                <span className="text-[10px] font-medium px-2 py-1 rounded-lg bg-purple-500/5 text-purple-600/70 border border-purple-500/10">
+                  +{industries.length - 2}
+                </span>
+              )}
+             </div>
+           )}
           
           {/* Skills - Blue/Indigo Theme */}
-          {skills.slice(0, 2).map((tag, i) => (
-            <span key={`skill-${i}`} className="text-[10px] font-medium px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 border border-blue-500/20">
-              {tag}
-            </span>
-          ))}
-
-          {/* More Tag */}
-          {([...industries, ...skills].length > 4) && (
-            <span className="text-[10px] font-medium px-2 py-1 rounded-lg bg-muted text-muted-foreground border border-border">
-              +{([...industries, ...skills].length - 4)}
-            </span>
+          {skills.length > 0 && (
+            <div className="flex flex-wrap gap-2 items-center">
+              {skills.slice(0, 2).map((tag, i) => (
+                <button 
+                  key={`skill-${i}`} 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTagClick?.(tag);
+                  }}
+                  className="text-[10px] font-medium px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 transition-colors truncate max-w-[120px]"
+                >
+                  {tag}
+                </button>
+              ))}
+              {skills.length > 2 && (
+                <span className="text-[10px] font-medium px-2 py-1 rounded-lg bg-blue-500/5 text-blue-600/70 border border-blue-500/10">
+                  +{skills.length - 2}
+                </span>
+              )}
+            </div>
           )}
         </div>
 
@@ -169,7 +201,7 @@ export const IdeaGridCard: React.FC<IdeaGridCardProps> = ({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  // TODO: Open comments
+                  onCommentClick?.(idea._id);
                 }}
                 className="p-1.5 rounded-full hover:bg-blue-50 text-muted-foreground hover:text-blue-500 transition-colors"
                 title="View comments"
@@ -179,7 +211,7 @@ export const IdeaGridCard: React.FC<IdeaGridCardProps> = ({
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
-                  // TODO: Show list of comments
+                  onCommentClick?.(idea._id);
                 }}
                 className="text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:underline min-w-[12px] text-center"
               >
@@ -192,7 +224,7 @@ export const IdeaGridCard: React.FC<IdeaGridCardProps> = ({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  // TODO: Send contribution request
+                  onContributeClick?.(idea._id);
                 }}
                 className="p-1.5 rounded-full hover:bg-purple-50 text-muted-foreground hover:text-purple-500 transition-colors"
                 title="Contribute"

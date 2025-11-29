@@ -7,21 +7,24 @@ import { HeroHeader } from "@/components/header";
 import FooterSection from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { ArrowLeft, Eye, Trash2, Pencil, MessageCircle, Check, Plus, Lightbulb, X } from "lucide-react";
+import { Eye, Trash2, Pencil, Check, Plus, X, Lightbulb } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
-import Link from "next/link";
+
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { api } from "@convex/_generated/api";
 import { Doc, Id } from "@convex/_generated/dataModel";
+import Image from "next/image";
+import { formatDistanceToNow } from "date-fns";
 
 import { SkillsMultiSelect } from "@/components/SkillsMultiSelect";
 import { IndustriesMultiSelect } from "@/components/IndustriesMultiSelect";
 
-import { notifyRequestSent } from "@/components/requests/notification-toast";
+
+
 import { InvitationSection } from "@/components/requests/invitation-section";
+import { CommentsSection } from "@/components/comments/CommentsSection";
+import { ContributionDashboard } from "@/components/requests/ContributionDashboard";
 import {
   Dialog,
   DialogClose,
@@ -75,26 +78,9 @@ type ConvexIdea = {
   isAuthor?: boolean;
 };
 
-type Comment = {
-  _id: string;
-  authorId: string;
-  content: string;
-  createdAt: number;
-  parentCommentId?: string;
-  author: {
-    _id: string;
-    name?: string;
-    username?: string;
-    avatar?: string;
-  } | null;
-};
 
-type ContributionRequest = {
-  _id: Id<"contributionRequests">;
-  status: 'pending' | 'accepted' | 'rejected';
-  message: string;
-  contributor: { name: string; username: string; } | null;
-};
+
+
 
 type TreeNode = {
   _id: string;
@@ -159,6 +145,7 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
   const [showTodos, setShowTodos] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Redirect if not authenticated
   React.useEffect(() => {
@@ -193,39 +180,57 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <HeroHeader />
+      <HeroHeader searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
 
 
-      <main className="flex-1 container mx-auto px-4 pb-8 pt-48 sm:pb-12">
-        {ideaQuery === undefined ? (
-          // Loading state
-          <div className="flex items-center justify-center py-12">
-            <Spinner size={48} />
-            <p className="ml-4 text-muted-foreground">Loading idea...</p>
-          </div>
-        ) : ideaQuery === null ? (
-          // Not found state
-          <div className="text-center py-12">
-            <Eye className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-2xl font-semibold text-foreground mb-2">Idea Not Found</h2>
-            <p className="text-muted-foreground mb-6">The idea you're looking for doesn't exist or has been removed.</p>
-            <Button onClick={() => router.push('/feed')}>
-              Back to Feed
-            </Button>
-          </div>
-        ) : (
-          <>
-            <div className="pb-24"> {/* Add padding bottom for fixed bottom bar */}
-              <IdeaContent idea={ideaQuery as ConvexIdea} />
+      <main className="flex-1 w-full py-12 pt-24">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          
+          {/* Right Sidebar - Desktop (xl+) */}
+          <div className="absolute top-0 -right-24 h-full hidden xl:block z-50">
+            <div className="sticky top-32">
+              <IdeaSideNav
+                onOpenHierarchy={() => setShowHierarchy(true)}
+                onOpenTodos={() => setShowTodos(true)}
+                onOpenCalendar={() => setShowCalendar(true)}
+                todoCount={todosQuery?.filter(t => t.status !== 'done').length || 0}
+              />
             </div>
+          </div>
 
+          {/* Right Sidebar - Mobile/Tablet (<xl) */}
+          <div className="xl:hidden">
             <IdeaSideNav
+              className="fixed right-4 top-1/2 -translate-y-1/2 z-50"
               onOpenHierarchy={() => setShowHierarchy(true)}
               onOpenTodos={() => setShowTodos(true)}
               onOpenCalendar={() => setShowCalendar(true)}
               todoCount={todosQuery?.filter(t => t.status !== 'done').length || 0}
             />
+          </div>
+
+          {ideaQuery === undefined ? (
+            // Loading state
+            <div className="flex items-center justify-center py-12">
+              <Spinner size={48} />
+              <p className="ml-4 text-muted-foreground">Loading idea...</p>
+            </div>
+          ) : ideaQuery === null ? (
+            // Not found state
+            <div className="text-center py-12">
+              <Eye className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+              <h2 className="text-2xl font-semibold text-foreground mb-2">Idea Not Found</h2>
+              <p className="text-muted-foreground mb-6">The idea you're looking for doesn't exist or has been removed.</p>
+              <Button onClick={() => router.push('/feed')}>
+                Back to Feed
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="pb-24"> {/* Add padding bottom for fixed bottom bar */}
+                <IdeaContent idea={ideaQuery as ConvexIdea} onTagClick={setSearchQuery} />
+              </div>
 
             <IdeaBottomBar
               ideaId={ideaQuery._id}
@@ -258,7 +263,14 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
                 <DialogHeader>
                   <DialogTitle>Contribution Requests</DialogTitle>
                 </DialogHeader>
-                <ContributionRequestSection idea={ideaQuery as ConvexIdea} />
+                <ContributionDashboard 
+                  ideaId={ideaQuery._id as Id<"ideas">}
+                  ideaTitle={(ideaQuery as ConvexIdea).title}
+                  authorId={(ideaQuery as ConvexIdea).authorId}
+                  authorName={(ideaQuery as ConvexIdea).author?.name || (ideaQuery as ConvexIdea).author?.username}
+                  isAuthor={(ideaQuery as ConvexIdea).isAuthor || false}
+                  onClose={() => setShowRequests(false)}
+                />
                 <InvitationSection idea={{ _id: ideaQuery._id as Id<"ideas">, isAuthor: (ideaQuery as ConvexIdea).isAuthor || false }} />
               </DialogContent>
             </Dialog>
@@ -299,6 +311,7 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
           </>
 
         )}
+        </div>
       </main>
 
       <FooterSection />
@@ -306,506 +319,12 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
   );
 }
 
-const ContributionRequestSection: React.FC<{ idea: ConvexIdea }> = ({ idea }) => {
-  const { userId } = useAuth();
-  const createRequestMutation = useMutation(api.contributionRequests.createContributionRequest);
-  const incomingRequests = useQuery(api.contributionRequests.getRequestsByIdea, { ideaId: idea._id as Id<"ideas"> });
-
-  // Use the backend-calculated isAuthor field instead of comparing IDs directly
-  const isAuthor = idea.isAuthor || false;
-
-  // For authors: Show incoming requests
-  if (isAuthor) {
-    console.log("[FIXED] Author view rendered - isAuthor:", isAuthor);
-    console.log("[FIXED] Author view - request count:", incomingRequests?.length || 0);
-    return (
-      <div className="max-w-4xl mx-auto mt-8">
-        <div className="bg-card border border-border rounded-xl p-6 transition-colors">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Incoming Contribution Requests</h3>
-            <Link href={`/profile/contribution-requests/${idea._id}`}>
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
-                View All
-                <ArrowLeft className="w-4 h-4 rotate-180" />
-              </Button>
-            </Link>
-          </div>
-          {incomingRequests === undefined ? (
-            <div className="text-center py-4">
-              <Spinner size={24} />
-              <p className="text-muted-foreground mt-2">Loading requests...</p>
-            </div>
-          ) : incomingRequests && incomingRequests.length > 0 ? (
-            <>
-              {console.log("[SUCCESS] Found incoming requests:", incomingRequests.length)}
-              <div className="space-y-4">
-                {incomingRequests.map((request) => (
-                  <IncomingRequestCard key={request._id} request={request} />
-                ))}
-              </div>
-            </>
-          ) : (
-            <>
-              {console.log('[SUCCESS] No contribution requests found - section should display "No contribution requests received yet."')}
-              <p className="text-muted-foreground py-4">
-                No contribution requests received yet.
-              </p>
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
 
 
-  // For contributors: Show request interface only if logged in
-  if (!userId) return null;
 
-  return <ContributorRequestSection idea={idea} createRequestMutation={createRequestMutation} />;
-};
 
-// New component for incoming requests (author view)
-const IncomingRequestCard: React.FC<{ request: ContributionRequest }> = ({ request }) => {
-  const updateStatusMutation = useMutation(api.contributionRequests.updateRequestStatus);
-  const [isUpdating, setIsUpdating] = React.useState(false);
 
-  const handleStatusUpdate = async (status: "accepted" | "rejected") => {
-    try {
-      setIsUpdating(true);
-      await updateStatusMutation({ requestId: request._id, status });
-    } catch (error) {
-      console.error("Failed to update request status:", error);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  return (
-    <div className="border border-border rounded-lg p-4">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <Avatar className="w-8 h-8">
-            <AvatarFallback>
-              {request.contributor?.name?.charAt(0).toUpperCase() || "?"}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="font-medium">{request.contributor?.name || "Unknown"}</p>
-            <p className="text-sm text-muted-foreground">@{request.contributor?.username || "unknown"}</p>
-          </div>
-        </div>
-        <Badge variant={request.status === "accepted" ? "default" : request.status === "rejected" ? "destructive" : "secondary"}>
-          {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-        </Badge>
-      </div>
-      <p className="text-sm mt-2">{request.message}</p>
-      {request.status === "pending" && (
-        <div className="flex gap-2 mt-3">
-          <Button
-            size="sm"
-            onClick={() => handleStatusUpdate("accepted")}
-            disabled={isUpdating}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            {isUpdating ? <Spinner size={14} /> : "Accept"}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleStatusUpdate("rejected")}
-            disabled={isUpdating}
-          >
-            {isUpdating ? <Spinner size={14} /> : "Reject"}
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// New component for contributor request sending
-const ContributorRequestSection: React.FC<{
-  idea: ConvexIdea;
-  createRequestMutation: (args: { ideaId: Id<"ideas">; message: string }) => Promise<{ requestId: string; message: string }>;
-}> = ({ idea, createRequestMutation }) => {
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [message, setMessage] = React.useState("");
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [error, setError] = React.useState("");
-  const [existingRequest, setExistingRequest] = React.useState<Doc<"contributionRequests"> | null>(null);
-
-  // Check if user already has a request
-  const userRequests = useQuery(api.contributionRequests.getMyRequests);
-  React.useEffect(() => {
-    if (userRequests) {
-      const request = userRequests.find(req => req.ideaId === idea._id);
-      setExistingRequest(request || null);
-    }
-  }, [userRequests, idea._id]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!message.trim() || isSubmitting) return;
-
-    setIsSubmitting(true);
-    setError("");
-
-    try {
-      await createRequestMutation({
-        ideaId: idea._id as Id<"ideas">,
-        message: message.trim(),
-      });
-
-      // Close modal and clear message
-      setIsDialogOpen(false);
-      setMessage("");
-      // Note: Query will automatically update
-      notifyRequestSent();
-    } catch (err: unknown) {
-      console.error("Failed to send contribution request:", err);
-      setError(err instanceof Error ? err.message : "Failed to send contribution request. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const getStatusDisplay = () => {
-    if (!existingRequest) return null;
-
-    const status = existingRequest.status;
-    const badgeColor = {
-      pending: "bg-yellow-100 text-yellow-800 border-yellow-300",
-      accepted: "bg-green-100 text-green-800 border-green-300",
-      rejected: "bg-red-100 text-red-800 border-red-300",
-    }[status as "pending" | "accepted" | "rejected"] || "bg-gray-100 text-gray-800 border-gray-300";
-
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Badge className={`border ${badgeColor}`}>
-            {status.charAt(0).toUpperCase() + status.slice(1)}
-          </Badge>
-        </div>
-        <div className="border border-border rounded-lg p-4 bg-muted/50">
-          <p className="text-sm font-medium mb-2">Your message:</p>
-          <p className="text-sm text-muted-foreground">{existingRequest.message}</p>
-        </div>
-        {status === "rejected" && (
-          <p className="text-sm text-muted-foreground mt-2">
-            You can submit a new request if you'd like to try again.
-          </p>
-        )}
-      </div>
-    );
-  };
-
-  return (
-    <div className="max-w-4xl mx-auto mt-8 px-4">
-      <div className="bg-card border border-border rounded-xl p-4 sm:p-6 transition-colors max-h-[80vh] overflow-hidden flex flex-col">
-        <h3 className="text-lg font-semibold mb-4">
-          {existingRequest ? "Your Contribution Request" : "Interested in contributing?"}
-        </h3>
-
-        {existingRequest ? (
-          <div>
-            {getStatusDisplay()}
-            {existingRequest.status === "rejected" && (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="mt-4">
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Submit New Request
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Request to Contribute</DialogTitle>
-                    <DialogDescription>
-                      Let {idea.author?.name || 'the author'} know how you'd like to help with this idea.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleSubmit}>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid gap-2">
-                        <label htmlFor="message" className="text-sm font-medium">
-                          Describe your contribution
-                        </label>
-                        <Textarea
-                          id="message"
-                          placeholder="Tell us how you can contribute to this idea..."
-                          value={message}
-                          onChange={(e) => setMessage(e.target.value)}
-                          className="resize-none"
-                          rows={4}
-                          maxLength={1200}
-                          autoFocus
-                          required
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>{error}</span>
-                          <span>{message.length}/1200</span>
-                        </div>
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <DialogClose asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={isSubmitting}
-                        >
-                          Cancel
-                        </Button>
-                      </DialogClose>
-                      <Button
-                        type="submit"
-                        disabled={!message.trim() || isSubmitting || message.length > 1200}
-                      >
-                        {isSubmitting ? <Spinner size={16} /> : "Send Request"}
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
-        ) : (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="w-full md:w-auto">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Request to Contribute
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Request to Contribute</DialogTitle>
-                <DialogDescription>
-                  Let {idea.author?.name || 'the author'} know how you'd like to help with this idea.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit}>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <label htmlFor="message" className="text-sm font-medium">
-                      Describe your contribution
-                    </label>
-                    <Textarea
-                      id="message"
-                      placeholder="Tell us how you can contribute to this idea..."
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      className="resize-none"
-                      rows={4}
-                      maxLength={1200}
-                      autoFocus
-                      required
-                    />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{error}</span>
-                      <span>{message.length}/1200</span>
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={isSubmitting}
-                    >
-                      Cancel
-                    </Button>
-                  </DialogClose>
-                  <Button
-                    type="submit"
-                    disabled={!message.trim() || isSubmitting || message.length > 1200}
-                  >
-                    {isSubmitting ? <Spinner size={16} /> : "Send Request"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const CommentsSection: React.FC<{ ideaId: Id<"ideas">; commentCount: number }> = ({ ideaId, commentCount }) => {
-  const { userId } = useAuth();
-
-  const groupByParent = (comments: Comment[]) => {
-    const roots: Comment[] = [];
-    const replies: { [key: string]: Comment[] } = {};
-    comments.forEach(c => {
-      if (c.parentCommentId) {
-        if (!replies[c.parentCommentId]) replies[c.parentCommentId] = [];
-        replies[c.parentCommentId].push(c);
-      } else {
-        roots.push(c);
-      }
-    });
-    return { roots, replies };
-  };
-
-  const CommentItem: React.FC<{ comment: Comment; replies: Comment[]; ideaId: Id<"ideas">; level?: number }> = ({ comment, replies, ideaId, level = 0 }) => {
-    const [showReply, setShowReply] = useState(false);
-    const [replyContent, setReplyContent] = useState("");
-    const [isReplying, setIsReplying] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
-    const addCommentMutation = useMutation(api.ideas.addComment);
-    const deleteCommentMutation = useMutation(api.ideas.deleteComment);
-
-    const handleReply = async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!replyContent.trim() || !userId) return;
-      setIsReplying(true);
-      try {
-        await addCommentMutation({
-          ideaId,
-          content: replyContent.trim(),
-          parentCommentId: comment._id as Id<"comments">,
-        });
-        setReplyContent("");
-        setShowReply(false);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsReplying(false);
-      }
-    };
-
-    const handleDelete = async () => {
-      if (!userId || !confirm("Are you sure you want to delete this comment? This action cannot be undone and will also remove any replies to this comment.")) return;
-      setIsDeleting(true);
-      try {
-        await deleteCommentMutation({ commentId: comment._id as Id<"comments"> });
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsDeleting(false);
-      }
-    };
-
-    const getInitials = (name: string) => {
-      return name.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2);
-    };
-
-    return (
-      <div className={`border-l-2 border-border pl-4 ${level > 0 ? "ml-4" : ""} py-4 ${level === 0 ? "bg-card rounded-xl p-4 transition-colors" : "rounded-xl"}`}>
-        <div className="flex items-start space-x-4">
-          <Avatar className="w-8 h-8">
-            <AvatarImage src={comment.author?.avatar} alt={comment.author?.name} />
-            <AvatarFallback>{getInitials(comment.author?.name || comment.author?.username || "U")}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <div className="flex items-center space-x-2 mb-1">
-              <span className="font-semibold text-sm">{comment.author?.name || comment.author?.username}</span>
-              <span className="text-xs text-muted-foreground">{new Date(comment.createdAt).toLocaleDateString()}</span>
-            </div>
-            <p className="text-sm leading-relaxed">{comment.content}</p>
-            <div className="mt-2 flex items-center space-x-4 text-xs">
-              {userId && <button className="text-muted-foreground hover:text-foreground transition-colors" onClick={() => setShowReply(!showReply)}>Reply</button>}
-              {userId === comment.authorId && <button className="text-destructive hover:text-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" onClick={handleDelete} disabled={isDeleting} title="Delete comment">{isDeleting ? <Spinner size={14} /> : <Trash2 className="w-4 h-4" />}</button>}
-            </div>
-            {showReply && (
-              <form onSubmit={handleReply} className="mt-4 flex space-x-2 rounded-xl">
-                <Textarea
-                  placeholder="Add a reply..."
-                  value={replyContent}
-                  onChange={(e) => setReplyContent(e.target.value)}
-                  className="h-20 flex-1 resize-none rounded-xl"
-                  maxLength={1200}
-                />
-                <div className="flex flex-col space-y-2">
-                  <Button type="submit" disabled={!replyContent.trim() || isReplying} className="px-4 transition-colors">
-                    {isReplying ? <Spinner size={16} /> : "Reply"}
-                  </Button>
-                  <Button variant="ghost" onClick={() => setShowReply(false)} className="transition-colors">Cancel</Button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-        {replies.length > 0 && (
-          <div className="mt-4 space-y-2">
-            {replies.map(reply => (
-              <CommentItem key={reply._id} comment={reply} replies={[]} ideaId={ideaId} level={level + 1} />
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const comments = useQuery(api.ideas.getComments, { ideaId, limit: 100 });
-  const addCommentMutation = useMutation(api.ideas.addComment);
-  const [content, setContent] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim() || !userId) return;
-    setIsSubmitting(true);
-    try {
-      await addCommentMutation({
-        ideaId,
-        content: content.trim(),
-      });
-      setContent("");
-      setError("");
-    } catch (err) {
-      setError("Failed to post comment");
-      console.error(err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const { roots, replies } = groupByParent(comments || []);
-
-  return (
-    <div className="max-w-4xl mx-auto px-4">
-      <div className="bg-card border border-border rounded-xl p-4 sm:p-6 transition-colors">
-        <h3 className="text-xl font-semibold mb-4">{commentCount} Comments</h3>
-        {
-          userId ? (
-            <form onSubmit={handleSubmit} className="space-y-4 mb-6 rounded-xl">
-              <Textarea
-                placeholder="Share your thoughts..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="h-20 resize-none rounded-xl"
-                disabled={isSubmitting}
-                maxLength={1200}
-              />
-              {error && <p className="text-destructive text-sm">{error}</p>}
-              <div className="flex justify-between items-center">
-                <Button type="submit" disabled={!content.trim() || isSubmitting} className="px-6 transition-colors">
-                  {isSubmitting ? <Spinner size={18} /> : "Post Comment"}
-                </Button>
-                <span className="text-xs text-muted-foreground">{content.length}/1200</span>
-              </div>
-            </form>
-          ) : (
-            <p className="text-muted-foreground">Sign in to leave a comment.</p>
-          )
-        }
-        <div className="space-y-4">
-          {roots.map(comment => (
-            <CommentItem key={comment._id} comment={comment} replies={replies[comment._id] || []} ideaId={ideaId} />
-          ))}
-          {comments === undefined && <div className="flex justify-center"><Spinner size={24} /></div>}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const IdeaContent: React.FC<{ idea: ConvexIdea }> = ({ idea }) => {
+const IdeaContent: React.FC<{ idea: ConvexIdea; onTagClick?: (tag: string) => void }> = ({ idea, onTagClick }) => {
     const router = useRouter();
     const updateIdeaMutation = useMutation(api.ideas.updateIdea);
     const deleteIdeaMutation = useMutation(api.ideas.deleteIdea);
@@ -816,165 +335,206 @@ const IdeaContent: React.FC<{ idea: ConvexIdea }> = ({ idea }) => {
     const [editedVisibility, setEditedVisibility] = useState(idea.visibility);
     const [updating, setUpdating] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+
     const [errorMsg, setErrorMsg] = useState("");
 
-    // Available categories
+    const getInitials = (name: string) => {
+      return name.split(' ').map(part => part[0]).join('').toUpperCase().slice(0, 2);
+    };
+  
+    // Parse categories (skills) and industries
+    const skills = idea.category ? idea.category.split(',').map(s => s.trim()) : [];
+    const industries = idea.industries ? idea.industries.split(',').map(i => i.trim()) : [];
 
+    const handleEdit = () => {
+      setEditedTitle(idea.title);
+      setEditedDescription(idea.description);
+      setEditedCategory(idea.category);
+      setEditedVisibility(idea.visibility);
+      setIsEditing(true);
+      setErrorMsg("");
+    };
 
+    const handleSave = async () => {
+      if (!editedTitle.trim() || !editedDescription.trim()) return;
+      setUpdating(true);
+      setErrorMsg("");
+      try {
+        await updateIdeaMutation({
+          ideaId: idea._id as Id<"ideas">,
+          title: editedTitle.trim(),
+          description: editedDescription.trim(),
+          category: editedCategory,
+          visibility: editedVisibility
+        });
+        setIsEditing(false);
+      } catch (err) {
+        setErrorMsg("Failed to update idea. Please try again.");
+        console.error(err);
+      } finally {
+        setUpdating(false);
+      }
+    };
 
-  const handleEdit = () => {
-    setEditedTitle(idea.title);
-    setEditedDescription(idea.description);
-    setEditedCategory(idea.category);
-    setEditedVisibility(idea.visibility);
-    setIsEditing(true);
-    setErrorMsg("");
-  };
+    const handleDelete = async () => {
+      if (!window.confirm("Are you sure you want to delete this idea? This action cannot be undone.")) return;
+      setIsDeleting(true);
+      setErrorMsg("");
+      try {
+        await deleteIdeaMutation({ ideaId: idea._id as Id<"ideas"> });
+        // Redirect after successful deletion
+        router.push('/feed');
+      } catch (err) {
+        setErrorMsg("Failed to delete idea. Please try again.");
+        console.error(err);
+      } finally {
+        setIsDeleting(false);
+      }
+    };
 
-  const handleSave = async () => {
-    if (!editedTitle.trim() || !editedDescription.trim()) return;
-    setUpdating(true);
-    setErrorMsg("");
-    try {
-      await updateIdeaMutation({
-        ideaId: idea._id as Id<"ideas">,
-        title: editedTitle.trim(),
-        description: editedDescription.trim(),
-        category: editedCategory,
-        visibility: editedVisibility
-      });
+    const handleCancel = () => {
       setIsEditing(false);
-    } catch (err) {
-      setErrorMsg("Failed to update idea. Please try again.");
-      console.error(err);
-    } finally {
-      setUpdating(false);
-    }
-  };
+      setErrorMsg("");
+    };
 
-  const handleDelete = async () => {
-    if (!window.confirm("Are you sure you want to delete this idea? This action cannot be undone.")) return;
-    setIsDeleting(true);
-    setErrorMsg("");
-    try {
-      await deleteIdeaMutation({ ideaId: idea._id as Id<"ideas"> });
-      // Redirect after successful deletion
-      router.push('/feed');
-    } catch (err) {
-      setErrorMsg("Failed to delete idea. Please try again.");
-      console.error(err);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setIsEditing(false);
-    setErrorMsg("");
-  };
-
-
-
-  return (
-    <div className="max-w-4xl mx-auto rounded-xl">
-      {/* Title with Gradient */}
-      <div className="mb-6 rounded-xl">
-        {isEditing ? (
-          <Input
-            value={editedTitle}
-            onChange={(e) => setEditedTitle(e.target.value)}
-            className="text-4xl font-bold mb-4 border-0 bg-transparent text-transparent bg-gradient-to-r from-primary to-purple-600 bg-clip-text p-0"
-            disabled={updating}
-            maxLength={100}
-            placeholder="Idea title"
-          />
-        ) : (
-          <div className="flex items-start justify-between mb-8">
-            <div className="space-y-2 max-w-[70%]">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent leading-tight">
-                {idea.title}
-              </h1>
-              <span className="inline-block bg-gradient-to-r from-primary/10 to-purple-600/10 border border-primary/20 text-primary font-medium px-3 py-1 rounded-full text-sm">
-                {idea.category || 'General'}
-              </span>
-            </div>
-            
-            <div className="flex flex-col items-end gap-4">
-              <div className="flex items-center gap-3 bg-card/50 px-4 py-2 rounded-full border border-border/50">
-                <div className="text-right">
-                  <p className="font-medium text-sm">{idea.author?.name || idea.author?.username || "Unknown Author"}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(idea.createdAt).toLocaleDateString()}</p>
-                </div>
-                <Avatar className="w-10 h-10 border-2 border-background">
-                  <AvatarImage src={idea.author?.avatar} />
-                  <AvatarFallback>{idea.author?.name?.charAt(0) || "U"}</AvatarFallback>
-                </Avatar>
-              </div>
-
-              {(idea.isAuthor || false) && !isEditing && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleEdit}
-                    className="h-8 w-8 p-0"
-                    title="Edit idea"
-                    disabled={isDeleting}
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleDelete}
-                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                    title="Delete idea"
-                    disabled={isDeleting || updating}
-                  >
-                    {isDeleting ? <Spinner size={14} /> : <Trash2 className="w-4 h-4" />}
-                  </Button>
-                </div>
-              )}
+    return (
+      <div className="group relative overflow-hidden rounded-3xl border border-border/50 bg-card text-card-foreground transition-all duration-300 flex flex-col shadow-xl">
+        {/* Header Section */}
+        <div className="relative h-64 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-pink-500/5 overflow-hidden shrink-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 flex items-center justify-center">
+            <div className="w-32 h-32 rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-6xl font-bold text-foreground/80 shadow-2xl ring-1 ring-white/30">
+              {idea.title.charAt(0).toUpperCase()}
             </div>
           </div>
-        )}
-      </div>
 
+          {/* Title (Top Left) */}
+          <div className="absolute top-6 left-6 max-w-[60%] z-10">
+             {isEditing ? (
+                <Input
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    className="text-2xl font-bold bg-background/80 backdrop-blur-md border-white/20 h-auto py-2"
+                    placeholder="Idea Title"
+                />
+             ) : (
+                <h1 className="text-2xl font-bold leading-tight text-foreground/90 bg-background/30 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 shadow-sm text-left">
+                    {idea.title}
+                </h1>
+             )}
+          </div>
 
+          {/* Author (Top Right) */}
+          <div className="absolute top-6 right-6 flex items-center gap-3 bg-background/30 backdrop-blur-md px-3 py-2 rounded-full border border-white/10 shadow-sm z-10">
+             {idea.author?.avatar ? (
+                <Image
+                  src={idea.author.avatar}
+                  alt={idea.author?.name || idea.author?.username || 'User'}
+                  className="w-8 h-8 rounded-full object-cover border border-white/20 shrink-0"
+                  width={32}
+                  height={32}
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary border border-white/20 shrink-0">
+                  {getInitials(idea.author?.name || idea.author?.username || 'U')}
+                </div>
+              )}
+             <div className="flex flex-col min-w-0 pr-2">
+                <span className="text-xs font-semibold text-foreground/90 leading-none truncate">
+                  {idea.author?.name || idea.author?.username || 'Unknown'}
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  {formatDistanceToNow(idea.createdAt, { addSuffix: true })}
+                </span>
+             </div>
+          </div>
 
-      {/* Description */}
-      <div className="prose prose-lg max-w-none mb-8 p-6 bg-gradient-to-br from-card/50 to-card/30 rounded-xl border border-border transition-colors">
-        {isEditing ? (
-          <Textarea
-            value={editedDescription}
-            onChange={(e) => setEditedDescription(e.target.value)}
-            className="text-muted-foreground leading-relaxed border-0 bg-transparent resize-none w-full"
-            disabled={updating}
-            maxLength={1200}
-            placeholder="Idea description"
-          />
-        ) : (
-          <p className="text-muted-foreground leading-relaxed">{idea.description}</p>
-        )}
-      </div>
-
-
-
-      {isEditing && errorMsg && <p className="text-destructive text-sm mb-4">{errorMsg}</p>}
-
-      {isEditing && (
-        <div className="flex space-x-2 mb-8">
-          <Button onClick={handleSave} disabled={!editedTitle.trim() || !editedDescription.trim() || updating}>
-            {updating ? <Spinner size={18} /> : "Save"}
-          </Button>
-          <Button variant="outline" onClick={handleCancel} disabled={updating}>
-            Cancel
-          </Button>
+          {/* Edit Actions (Bottom Right of Header) */}
+          {(idea.isAuthor || false) && !isEditing && (
+            <div className="absolute bottom-4 right-4 flex gap-2 z-10">
+               <Button
+                 variant="secondary"
+                 size="sm"
+                 onClick={handleEdit}
+                 className="bg-background/50 backdrop-blur-md hover:bg-background/80 border border-white/10"
+               >
+                 <Pencil className="w-4 h-4 mr-2" />
+                 Edit
+               </Button>
+               <Button
+                 variant="destructive"
+                 size="sm"
+                 onClick={handleDelete}
+                 disabled={isDeleting}
+                 className="bg-red-500/80 backdrop-blur-md hover:bg-red-600/90 border border-white/10"
+               >
+                 {isDeleting ? <Spinner size={16} className="mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                 Delete
+               </Button>
+            </div>
+          )}
         </div>
-      )}
 
-    </div>
-  ); }
+        {/* Body */}
+        <div className="p-8 flex flex-col gap-8">
+            {/* Description */}
+            <div className="prose prose-lg max-w-none text-muted-foreground leading-relaxed">
+                {isEditing ? (
+                    <Textarea
+                        value={editedDescription}
+                        onChange={(e) => setEditedDescription(e.target.value)}
+                        className="min-h-[200px] resize-y"
+                        placeholder="Describe your idea..."
+                    />
+                ) : (
+                    <p className="whitespace-pre-wrap">{idea.description}</p>
+                )}
+            </div>
+
+            {/* Tags */}
+            <div className="flex flex-col gap-4 pt-6 border-t border-border/50">
+                <div className="flex flex-wrap gap-2">
+                   {/* Industries */}
+                   {industries.map((tag, i) => (
+                    <button 
+                      key={`ind-${i}`} 
+                      onClick={() => onTagClick?.(tag)}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-purple-500/10 text-purple-600 border border-purple-500/20 hover:bg-purple-500/20 transition-colors"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                  
+                  {/* Skills */}
+                  {skills.map((tag, i) => (
+                    <button 
+                      key={`skill-${i}`} 
+                      onClick={() => onTagClick?.(tag)}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+            </div>
+
+            {/* Edit Mode Actions */}
+            {isEditing && (
+                <div className="flex items-center gap-4 pt-4 border-t border-border/50">
+                    <Button onClick={handleSave} disabled={updating}>
+                        {updating ? <div className="mr-2"><Spinner size={16} /></div> : <Check className="w-4 h-4 mr-2" />}
+                        Save Changes
+                    </Button>
+                    <Button variant="outline" onClick={handleCancel} disabled={updating}>
+                        <X className="w-4 h-4 mr-2" />
+                        Cancel
+                    </Button>
+                    {errorMsg && <p className="text-destructive text-sm">{errorMsg}</p>}
+                </div>
+            )}
+        </div>
+      </div>
+    ); 
+};
 
 const TodoSection: React.FC<{
   idea: ConvexIdea;

@@ -1,36 +1,16 @@
-"use client"
+"use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react"
-import Link from "next/link"
-import { useQuery, useMutation } from "convex/react"
-import { api } from "../../../convex/_generated/api"
-import { Id } from "../../../convex/_generated/dataModel"
-import type { UserProfile } from "../../../convex/users"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { AvatarUpload } from "@/components/user/avatar-upload"
-import { RequestStatusCard, ContributionRequest } from "@/components/requests/request-status-card"
-import { TooltipProvider } from "@/components/ui/tooltip"
-import { Edit2, MapPin, LinkIcon, Loader2, CheckCircle, XCircle } from "lucide-react"
-import { SkillsMultiSelect } from "@/components/SkillsMultiSelect"
-import { IndustriesMultiSelect } from "@/components/IndustriesMultiSelect"
-import { useToast } from "../ui/use-toast"
-
-interface Idea {
-  _id: Id<"ideas">;
-  title: string;
-  description: string;
-  visibility: string;
-  category?: string;
-  createdAt: number;
-  sparkCount?: number;
-  commentCount?: number;
-}
+import React from "react";
+import Link from "next/link";
+import { UserProfile } from "./CompactProfileView";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Edit2, MapPin, Link2, Lightbulb, Sparkles, Users, ChevronRight } from "lucide-react";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { ContributionRequest, RequestStatusCard } from "@/components/requests/request-status-card";
+import { useRouter } from "next/navigation";
 
 interface DetailedProfileViewProps {
   profile: UserProfile;
@@ -68,622 +48,218 @@ interface DetailedProfileViewProps {
   incomingRequests?: ContributionRequest[];
 }
 
-export function DetailedProfileView({
+export const DetailedProfileView: React.FC<DetailedProfileViewProps> = ({
   profile,
-  isEditing,
-  setIsEditing,
-  formData,
-  setFormData,
+  isEditing: _isEditing,
+  setIsEditing: _setIsEditing,
+  formData: _formData,
+  setFormData: _setFormData,
   myRequests,
   incomingRequests
-}: DetailedProfileViewProps) {
-  const [activeTab, setActiveTab] = useState<"created" | "sparked" | "contributed">("created");
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
+}) => {
+  const router = useRouter();
 
-  const updateProfile = useMutation(api.users.updateUserProfile);
-
-  // Fetch ideas for the tabs
-  const createdIdeas = useQuery(api.ideas.getProfileIdeas, { userId: profile._id });
-  const sparkedIdeas = useQuery(api.ideas.getPublicSparkedIdeasForUser, { userId: profile._id });
-  const contributedIdeas = useQuery(api.ideas.getPublicContributedIdeasForUser, { userId: profile._id });
-
-  // Username validation state
-  const [usernameValidation, setUsernameValidation] = useState({
-    checking: false,
-    available: null as boolean | null,
-    error: '',
-  });
-  const [validationUsername, setValidationUsername] = useState('');
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
-
-  // Convex query for username availability
-  const availabilityQuery = useQuery(
-    api.users.checkUsernameAvailability,
-    validationUsername ? { username: validationUsername } : 'skip'
-  );
-
-  // Effect to update validation state based on query results
-  useEffect(() => {
-    if (!validationUsername) {
-      setUsernameValidation({
-        checking: false,
-        available: null,
-        error: '',
-      });
-      return;
-    }
-
-    // Only check if username is different from current profile username
-    if (validationUsername === profile.username) {
-       setUsernameValidation({
-        checking: false,
-        available: null, // It's their own username, so it's "valid" but we don't need to show "Available"
-        error: '',
-      });
-      return;
-    }
-
-    if (availabilityQuery === undefined) {
-      setUsernameValidation(prev => ({ ...prev, checking: true, error: '' }));
-      return;
-    }
-
-    if (availabilityQuery.available) {
-      setUsernameValidation({
-        checking: false,
-        available: true,
-        error: '',
-      });
-    } else {
-      setUsernameValidation({
-        checking: false,
-        available: false,
-        error: availabilityQuery.error || 'This username is already taken',
-      });
-    }
-  }, [availabilityQuery, validationUsername, profile.username]);
-
-  // Debounced username validation function
-  const validateUsername = useCallback((username: string) => {
-    if (!username.trim() || username === profile.username) {
-      setValidationUsername('');
-      return;
-    }
-    setValidationUsername(username);
-  }, [profile.username]);
-
-  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newUsername = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
-    
-    // Update form data immediately
-    if (!profile.completedOnboarding) {
-        setFormData(prev => ({ ...prev, username: newUsername }));
-    }
-
-    // Debounce validation
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => {
-      validateUsername(newUsername);
-    }, 500);
-  };
-
-  const handleCancel = () => {
-    setFormData({
-      displayName: profile.displayName,
-      bio: profile.bio || "",
-      avatar: profile.avatar || "",
-      location: profile.location || "",
-      website: profile.website || "",
-      github: profile.github || "",
-      linkedin: profile.linkedin || "",
-      twitter: profile.twitter || "",
-      industry: profile.industry || "",
-      industries: profile.industries || [],
-      skills: profile.skills || [],
-      username: profile.username,
-    });
-    setValidationUsername('');
-    setUsernameValidation({ checking: false, available: null, error: '' });
-    setIsEditing(false);
-  };
-
-  const handleSubmit = async () => {
-    // Prevent submission if username is invalid/taken (unless it's the original username)
-    if (formData.username !== profile.username && usernameValidation.available === false) {
-        toast({
-            title: "Invalid Username",
-            description: "Please choose an available username.",
-            variant: "destructive",
-        });
-        return;
-    }
-
-    setLoading(true);
-    try {
-      await updateProfile({
-        displayName: formData.displayName,
-        bio: formData.bio,
-        avatar: formData.avatar,
-        location: formData.location,
-        website: formData.website,
-        github: formData.github,
-        linkedin: formData.linkedin,
-        twitter: formData.twitter,
-        industry: formData.industry,
-        skills: formData.skills,
-        // Only include username if it's allowed to be changed (e.g. during onboarding or if we enable it later)
-        // For now, DetailedProfileView usually assumes onboarding is done, but let's respect the prop if we pass it
-        // Note: updateUserProfile mutation might not accept username update if not implemented, 
-        // but based on the code it seems we might handle it or it's ignored if not in args.
-        // Checking convex/users.ts: updateUserProfile args DOES NOT include username. 
-        // So username change here is purely client-side state until we add it to mutation or use a different one.
-        // Wait, the requirement implies we should be able to check availability, implying we might want to change it?
-        // But the mutation `updateUserProfile` in `convex/users.ts` DOES NOT take `username`.
-        // `createUserProfile` does.
-        // If `profile.completedOnboarding` is true, the input is disabled anyway in the original code.
-        // "disabled={profile.completedOnboarding}"
-        // So this availability check is mostly relevant if `completedOnboarding` is false, 
-        // OR if we enable username changing. 
-        // The user request says "In the profile page's username display/edit field...".
-        // If the field is disabled, the check won't trigger because onChange won't fire.
-        // If it IS enabled (onboarding not complete), then we need to ensure we save it.
-        // But `updateUserProfile` doesn't take username.
-        // `createUserProfile` is used for initial setup.
-        // If we are in `DetailedProfileView`, we are likely viewing an existing profile.
-        // If `completedOnboarding` is false, we might be in a weird state or using this component for setup?
-        // Actually `ProfileSetupPage` uses `createUserProfile` or `updateUserProfile`.
-        // `DetailedProfileView` uses `updateUserProfile`.
-        // If the user wants to change username here, we might need to update the mutation too?
-        // BUT, the prompt specifically asked for the UI status message.
-        // I will implement the UI. If the input is disabled, it won't matter.
-        // If it is enabled, we show the status.
-      });
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been successfully updated.",
-      });
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Failed to update profile:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update profile. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const renderTabContent = () => {
-    let ideas: Idea[] | undefined;
-    let emptyMessage = "";
-
-    switch (activeTab) {
-      case "created":
-        ideas = createdIdeas as Idea[] | undefined;
-        emptyMessage = "No ideas created yet.";
-        break;
-      case "sparked":
-        ideas = sparkedIdeas as Idea[] | undefined;
-        emptyMessage = "No ideas sparked yet.";
-        break;
-      case "contributed":
-        ideas = contributedIdeas as Idea[] | undefined;
-        emptyMessage = "No contributions yet.";
-        break;
-    }
-
-    if (ideas === undefined) return <div className="text-center py-8">Loading...</div>;
-
-    if (ideas.length === 0) {
-      return (
-        <div className="text-center py-12 text-muted-foreground bg-muted/30 rounded-lg border border-dashed">
-          {emptyMessage}
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-3">
-        {ideas.map((idea: Idea) => (
-          <Link key={idea._id} href={`/ideas/${idea._id}`}>
-            <Card className="hover:shadow-md transition-all duration-200 hover:border-primary/30 cursor-pointer">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-lg mb-1 truncate">{idea.title}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{idea.description}</p>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <Badge variant="outline" className="text-xs">
-                        {idea.visibility === "public" ? "Public" : "Private"}
-                      </Badge>
-                      {idea.category && (
-                        <Badge variant="secondary" className="text-xs">
-                          {idea.category}
-                        </Badge>
-                      )}
-                      <span>•</span>
-                      <span>{new Date(idea.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground shrink-0">
-                    <div className="flex items-center gap-1">
-                      <span className="text-orange-600 dark:text-orange-400">🔥</span>
-                      <span>{idea.sparkCount || 0}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span>💬</span>
-                      <span>{idea.commentCount || 0}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
-    );
+  const handleEditProfile = () => {
+    router.push("/profile-setup");
   };
 
   return (
     <TooltipProvider>
-      <div className="max-w-5xl mx-auto px-4 pb-12">
-        {/* Header Layout - More Compact */}
-        <div className="relative mb-12">
-          {/* Banner */}
-          <div className="h-32 w-full bg-gradient-to-r from-primary/10 to-primary/5 rounded-b-3xl border-b border-border/50"></div>
+      <div className="max-w-6xl mx-auto px-4 pb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           
-          {/* Profile Info Container - Overlapping Design */}
-          <div className="relative -mt-16 px-4 md:px-8">
-            <div className="flex flex-col md:flex-row gap-6 items-start">
-              {/* Avatar */}
-              <div className="relative shrink-0">
-                <div className="rounded-full p-1 bg-background shadow-xl">
-                  {isEditing ? (
-                     <AvatarUpload
-                     currentAvatar={formData.avatar}
-                     onAvatarChange={(avatarUrl: string) =>
-                       setFormData(prev => ({ ...prev, avatar: avatarUrl }))
-                     }
-                     displayName={formData.displayName}
-                     className="w-28 h-28 md:w-32 md:h-32"
-                   />
-                  ) : (
-                    <Avatar className="w-28 h-28 md:w-32 md:h-32 border-4 border-background shadow-sm">
-                      <AvatarImage src={profile.avatar} alt={profile.displayName} className="object-cover" />
-                      <AvatarFallback className="text-4xl bg-primary/10 text-primary">
-                        {profile.displayName?.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
+          {/* 1. Identity Card (Span 2) */}
+          <Card className="md:col-span-2 shadow-sm border-border/40 bg-card/50 backdrop-blur-sm overflow-hidden relative flex flex-col">
+            <div className="absolute top-0 left-0 w-full h-20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent"></div>
+            <CardContent className="p-5 pt-6 relative flex-1">
+              <div className="flex flex-col sm:flex-row gap-5 items-start h-full">
+                <div className="relative shrink-0">
+                  <Avatar className="w-20 h-20 border-4 border-background shadow-md">
+                    <AvatarImage src={profile.avatar} alt={profile.displayName} className="object-cover" />
+                    <AvatarFallback className="text-xl bg-primary/10 text-primary">
+                      {profile.displayName?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-background"></div>
                 </div>
-              </div>
-
-              {/* Name, Bio, and Meta - Side by Side with Avatar */}
-              <div className="flex-1 pt-8 md:pt-12">
-                <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h1 className="text-2xl md:text-3xl font-bold text-foreground">{profile.displayName}</h1>
-                      {!isEditing && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => setIsEditing(true)}
-                          className="gap-2"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                          Edit
-                        </Button>
-                      )}
+                
+                <div className="flex-1 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h1 className="text-xl font-bold text-foreground leading-tight">{profile.displayName}</h1>
+                      <p className="text-muted-foreground font-medium text-sm">@{profile.username}</p>
                     </div>
-                    <p className="text-muted-foreground font-medium mb-3">@{profile.username}</p>
-                    
-                    {/* Bio & Meta */}
-                    {!isEditing && (
-                      <div className="space-y-3">
-                        {profile.bio && <p className="text-foreground/80 leading-relaxed">{profile.bio}</p>}
-                        
-                        {/* Location and Links */}
-                        <div className="flex flex-wrap gap-3 text-sm text-muted-foreground items-center">
-                          {profile.location && (
-                            <div className="flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5" />
-                              {profile.location}
-                            </div>
-                          )}
-                          {profile.website && (
-                            <a href={profile.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-primary transition-colors">
-                              <LinkIcon className="w-3.5 h-3.5" />
-                              Website
-                            </a>
-                          )}
-                        </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleEditProfile}
+                      className="gap-2 h-8"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      Edit Profile
+                    </Button>
+                  </div>
 
-                        {/* Skills and Industry - Below Bio */}
-                        <div className="flex flex-wrap gap-2 pt-2">
+                  {profile.bio && (
+                    <p className="text-foreground/80 text-sm leading-relaxed max-w-xl line-clamp-2">
+                      {profile.bio}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground items-center pt-0.5">
+                    {profile.location && (
+                      <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded-md">
+                        <MapPin className="w-3 h-3" />
+                        {profile.location}
+                      </div>
+                    )}
+                    {profile.website && (
+                      <a href={profile.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-primary transition-colors bg-muted/50 px-2 py-1 rounded-md">
+                        <Link2 className="w-3 h-3" />
+                        Website
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="pt-1.5 space-y-2">
+                     {(profile.industry || (profile.skills && profile.skills.length > 0)) && (
+                       <div className="flex flex-wrap gap-1.5">
                           {profile.industry && (
-                            <Badge className="bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20 hover:bg-purple-500/20">
+                            <Badge variant="secondary" className="rounded-md px-2 py-0 text-[10px] font-medium h-5">
                               {profile.industry}
                             </Badge>
                           )}
-                          {profile.skills && profile.skills.map((skill, index) => (
+                          {profile.skills && profile.skills.slice(0, 5).map((skill, index) => (
                             <Badge 
                               key={index} 
-                              variant="secondary" 
-                              className="bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20 hover:bg-blue-500/20"
+                              variant="outline" 
+                              className="rounded-md px-2 py-0 text-[10px] font-normal bg-background/50 h-5"
                             >
                               {skill}
                             </Badge>
                           ))}
-                        </div>
-                      </div>
-                    )}
+                          {profile.skills && profile.skills.length > 5 && (
+                            <Badge variant="outline" className="rounded-md px-2 py-0 text-[10px] font-normal bg-background/50 h-5">
+                              +{profile.skills.length - 5}
+                            </Badge>
+                          )}
+                       </div>
+                     )}
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Edit Mode Form */}
-        {isEditing && (
-          <Card className="mb-8 border-primary/20 shadow-md">
-            <CardHeader>
-              <CardTitle>Edit Profile</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="displayName">Display Name</Label>
-                  <Input
-                    id="displayName"
-                    value={formData.displayName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input
-                    id="username"
-                    value={formData.username}
-                    onChange={handleUsernameChange}
-                    disabled={profile.completedOnboarding}
-                    className={profile.completedOnboarding ? "bg-muted" : ""}
-                  />
-                  {/* Username Availability Status */}
-                  {!profile.completedOnboarding && formData.username && formData.username !== profile.username && (
-                    <div className="text-sm mt-1">
-                      {usernameValidation.checking ? (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          <span>Checking availability...</span>
-                        </div>
-                      ) : usernameValidation.available === true ? (
-                        <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                          <CheckCircle className="w-3 h-3" />
-                          <span>Username available</span>
-                        </div>
-                      ) : usernameValidation.available === false ? (
-                        <div className="flex items-center gap-2 text-destructive">
-                          <XCircle className="w-3 h-3" />
-                          <span>{usernameValidation.error}</span>
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
-                  {profile.completedOnboarding && (
-                    <p className="text-xs text-muted-foreground">Username cannot be changed.</p>
-                  )}
-                </div>
-                <div className="col-span-full space-y-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    value={formData.bio}
-                    onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
-                    rows={3}
-                  />
-                </div>
-                
-                {/* New Fields */}
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                    placeholder="e.g. San Francisco, CA"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="website">Website</Label>
-                  <Input
-                    id="website"
-                    value={formData.website}
-                    onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-                    placeholder="https://example.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="github">GitHub URL</Label>
-                  <Input
-                    id="github"
-                    value={formData.github}
-                    onChange={(e) => setFormData(prev => ({ ...prev, github: e.target.value }))}
-                    placeholder="https://github.com/username"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="linkedin">LinkedIn URL</Label>
-                  <Input
-                    id="linkedin"
-                    value={formData.linkedin}
-                    onChange={(e) => setFormData(prev => ({ ...prev, linkedin: e.target.value }))}
-                    placeholder="https://linkedin.com/in/username"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="twitter">Twitter/X URL</Label>
-                  <Input
-                    id="twitter"
-                    value={formData.twitter}
-                    onChange={(e) => setFormData(prev => ({ ...prev, twitter: e.target.value }))}
-                    placeholder="https://twitter.com/username"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Industry</Label>
-                  <IndustriesMultiSelect
-                    selectedIndustries={formData.industry ? [formData.industry] : []}
-                    onChange={(industries) => setFormData(prev => ({ ...prev, industry: industries[0] || "" }))}
-                    placeholder="Select industry"
-                    singleSelect={true}
-                  />
-                </div>
-                
-                {/* Skills Edit */}
-                <div className="col-span-full space-y-3">
-                  <Label>Skills</Label>
-                  <SkillsMultiSelect
-                    selectedSkills={formData.skills}
-                    onChange={(skills) => setFormData(prev => ({ ...prev, skills }))}
-                    placeholder="Select skills..."
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button variant="ghost" onClick={handleCancel} disabled={loading}>Cancel</Button>
-                <Button onClick={handleSubmit} disabled={loading}>Save Changes</Button>
               </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Stats Tabs */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <button
-            onClick={() => setActiveTab("created")}
-            className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-200 ${
-              activeTab === "created"
-                ? "bg-primary/5 border-primary/50 shadow-sm"
-                : "bg-card border-border hover:border-primary/30 hover:bg-accent/50"
-            }`}
-          >
-            <span className={`text-3xl font-bold mb-1 ${activeTab === "created" ? "text-primary" : "text-foreground"}`}>
-              {profile.ideasCreated || 0}
-            </span>
-            <span className="text-sm text-muted-foreground font-medium">Ideas Created</span>
-          </button>
+          {/* 2. Stats Column (Span 1) */}
+          <div className="md:col-span-1 grid grid-rows-3 gap-3">
+            <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 flex items-center justify-between h-full">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-full">
+                    <Lightbulb className="w-4 h-4 text-primary" />
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground">Created</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-bold text-foreground">{profile.ideasCreated || 0}</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 flex items-center justify-between h-full">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-500/10 rounded-full">
+                    <Sparkles className="w-4 h-4 text-orange-500" />
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground">Sparked</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-bold text-foreground">{profile.ideasSparked || 0}</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+                </div>
+              </CardContent>
+            </Card>
 
-          <button
-            onClick={() => setActiveTab("sparked")}
-            className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-200 ${
-              activeTab === "sparked"
-                ? "bg-orange-500/5 border-orange-500/50 shadow-sm"
-                : "bg-card border-border hover:border-orange-500/30 hover:bg-accent/50"
-            }`}
-          >
-            <span className={`text-3xl font-bold mb-1 ${activeTab === "sparked" ? "text-orange-600 dark:text-orange-400" : "text-foreground"}`}>
-              {profile.ideasSparked || 0}
-            </span>
-            <span className="text-sm text-muted-foreground font-medium">Ideas Sparked</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("contributed")}
-            className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-200 ${
-              activeTab === "contributed"
-                ? "bg-blue-500/5 border-blue-500/50 shadow-sm"
-                : "bg-card border-border hover:border-blue-500/30 hover:bg-accent/50"
-            }`}
-          >
-            <span className={`text-3xl font-bold mb-1 ${activeTab === "contributed" ? "text-blue-600 dark:text-blue-400" : "text-foreground"}`}>
-              {profile.ideasContributed || 0}
-            </span>
-            <span className="text-sm text-muted-foreground font-medium">Contributed To</span>
-          </button>
-        </div>
-
-        {/* Dynamic Content Area */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">
-              {activeTab === "created" && "Created Ideas"}
-              {activeTab === "sparked" && "Sparked Ideas"}
-              {activeTab === "contributed" && "Contributions"}
-            </h2>
+            <Card className="shadow-sm border-border/40 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 flex items-center justify-between h-full">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-500/10 rounded-full">
+                    <Users className="w-4 h-4 text-green-500" />
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground">Contributed</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-bold text-foreground">{profile.ideasContributed || 0}</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
-          
-          {renderTabContent()}
         </div>
 
         {/* Contribution Requests (Only visible to owner) */}
-        {!isEditing && (
-          <div className="mt-16 pt-8 border-t">
-             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold">Contribution Requests</h2>
-                <Link href="/profile/contribution-requests">
-                  <Button variant="outline" size="sm" className="gap-2">
-                    Manage Requests
-                  </Button>
-                </Link>
-             </div>
-             
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Outgoing Requests */}
-                {myRequests && myRequests.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">My Requests</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {myRequests.slice(0, 3).map((request) => (
-                          <RequestStatusCard key={request._id} request={request} />
-                        ))}
-                        {myRequests.length > 3 && (
-                          <Button variant="link" className="w-full text-xs">View all {myRequests.length} requests</Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+        <div className="mt-16 pt-8 border-t">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">Contribution Requests</h2>
+              <Link href="/profile/contribution-requests">
+                <Button variant="outline" size="sm" className="gap-2">
+                  Manage Requests
+                </Button>
+              </Link>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Outgoing Requests */}
+              {myRequests && myRequests.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">My Requests</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {myRequests.slice(0, 3).map((request) => (
+                        <RequestStatusCard key={request._id} request={request} />
+                      ))}
+                      {myRequests.length > 3 && (
+                        <Button variant="link" className="w-full text-xs">View all {myRequests.length} requests</Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-                {/* Incoming Requests */}
-                {incomingRequests && incomingRequests.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">Incoming Requests</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {incomingRequests.slice(0, 3).map((request) => (
-                          <div key={request._id} className="border rounded-lg p-3 bg-muted/20 text-sm">
-                            <p className="font-medium truncate">{request.idea?.title || "Idea"}</p>
-                            <p className="text-muted-foreground truncate">{request.message}</p>
-                          </div>
-                        ))}
-                         {incomingRequests.length > 3 && (
-                          <Button variant="link" className="w-full text-xs">View all {incomingRequests.length} incoming</Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-                
-                {(!myRequests?.length && !incomingRequests?.length) && (
-                  <div className="col-span-full text-center py-8 text-muted-foreground bg-muted/10 rounded-lg border border-dashed">
-                    No active contribution requests.
-                  </div>
-                )}
-             </div>
-          </div>
-        )}
+              {/* Incoming Requests */}
+              {incomingRequests && incomingRequests.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Incoming Requests</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {incomingRequests.slice(0, 3).map((request) => (
+                        <div key={request._id} className="border rounded-lg p-3 bg-muted/20 text-sm">
+                          <p className="font-medium truncate">{request.idea?.title || "Idea"}</p>
+                          <p className="text-muted-foreground truncate">{request.message}</p>
+                        </div>
+                      ))}
+                        {incomingRequests.length > 3 && (
+                        <Button variant="link" className="w-full text-xs">View all {incomingRequests.length} incoming</Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {(!myRequests?.length && !incomingRequests?.length) && (
+                <div className="col-span-full text-center py-8 text-muted-foreground bg-muted/10 rounded-lg border border-dashed">
+                  No active contribution requests.
+                </div>
+              )}
+            </div>
+        </div>
       </div>
     </TooltipProvider>
   )

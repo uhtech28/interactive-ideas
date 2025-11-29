@@ -4,16 +4,18 @@ import { Reuleaux } from 'ldrs/react'
 import 'ldrs/react/Reuleaux.css'
 
 // LDRS Reuleaux Spinner (user-requested)
-export function Spinner({ size = 40 }: { size?: number }) {
+export function Spinner({ size = 40, className }: { size?: number; className?: string }) {
   return (
-    <Reuleaux
-      size={size}
-      stroke={5}
-      strokeLength={0.15}
-      bgOpacity={0.1}
-      speed={1.2}
-      color="hsl(var(--foreground))"
-    />
+    <div className={className}>
+      <Reuleaux
+        size={size}
+        stroke={5}
+        strokeLength={0.15}
+        bgOpacity={0.1}
+        speed={1.2}
+        color="hsl(var(--foreground))"
+      />
+    </div>
   )
 }
 
