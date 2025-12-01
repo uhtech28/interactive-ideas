@@ -12,6 +12,7 @@ import { ProfileStatsDialog } from "./ProfileStatsDialog";
 import { Id } from "@convex/_generated/dataModel";
 import { RequestStatusCard, ContributionRequest } from "@/components/requests/request-status-card"
 import { useChat } from "@/components/chat/ChatContext";
+import { InvitationButton } from "@/components/requests/invitation-button";
 
 export interface UserProfile {
   _id: Id<"users">;
@@ -119,11 +120,15 @@ export const CompactProfileView: React.FC<CompactProfileViewProps> = ({
                         <MessageCircle className="w-3.5 h-3.5" />
                         Message
                       </Button>
-                      {onInvite && (
-                        <Button onClick={onInvite} variant="outline" size="sm" className="h-8 text-xs">
-                          Send Invitation
-                        </Button>
-                      )}
+                      <div className="w-32">
+                        <InvitationButton 
+                          targetUser={{
+                            _id: profile._id,
+                            username: profile.username,
+                            displayName: profile.displayName,
+                          }}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>

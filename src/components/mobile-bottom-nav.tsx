@@ -19,7 +19,7 @@ export const MobileBottomNav = () => {
       icon: Home,
     },
     {
-      name: "My Feed",
+      name: "My Ideas",
       href: "/my-feed",
       icon: Star,
     },

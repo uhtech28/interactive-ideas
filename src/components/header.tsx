@@ -18,7 +18,7 @@ import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 
 const menuItems = [
     { name: 'Feed', href: '/feed' },
-    { name: 'My Feed', href: '/my-feed' },
+    { name: 'My Ideas', href: '/my-feed' },
     { name: 'Community', href: '/community' },
 ]
 

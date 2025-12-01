@@ -41,7 +41,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit, Grip, User, Trash2 } from "lucide-react";
+import { Edit, Grip, User, Trash2, MessageSquare, Paperclip, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
@@ -92,18 +92,16 @@ function getDeadlineIndicator(deadline?: number, status?: string): { color: stri
 // Task Edit Dialog Component
 type TaskEditDialogProps = {
   todo: KanbanItemProps;
+  contributors?: UserProfile[];
   onClose: () => void;
   onSave: (updates: { assignedTo?: string; deadline?: number; completionTarget?: string }) => void;
 };
 
-function TaskEditDialog({ todo, onClose, onSave }: TaskEditDialogProps) {
+function TaskEditDialog({ todo, contributors = [], onClose, onSave }: TaskEditDialogProps) {
   const [assignedTo, setAssignedTo] = useState(todo.assignedTo?._id || "unassigned");
   const [deadline, setDeadline] = useState<Date | undefined>(todo.deadline ? new Date(todo.deadline) : undefined);
   const [completionTarget, setCompletionTarget] = useState(todo.completionTarget || "");
   const [isLoading, setIsLoading] = useState(false);
-
-  // Fetch users for assignee dropdown
-  const users: UserProfile[] = useQuery(api.users.getAllUsers) || [];
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -137,7 +135,7 @@ function TaskEditDialog({ todo, onClose, onSave }: TaskEditDialogProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="unassigned">Unassigned</SelectItem>
-              {users.map((user) => (
+              {contributors.map((user) => (
                 <SelectItem key={user._id} value={user._id}>
                   {user.displayName}
                 </SelectItem>
@@ -192,6 +190,7 @@ type KanbanItemProps = {
   deadline?: number;
   completionTarget?: string;
   canDelete?: boolean;
+  contributors?: UserProfile[];
 } & Record<string, unknown>;
 
 type KanbanColumnProps = {
@@ -228,9 +227,9 @@ export const KanbanBoard = ({ id, children, className }: KanbanBoardProps) => {
   return (
     <div
       className={cn(
-        "flex size-full flex-col divide-y overflow-hidden rounded-md border bg-secondary text-xs shadow-sm ring-2 transition-all",
-        "min-h-8 h-fit",
-        isOver ? "ring-primary" : "ring-transparent",
+        "flex size-full flex-col overflow-hidden rounded-xl border bg-secondary/10 text-xs shadow-sm ring-1 ring-border/50 transition-all", // Lighter bg
+        "min-h-[150px] h-fit",
+        isOver ? "ring-2 ring-primary bg-primary/5" : "",
         className
       )}
       ref={setNodeRef}
@@ -253,9 +252,12 @@ export const KanbanCard = <T extends KanbanItemProps = KanbanItemProps>({
   completionTarget,
   status,
   canDelete,
+  canEdit = true, // Default to true for backward compatibility
   children,
   className,
-}: KanbanCardProps<T>) => {
+  contributors,
+  ...props
+}: KanbanCardProps<T> & { canEdit?: boolean }) => {
   const {
     attributes,
     listeners,
@@ -265,6 +267,7 @@ export const KanbanCard = <T extends KanbanItemProps = KanbanItemProps>({
     isDragging,
   } = useSortable({
     id,
+    disabled: !canEdit,
   });
   const { activeCardId } = useContext(KanbanContext) as KanbanContextProps;
   const { toast } = useToast();
@@ -323,85 +326,111 @@ export const KanbanCard = <T extends KanbanItemProps = KanbanItemProps>({
   const cardContent = (
     <Card
       className={cn(
-        "cursor-default gap-2 rounded-md p-3 shadow-sm transition-all",
-        isDragging && "pointer-events-none cursor-grabbing opacity-30",
-        deadlineIndicator.color === "destructive" && "border-red-500",
-        deadlineIndicator.color === "yellow" && "border-yellow-500",
-        status === "done" && "border-green-500 bg-green-50",
+        "cursor-default rounded-xl p-4 shadow-sm transition-all hover:shadow-md border-border/50 bg-card group relative",
+        isDragging && "pointer-events-none cursor-grabbing opacity-50 scale-105 shadow-xl rotate-2",
+        status === "done" && "opacity-70",
         className
       )}
     >
-      <div {...listeners} className="flex items-center justify-end mb-2 cursor-grab hover:bg-muted/50 rounded p-1 -m-1">
-        <Grip className="h-4 w-4 text-muted-foreground" />
-      </div>
-      <div className="space-y-2">
-        <div className="flex items-start justify-between">
-          <p className="m-0 font-medium text-sm flex-1">{name}</p>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsEditDialogOpen(true);
-              }}
-            >
-              <Edit className="h-3 w-3" />
-            </Button>
-            {canDelete && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete();
-                }}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            )}
-          </div>
+       {/* Drag Handle */}
+       {canEdit && (
+         <div {...listeners} className="absolute top-2 right-2 cursor-grab hover:bg-muted/50 rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+           <Grip className="h-4 w-4 text-muted-foreground" />
+         </div>
+       )}
+
+      <div className="space-y-3">
+        {/* Header: Date Badge */}
+        <div className="flex items-center justify-between">
+           <div className={cn(
+             "flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full w-fit",
+             deadlineIndicator.color === "destructive" ? "bg-red-50 text-red-600" :
+             deadlineIndicator.color === "yellow" ? "bg-yellow-50 text-yellow-600" :
+             deadlineIndicator.color === "green" ? "bg-green-50 text-green-600" :
+             "bg-muted text-muted-foreground"
+           )}>
+             <div className={cn("w-1.5 h-1.5 rounded-full", 
+                deadlineIndicator.color === "destructive" ? "bg-red-500" :
+                deadlineIndicator.color === "yellow" ? "bg-yellow-500" :
+                deadlineIndicator.color === "green" ? "bg-green-500" :
+                "bg-muted-foreground"
+             )} />
+             {deadline ? format(new Date(deadline), "MMM dd, yyyy") : "No deadline"}
+           </div>
+           
+           {/* Actions */}
+           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+             <Button
+               variant="ghost"
+               size="icon"
+               className="h-6 w-6"
+               onClick={(e) => {
+                 e.stopPropagation();
+                 setIsEditDialogOpen(true);
+               }}
+             >
+               <Edit className="h-3 w-3 text-muted-foreground" />
+             </Button>
+             {canDelete && (
+               <Button
+                 variant="ghost"
+                 size="icon"
+                 className="h-6 w-6 text-destructive hover:text-destructive/80 hover:bg-destructive/10"
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   handleDelete();
+                 }}
+               >
+                 <Trash2 className="h-3 w-3" />
+               </Button>
+             )}
+           </div>
         </div>
 
-        {completionTarget && (
-          <p className="text-xs text-muted-foreground line-clamp-2">{completionTarget}</p>
-        )}
+        {/* Title */}
+        <div>
+          <p className="font-semibold text-sm text-foreground leading-snug">{name}</p>
+          {completionTarget && (
+             <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{completionTarget}</p>
+          )}
+        </div>
 
-        <div className="flex items-center justify-between">
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-2">
+          {/* Icons (Mocked for now, can be wired up) */}
+          <div className="flex items-center gap-3 text-muted-foreground">
+             <div className="flex items-center gap-1 text-xs">
+               <MessageSquare className="w-3.5 h-3.5" />
+               <span>0</span>
+             </div>
+             <div className="flex items-center gap-1 text-xs">
+               <Paperclip className="w-3.5 h-3.5" />
+               <span>0</span>
+             </div>
+          </div>
+
+          {/* Assignee */}
           <div className="flex items-center gap-2">
             {assignedTo ? (
               <div className="flex items-center gap-2">
-                <Avatar className="h-6 w-6">
+                <span className="text-xs text-muted-foreground font-medium hidden sm:inline-block">
+                  {assignedTo.name?.split(' ')[0]}
+                </span>
+                <Avatar className="h-6 w-6 shrink-0 ring-1 ring-border">
                   <AvatarImage src={assignedTo.avatar} alt={assignedTo.name} />
-                  <AvatarFallback className="text-xs">
-                    {assignedTo.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                  <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                    {assignedTo.name
+                      ? assignedTo.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+                      : assignedTo.username.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-xs text-muted-foreground truncate">{assignedTo.name}</span>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Unassigned</span>
+              <div className="flex items-center gap-1.5 text-muted-foreground/70">
+                <User className="h-3.5 w-3.5" />
               </div>
             )}
           </div>
-
-          {deadlineIndicator.label && (
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-xs",
-                deadlineIndicator.color === "destructive" && "border-red-500 text-red-700",
-                deadlineIndicator.color === "yellow" && "border-yellow-500 text-yellow-700",
-                deadlineIndicator.color === "green" && "border-green-500 text-green-700"
-              )}
-            >
-              {deadlineIndicator.label}
-            </Badge>
-          )}
         </div>
       </div>
     </Card>
@@ -431,12 +460,14 @@ export const KanbanCard = <T extends KanbanItemProps = KanbanItemProps>({
           todo={{
             id,
             name,
-            column: "todo", // Default value since we're not using it in dialog
+            column: "todo",
             assignedTo,
             deadline,
             completionTarget,
             status,
+            contributors,
           }}
+          contributors={contributors}
           onClose={() => setIsEditDialogOpen(false)}
           onSave={handleEditSave}
         />
@@ -449,11 +480,13 @@ export type KanbanCardsProps<T extends KanbanItemProps = KanbanItemProps> =
   Omit<HTMLAttributes<HTMLDivElement>, "children" | "id"> & {
     children: (item: T) => ReactNode;
     id: string;
+    onAdd?: () => void;
   };
 
 export const KanbanCards = <T extends KanbanItemProps = KanbanItemProps>({
   children,
   className,
+  onAdd,
   ...props
 }: KanbanCardsProps<T>) => {
   const { data } = useContext(KanbanContext) as KanbanContextProps<T>;
@@ -461,17 +494,27 @@ export const KanbanCards = <T extends KanbanItemProps = KanbanItemProps>({
   const items = filteredData.map((item) => item.id);
 
   return (
-    <ScrollArea className="overflow-hidden max-h-32 sm:max-h-40">
+    <ScrollArea className="flex-1 w-full h-full min-h-[100px]">
       <SortableContext items={items}>
         <div
           className={cn(
-            "flex flex-col gap-0.5 p-0.5",
-            filteredData.length === 0 ? "min-h-8 h-fit" : "",
+            "flex flex-col gap-3 p-3", // Increased gap and padding
+            filteredData.length === 0 ? "min-h-[100px] h-full" : "",
             className
           )}
           {...props}
         >
           {filteredData.map((item) => <Fragment key={item.id}>{children(item)}</Fragment>)}
+          
+          {/* Add Task Button */}
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-muted/50 h-9 px-2 text-sm font-normal"
+            onClick={onAdd}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add task
+          </Button>
         </div>
       </SortableContext>
       <ScrollBar orientation="vertical" />
@@ -479,11 +522,28 @@ export const KanbanCards = <T extends KanbanItemProps = KanbanItemProps>({
   );
 };
 
-export type KanbanHeaderProps = HTMLAttributes<HTMLDivElement>;
+export type KanbanHeaderProps = HTMLAttributes<HTMLDivElement> & {
+  color?: "blue" | "orange" | "green" | "default";
+  count?: number;
+};
 
-export const KanbanHeader = ({ className, ...props }: KanbanHeaderProps) => (
-  <div className={cn("m-0 p-0.5 font-semibold text-sm", className)} {...props} />
-);
+export const KanbanHeader = ({ className, color = "default", count, children, ...props }: KanbanHeaderProps) => {
+  const colorStyles = {
+    blue: "bg-blue-50 text-blue-700 border-blue-100",
+    orange: "bg-orange-50 text-orange-700 border-orange-100",
+    green: "bg-green-50 text-green-700 border-green-100",
+    default: "bg-muted/30 text-muted-foreground/80 border-border/50",
+  };
+
+  return (
+    <div className={cn("flex items-center justify-between m-0 p-3 font-semibold text-sm rounded-t-xl border-b", colorStyles[color], className)} {...props}>
+      <span>{children}</span>
+      {count !== undefined && (
+        <span className="text-xs opacity-70 bg-white/40 px-2 py-0.5 rounded-full font-normal">{count}</span>
+      )}
+    </div>
+  );
+};
 
 export type KanbanProviderProps<
   T extends KanbanItemProps = KanbanItemProps,
@@ -652,7 +712,7 @@ export const KanbanProvider = <
       >
         <div
           className={cn(
-               "grid size-full gap-1",
+               "grid size-full gap-4", // Increased gap
                "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
                className
              )}

@@ -286,161 +286,184 @@ export const getMyRequests = query({
     }
   },
 });
-  
-  // Get incoming contribution requests for current user (for author)
-  export const getIncomingRequests = query({
-    handler: async (ctx) => {
-      try {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) {
-          throw new Error("Authentication required: Please sign in to access your requests");
-        }
 
-        const user = await ctx.db
-          .query("users")
-          .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-          .unique();
+// Get incoming contribution requests for current user (for author)
+export const getIncomingRequests = query({
+  handler: async (ctx) => {
+    try {
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) {
+        throw new Error("Authentication required: Please sign in to access your requests");
+      }
 
-        if (!user) {
-          console.log("User profile not found for Clerk ID:", identity.subject, "- returning empty array");
-          return []; // Return empty array for users without profile
-        }
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+        .unique();
 
-        const requests = await ctx.db
-          .query("contributionRequests")
-          .withIndex("by_author_created", (q) =>
-            q.eq("authorId", user._id)
-          )
-          .order("desc")
-          .take(50);
+      if (!user) {
+        console.log("User profile not found for Clerk ID:", identity.subject, "- returning empty array");
+        return []; // Return empty array for users without profile
+      }
 
-        // Get idea, contributor and author info with error handling
-        const requestsWithInfo = await Promise.all(
-          requests.map(async (request) => {
-            try {
-              const idea = await ctx.db.get(request.ideaId);
-              const contributor = await ctx.db.get(request.contributorId);
+      const requests = await ctx.db
+        .query("contributionRequests")
+        .withIndex("by_author_created", (q) =>
+          q.eq("authorId", user._id)
+        )
+        .order("desc")
+        .take(50);
 
-              // Only return idea info if it's not deleted or user is the author
-              let ideaInfo = null;
-              if (idea) {
-                if (!idea.isDeleted || (user && user._id === idea.authorId)) {
-                  ideaInfo = {
-                    title: idea.title,
-                    description: idea.description,
-                    _id: idea._id,
-                    isDeleted: idea.isDeleted,
-                  };
-                }
+      // Get idea, contributor and author info with error handling
+      const requestsWithInfo = await Promise.all(
+        requests.map(async (request) => {
+          try {
+            const idea = await ctx.db.get(request.ideaId);
+            const contributor = await ctx.db.get(request.contributorId);
+
+            // Only return idea info if it's not deleted or user is the author
+            let ideaInfo = null;
+            if (idea) {
+              if (!idea.isDeleted || (user && user._id === idea.authorId)) {
+                ideaInfo = {
+                  title: idea.title,
+                  description: idea.description,
+                  _id: idea._id,
+                  isDeleted: idea.isDeleted,
+                  isAuthor: true,
+                };
               }
-
-              return {
-                ...request,
-                idea: ideaInfo,
-                contributor: contributor ? {
-                  avatar: contributor.avatar,
-                  displayName: contributor.displayName,
-                  username: contributor.username,
-                } : null,
-              };
-            } catch (error) {
-              console.error("Error fetching data for request:", request._id, error);
-              return {
-                ...request,
-                idea: null,
-                contributor: null,
-              };
             }
-          })
-        );
 
-        return requestsWithInfo;
-      } catch (error) {
-        console.error("Error in getIncomingRequests:", error);
-        throw error;
+            return {
+              ...request,
+              idea: ideaInfo,
+              contributor: contributor ? {
+                avatar: contributor.avatar,
+                displayName: contributor.displayName,
+                username: contributor.username,
+              } : null,
+            };
+          } catch (error) {
+            console.error("Error fetching data for request:", request._id, error);
+            return {
+              ...request,
+              idea: null,
+              contributor: null,
+            };
+          }
+        })
+      );
+
+      return requestsWithInfo;
+    } catch (error) {
+      console.error("Error in getIncomingRequests:", error);
+      throw error;
+    }
+  },
+});
+
+// Update request status (accept/reject) by author only
+export const updateRequestStatus = mutation({
+  args: {
+    requestId: v.id("contributionRequests"),
+    status: v.union(v.literal("accepted"), v.literal("rejected")),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) {
+        throw new Error("Authentication required: Please sign in to continue");
       }
-    },
-  });
-  
-  // Update request status (accept/reject) by author only
-  export const updateRequestStatus = mutation({
-    args: {
-      requestId: v.id("contributionRequests"),
-      status: v.union(v.literal("accepted"), v.literal("rejected")),
-    },
-    handler: async (ctx, args) => {
-      try {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) {
-          throw new Error("Authentication required: Please sign in to continue");
-        }
-  
-        const user = await ctx.db
-          .query("users")
-          .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-          .unique();
-  
-        if (!user) {
-          console.error("User lookup failed for Clerk ID:", identity.subject);
-          throw new Error("User profile not found: Please complete your profile setup");
-        }
-  
-        const request = await ctx.db.get(args.requestId);
-        if (!request) {
-          console.error("Request lookup failed for ID:", args.requestId);
-          throw new Error("Request not found or has been removed");
-        }
-  
-        // Only author can update status
-        if (request.authorId !== user._id) {
-          console.error("Authorization failed: User", user.username, "attempted to update request owned by", request.authorId);
-          throw new Error("Not authorized to update this request");
-        }
-  
-        // Validate status transition - only allow updates if status is 'pending'
-        if (request.status !== "pending") {
-          console.log("Invalid status transition attempt:", {
-            requestId: args.requestId,
-            currentStatus: request.status,
-            attemptedStatus: args.status
-          });
-          throw new Error(`Cannot ${args.status} a request that is already ${request.status}`);
-        }
-  
-        console.log("Updating request status:", args.requestId, "from pending to", args.status, "by user:", user.username);
-  
-        // Update status with concurrent update protection
-        await ctx.db.patch(args.requestId, {
-          status: args.status,
-          updatedAt: Date.now(),
-        });
-  
-        // Verify the update was successful
-        const updatedRequest = await ctx.db.get(args.requestId);
-        if (updatedRequest?.status !== args.status) {
-          console.error("Concurrent update conflict detected for request:", args.requestId);
-          throw new Error("Request status update failed due to concurrent modification");
-        }
-  
-        console.log("Successfully updated request:", args.requestId, "to status:", args.status);
 
-        // Create notification for the contributor about the status update
-        await ctx.db.insert("notifications", {
-          recipientId: request.contributorId,
-          senderId: user._id,
-          type: args.status === "accepted" ? "contribution_request_accepted" : "contribution_request_rejected",
-          message: args.status === "accepted"
-            ? `${user.displayName} accepted your contribution request`
-            : `${user.displayName} declined your contribution request`,
-          relatedId: request.ideaId,
-          isRead: false,
-          createdAt: Date.now(),
-        });
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+        .unique();
 
-        return { message: "Request status updated successfully" };
-      } catch (error) {
-        console.error("Error in updateRequestStatus:", error);
-        throw error; // Re-throw to maintain original error messages
+      if (!user) {
+        console.error("User lookup failed for Clerk ID:", identity.subject);
+        throw new Error("User profile not found: Please complete your profile setup");
       }
-    },
-  });
+
+      const request = await ctx.db.get(args.requestId);
+      if (!request) {
+        console.error("Request lookup failed for ID:", args.requestId);
+        throw new Error("Request not found or has been removed");
+      }
+
+      // Only author can update status
+      if (request.authorId !== user._id) {
+        console.error("Authorization failed: User", user.username, "attempted to update request owned by", request.authorId);
+        throw new Error("Not authorized to update this request");
+      }
+
+      // Validate status transition - only allow updates if status is 'pending'
+      if (request.status !== "pending") {
+        console.log("Invalid status transition attempt:", {
+          requestId: args.requestId,
+          currentStatus: request.status,
+          attemptedStatus: args.status
+        });
+        throw new Error(`Cannot ${args.status} a request that is already ${request.status}`);
+      }
+
+      console.log("Updating request status:", args.requestId, "from pending to", args.status, "by user:", user.username);
+
+      // Update status with concurrent update protection
+      await ctx.db.patch(args.requestId, {
+        status: args.status,
+        updatedAt: Date.now(),
+      });
+
+      // Verify the update was successful
+      const updatedRequest = await ctx.db.get(args.requestId);
+      if (updatedRequest?.status !== args.status) {
+        console.error("Concurrent update conflict detected for request:", args.requestId);
+        throw new Error("Request status update failed due to concurrent modification");
+      }
+
+      console.log("Successfully updated request:", args.requestId, "to status:", args.status);
+
+      // Create notification for the contributor about the status update
+      await ctx.db.insert("notifications", {
+        recipientId: request.contributorId,
+        senderId: user._id,
+        type: args.status === "accepted" ? "contribution_request_accepted" : "contribution_request_rejected",
+        message: args.status === "accepted"
+          ? `${user.displayName} accepted your contribution request`
+          : `${user.displayName} declined your contribution request`,
+        relatedId: request.ideaId,
+        isRead: false,
+        createdAt: Date.now(),
+      });
+
+      return { message: "Request status updated successfully" };
+    } catch (error) {
+      console.error("Error in updateRequestStatus:", error);
+      throw error; // Re-throw to maintain original error messages
+    }
+  },
+});
+
+// Get all accepted contributors for an idea (publicly accessible for authenticated users)
+export const getAcceptedContributors = query({
+  args: {
+    ideaId: v.id("ideas"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+
+    const requests = await ctx.db
+      .query("contributionRequests")
+      .withIndex("by_idea_status_created", (q) =>
+        q.eq("ideaId", args.ideaId).eq("status", "accepted")
+      )
+      .collect();
+
+    return requests;
+  },
+});

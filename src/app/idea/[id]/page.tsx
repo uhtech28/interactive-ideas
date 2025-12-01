@@ -55,6 +55,7 @@ import {
 import { CalendarProvider, CalendarDate, CalendarMonthPicker, CalendarYearPicker, CalendarDatePagination, CalendarHeader, CalendarBody, CalendarItem } from '@/components/ui/kibo-ui/calendar';
 import { IdeaSideNav } from "@/components/IdeaSideNav";
 import { IdeaBottomBar } from "@/components/IdeaBottomBar";
+import { CreateSubIdeaDialog } from "@/components/ideas/CreateSubIdeaDialog";
 
 type ConvexIdea = {
   _id: string;
@@ -145,6 +146,7 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
   const [showTodos, setShowTodos] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showCreateSubIdea, setShowCreateSubIdea] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Redirect if not authenticated
@@ -195,6 +197,9 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
                 onOpenTodos={() => setShowTodos(true)}
                 onOpenCalendar={() => setShowCalendar(true)}
                 todoCount={todosQuery?.filter(t => t.status !== 'done').length || 0}
+                ideaId={id}
+                isContributor={ideaQuery?.isAuthor || userRequestsQuery?.some(r => r.ideaId === id && r.status === "accepted")}
+                onCreateSubIdea={() => setShowCreateSubIdea(true)}
               />
             </div>
           </div>
@@ -207,6 +212,9 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
               onOpenTodos={() => setShowTodos(true)}
               onOpenCalendar={() => setShowCalendar(true)}
               todoCount={todosQuery?.filter(t => t.status !== 'done').length || 0}
+              ideaId={id}
+              isContributor={ideaQuery?.isAuthor || userRequestsQuery?.some(r => r.ideaId === id && r.status === "accepted")}
+              onCreateSubIdea={() => setShowCreateSubIdea(true)}
             />
           </div>
 
@@ -228,20 +236,15 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
             </div>
           ) : (
             <>
-              <div className="pb-24"> {/* Add padding bottom for fixed bottom bar */}
-                <IdeaContent idea={ideaQuery as ConvexIdea} onTagClick={setSearchQuery} />
-              </div>
-
-            <IdeaBottomBar
-              ideaId={ideaQuery._id}
-              initialSparkCount={(ideaQuery as ConvexIdea).sparkCount}
-              initialHasSparked={(ideaQuery as ConvexIdea).hasSparked || false}
-              commentCount={(ideaQuery as ConvexIdea).commentCount}
-              onOpenComments={() => setShowComments(true)}
-              onOpenRequests={() => setShowRequests(true)}
-              isAuthor={(ideaQuery as ConvexIdea).isAuthor || false}
-              requestCount={userRequestsQuery?.filter(r => r.ideaId === ideaQuery._id && r.status === 'pending').length || 0}
-            />
+            <div className="pb-8">
+              <IdeaContent 
+                idea={ideaQuery as ConvexIdea} 
+                onTagClick={setSearchQuery}
+                onOpenComments={() => setShowComments(true)}
+                onOpenRequests={() => setShowRequests(true)}
+                requestCount={userRequestsQuery?.filter(r => r.ideaId === ideaQuery._id && r.status === 'pending').length || 0}
+              />
+            </div>
 
             {/* Modals for Sections */}
             <Dialog open={showHierarchy} onOpenChange={setShowHierarchy}>
@@ -276,10 +279,11 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
             </Dialog>
 
             <Dialog open={showTodos} onOpenChange={setShowTodos}>
-              <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto w-full">
-                <DialogHeader>
-                  <DialogTitle>Project Management</DialogTitle>
+              <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[95vw] h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-background/95 backdrop-blur-xl">
+                <DialogHeader className="p-6 pb-2 shrink-0 border-b">
+                  <DialogTitle className="text-xl">Project Management</DialogTitle>
                 </DialogHeader>
+                <div className="flex-1 min-h-0 overflow-hidden">
                 <TodoSection
                   idea={ideaQuery as ConvexIdea}
                   todos={todosQuery || []}
@@ -288,6 +292,7 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
                   updateTodoStatusMutation={updateTodoStatusMutation}
                   deleteTodoMutation={deleteTodoMutation}
                 />
+                </div>
               </DialogContent>
             </Dialog>
 
@@ -308,6 +313,13 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
                 <CommentsSection ideaId={ideaQuery._id as Id<"ideas">} commentCount={(ideaQuery as ConvexIdea).commentCount} />
               </DialogContent>
             </Dialog>
+
+            <CreateSubIdeaDialog 
+              isOpen={showCreateSubIdea}
+              onOpenChange={setShowCreateSubIdea}
+              parentId={ideaQuery._id as Id<"ideas">}
+              addSubIdeaMutation={addSubIdeaMutation}
+            />
           </>
 
         )}
@@ -324,7 +336,13 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
 
 
 
-const IdeaContent: React.FC<{ idea: ConvexIdea; onTagClick?: (tag: string) => void }> = ({ idea, onTagClick }) => {
+const IdeaContent: React.FC<{ 
+  idea: ConvexIdea; 
+  onTagClick?: (tag: string) => void;
+  onOpenComments: () => void;
+  onOpenRequests: () => void;
+  requestCount: number;
+}> = ({ idea, onTagClick, onOpenComments, onOpenRequests, requestCount }) => {
     const router = useRouter();
     const updateIdeaMutation = useMutation(api.ideas.updateIdea);
     const deleteIdeaMutation = useMutation(api.ideas.deleteIdea);
@@ -531,6 +549,18 @@ const IdeaContent: React.FC<{ idea: ConvexIdea; onTagClick?: (tag: string) => vo
                     {errorMsg && <p className="text-destructive text-sm">{errorMsg}</p>}
                 </div>
             )}
+            {/* Action Bar (Attached Footer) */}
+            <IdeaBottomBar
+              ideaId={idea._id}
+              initialSparkCount={idea.sparkCount}
+              initialHasSparked={idea.hasSparked || false}
+              commentCount={idea.commentCount}
+              onOpenComments={onOpenComments}
+              onOpenRequests={onOpenRequests}
+              isAuthor={idea.isAuthor || false}
+              requestCount={requestCount}
+              variant="inline"
+            />
         </div>
       </div>
     ); 
@@ -578,6 +608,23 @@ const TodoSection: React.FC<{
       setIsCreating(false);
     }
   };
+
+  // Get all contributors (author + accepted contributors)
+  const allUsers = useQuery(api.users.getAllUsers) || [];
+  const acceptedRequests = useQuery(api.contributionRequests.getAcceptedContributors, { ideaId: idea._id as Id<"ideas"> }) || [];
+  
+  const contributors = allUsers.filter(u => {
+    // Include author
+    if (u._id === idea.authorId) return true;
+    // Include accepted contributors
+    return acceptedRequests.some(req => req.contributorId === u._id && req.status === "accepted");
+  }).map(u => ({
+    _id: u._id,
+    clerkId: u.clerkId,
+    username: u.username,
+    displayName: u.displayName,
+    avatar: u.avatar
+  }));
 
 
   const handleDeleteTodo = async (todoId: Id<"todos">) => {
@@ -676,16 +723,16 @@ const TodoSection: React.FC<{
   };
 
   return (
-    <div className="max-w-4xl mx-auto mt-8 px-4">
-      <div className="bg-card border border-border rounded-xl p-4 sm:p-6 transition-colors">
-        <div className="flex items-center justify-between mb-4">
+    <div className="w-full h-full flex flex-col p-6">
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex items-center justify-between mb-6 shrink-0">
           <h3 className="text-lg font-semibold">Kanban Board</h3>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 px-3 py-1 rounded-full border border-border/50">
             <Check className="w-4 h-4" />
             <span>{groupedTodos.done.length} done</span>
-            <span className="mx-1">•</span>
+            <span className="mx-1 opacity-30">•</span>
             <span>{groupedTodos.in_progress.length} in progress</span>
-            <span className="mx-1">•</span>
+            <span className="mx-1 opacity-30">•</span>
             <span>{groupedTodos.todo.length} todo</span>
           </div>
         </div>
@@ -695,6 +742,7 @@ const TodoSection: React.FC<{
           <form onSubmit={handleCreateTodo} className="mb-6">
             <div className="flex gap-2 flex-col sm:flex-row">
               <Input
+                id="new-todo-input"
                 placeholder="Add a new todo..."
                 value={newTodoTitle}
                 onChange={(e) => setNewTodoTitle(e.target.value)}
@@ -724,7 +772,7 @@ const TodoSection: React.FC<{
             )}
           </div>
         ) : (
-          <div className="w-full min-h-[200px] max-h-[400px]">
+          <div className="w-full min-h-[500px]">
             <KanbanProvider
               className="w-full"
               columns={kanbanColumns}
@@ -732,9 +780,18 @@ const TodoSection: React.FC<{
               onDataChange={handleDataChange}
             >
               {(column) => (
-                <KanbanBoard id={column.id}>
-                  <KanbanHeader>{column.name}</KanbanHeader>
-                  <KanbanCards id={column.id}>
+                <KanbanBoard id={column.id} className="h-full bg-transparent border-none shadow-none">
+                  <KanbanHeader 
+                    color={column.id === 'todo' ? 'blue' : column.id === 'in_progress' ? 'orange' : 'green'}
+                    count={groupedTodos[column.id as keyof typeof groupedTodos]?.length || 0}
+                  >
+                    {column.name}
+                  </KanbanHeader>
+                  <KanbanCards 
+                    id={column.id} 
+                    className="bg-secondary/5 h-full"
+                    onAdd={() => document.getElementById('new-todo-input')?.focus()}
+                  >
                     {(item) => {
                       // Find the full todo data
                       const todo = todos?.find(t => t._id === item.id);
@@ -750,6 +807,8 @@ const TodoSection: React.FC<{
                           completionTarget={item.completionTarget}
                           status={item.status}
                           canDelete={item.canDelete}
+                          canEdit={todo?.canEdit}
+                          contributors={contributors}
                           className="w-full"
                         >
                           {editingTodoId === todo?._id ? (
@@ -841,7 +900,7 @@ const CalendarSection: React.FC<{ idea: ConvexIdea }> = ({ idea: _idea }: { idea
   const todos = useQuery(api.todos.getTodosForCalendar) || [];
 
   return (
-    <div className="max-w-4xl mx-auto mt-8 px-4">
+    <div className="w-full h-full flex flex-col p-6">
       <div className="bg-card border border-border rounded-xl p-4 sm:p-6 transition-colors">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Calendar</h3>

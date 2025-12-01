@@ -9,7 +9,8 @@ import {
   MessageCircle,
   Sun,
   Moon,
-  Plus
+  Plus,
+  GitBranchPlus
 } from "lucide-react";
 import {
   Tooltip,
@@ -27,6 +28,9 @@ interface IdeaSideNavProps {
   onOpenCalendar: () => void;
   todoCount?: number;
   className?: string;
+  ideaId?: string;
+  isContributor?: boolean;
+  onCreateSubIdea?: () => void;
 }
 
 export function IdeaSideNav({
@@ -35,6 +39,9 @@ export function IdeaSideNav({
   onOpenCalendar,
   todoCount = 0,
   className,
+  ideaId,
+  isContributor = false,
+  onCreateSubIdea,
 }: IdeaSideNavProps) {
   const { theme, setTheme } = useTheme();
   const { } = useClerk();
@@ -48,21 +55,28 @@ export function IdeaSideNav({
     <div className={`flex flex-col items-center py-4 px-2 bg-card/80 backdrop-blur-md border border-border/50 shadow-2xl rounded-2xl gap-4 ${className}`}>
       <TooltipProvider delayDuration={0}>
         
-        {/* Create Idea - Moved to top */}
+        {/* Create Idea / Sub-Idea */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              asChild
+              asChild={!isContributor}
               variant="ghost"
               size="icon"
+              onClick={isContributor ? onCreateSubIdea : undefined}
               className="rounded-xl w-10 h-10 hover:bg-primary/10 hover:text-primary transition-all duration-200"
             >
-              <Link href="/create-idea">
-                <Plus className="w-5 h-5" />
-              </Link>
+              {isContributor ? (
+                <GitBranchPlus className="w-5 h-5" />
+              ) : (
+                <Link href="/create-idea">
+                  <Plus className="w-5 h-5" />
+                </Link>
+              )}
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="left">Create Idea</TooltipContent>
+          <TooltipContent side="left">
+            {isContributor ? "Create Sub-Idea" : "Create Idea"}
+          </TooltipContent>
         </Tooltip>
 
         <div className="w-8 h-[1px] bg-border/50 my-1" />

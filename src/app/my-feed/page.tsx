@@ -147,7 +147,7 @@ export default function MyFeedPage() {
           {/* Header Section - Simplified to match Feed */}
           <div className="flex flex-col gap-2 mb-12">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-              My Feed
+              My Ideas
             </h1>
             <p className="text-muted-foreground">Your personal collection of ideas and contributions</p>
           </div>

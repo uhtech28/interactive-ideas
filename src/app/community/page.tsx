@@ -19,15 +19,33 @@ import { UserProfile } from "../../../convex/users";
 
 export default function CommunityPage() {
   const { isLoaded: isClerkUserLoaded, user: clerkUser } = useUser();
+  const [searchQuery, setSearchQuery] = React.useState("");
 
   // Convex data
   const users = useQuery(api.users.getAllUsers);
+
+  // Filter users based on search query
+  const filteredUsers = React.useMemo(() => {
+    if (!users) return [];
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return users;
+
+    return users.filter((user) => {
+      const nameMatch = user.displayName.toLowerCase().includes(query);
+      const usernameMatch = user.username.toLowerCase().includes(query);
+      const bioMatch = user.bio?.toLowerCase().includes(query);
+      const industryMatch = user.industry?.toLowerCase().includes(query);
+      const skillsMatch = user.skills.some(skill => skill.toLowerCase().includes(query));
+
+      return nameMatch || usernameMatch || bioMatch || industryMatch || skillsMatch;
+    });
+  }, [users, searchQuery]);
 
   // Loading state
   if (!isClerkUserLoaded || users === undefined) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <HeroHeader />
+        <HeroHeader searchQuery={searchQuery} onSearchChange={setSearchQuery} />
         <main className="flex-1 flex items-center justify-center px-4">
           <div className="text-center">
             <Spinner />
@@ -43,7 +61,7 @@ export default function CommunityPage() {
   if (users === null) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <HeroHeader />
+        <HeroHeader searchQuery={searchQuery} onSearchChange={setSearchQuery} />
         <main className="flex-1 flex items-center justify-center px-4">
           <Card className="max-w-md w-full">
             <CardContent className="pt-6">
@@ -70,7 +88,7 @@ export default function CommunityPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <HeroHeader />
+      <HeroHeader searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
       <main className="flex-1 container mx-auto px-4 py-12 pt-24">
         <div className="max-w-7xl mx-auto">
@@ -85,18 +103,19 @@ export default function CommunityPage() {
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-full border border-border/50">
               <Users className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium text-muted-foreground">
-                {users?.filter(user => user.clerkId !== clerkUser?.id).length || 0} Members
+                {filteredUsers.filter(user => user.clerkId !== clerkUser?.id).length || 0} Members
               </span>
             </div>
           </div>
 
           {/* Users Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {users?.filter(user => user.clerkId !== clerkUser?.id).map((user: UserProfile) => (
+            {filteredUsers.filter(user => user.clerkId !== clerkUser?.id).map((user: UserProfile) => (
               <UserCard
                 key={user._id}
                 user={user}
                 currentUserId={clerkUser?.id}
+                onTagClick={(tag) => setSearchQuery(tag)}
               />
             ))}
           </div>
@@ -122,9 +141,10 @@ export default function CommunityPage() {
 interface UserCardProps {
   user: UserProfile;
   currentUserId?: string;
+  onTagClick?: (tag: string) => void;
 }
 
-const UserCard: React.FC<UserCardProps> = ({ user, currentUserId }) => {
+const UserCard: React.FC<UserCardProps> = ({ user, currentUserId, onTagClick }) => {
   const isCurrentUser = currentUserId === user.clerkId;
   const { openChatWithUser } = useChat();
 
@@ -172,12 +192,17 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUserId }) => {
             {user.industry && (
               <div className="flex flex-wrap gap-1.5 items-center">
                 {user.industry.split(',').map(s => s.trim()).slice(0, 2).map((ind, i) => (
-                  <span 
+                  <button 
                     key={`ind-${i}`}
-                    className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 border border-purple-500/20 truncate max-w-[100px]"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onTagClick?.(ind);
+                    }}
+                    className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 border border-purple-500/20 truncate max-w-[100px] hover:bg-purple-500/20 transition-colors"
                   >
                     {ind}
-                  </span>
+                  </button>
                 ))}
                 {user.industry.split(',').length > 2 && (
                   <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-purple-500/5 text-purple-600/70 border border-purple-500/10">
@@ -191,12 +216,17 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUserId }) => {
             {user.skills.length > 0 ? (
               <div className="flex flex-wrap gap-1.5 items-center">
                 {user.skills.slice(0, 2).map((skill, i) => (
-                  <span 
+                  <button 
                     key={`skill-${i}`}
-                    className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 border border-blue-500/20 truncate max-w-[100px]"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onTagClick?.(skill);
+                    }}
+                    className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 border border-blue-500/20 truncate max-w-[100px] hover:bg-blue-500/20 transition-colors"
                   >
                     {skill}
-                  </span>
+                  </button>
                 ))}
                 {user.skills.length > 2 && (
                   <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-blue-500/5 text-blue-600/70 border border-blue-500/10">

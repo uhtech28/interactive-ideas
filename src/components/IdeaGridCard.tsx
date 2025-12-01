@@ -180,10 +180,10 @@ export const IdeaGridCard: React.FC<IdeaGridCardProps> = ({
                   e.stopPropagation();
                   onSpark?.(idea._id);
                 }}
-                className="p-1.5 rounded-full hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors group/spark"
+                className="p-1.5 rounded-full hover:bg-orange-50 text-muted-foreground hover:text-orange-500 transition-colors group/spark"
                 title="Spark this idea"
               >
-                <Sparkles className="w-4 h-4 group-hover/spark:fill-red-500 transition-all" />
+                <Sparkles className="w-4 h-4 group-hover/spark:fill-orange-500 transition-all" />
               </button>
               <button 
                 onClick={(e) => {
@@ -226,7 +226,7 @@ export const IdeaGridCard: React.FC<IdeaGridCardProps> = ({
                   e.stopPropagation();
                   onContributeClick?.(idea._id);
                 }}
-                className="p-1.5 rounded-full hover:bg-purple-50 text-muted-foreground hover:text-purple-500 transition-colors"
+                className="p-1.5 rounded-full hover:bg-green-50 text-muted-foreground hover:text-green-500 transition-colors"
                 title="Contribute"
               >
                 <Users className="w-4 h-4" />

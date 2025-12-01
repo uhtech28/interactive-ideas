@@ -299,7 +299,9 @@ export const toggleTodoComplete = mutation({
     const isTodoAuthor = todo.authorId === user._id;
     let isAcceptedContributor = false;
 
-    if (!isAuthor && !isTodoAuthor) {
+    const isAssignedUser = todo.assignedTo === user._id;
+
+    if (!isAuthor && !isTodoAuthor && !isAssignedUser) {
       // Check for accepted contribution request
       const acceptedRequests = await ctx.db
         .query("contributionRequests")
@@ -312,7 +314,7 @@ export const toggleTodoComplete = mutation({
       const validRequest = acceptedRequests.find(request => request.ideaId === todo.ideaId);
 
       if (!validRequest) {
-        throw new Error("You are not authorized to modify todos for this idea.");
+        throw new Error("You are not authorized to modify todos for this idea. You must be the author, assigned user, or have an accepted contribution request.");
       }
       isAcceptedContributor = true;
     }
@@ -382,7 +384,9 @@ export const updateTodoStatus = mutation({
     const isTodoAuthor = todo.authorId === user._id;
     let isAcceptedContributor = false;
 
-    if (!isAuthor && !isTodoAuthor) {
+    const isAssignedUser = todo.assignedTo === user._id;
+
+    if (!isAuthor && !isTodoAuthor && !isAssignedUser) {
       // Check for accepted contribution request
       const acceptedRequests = await ctx.db
         .query("contributionRequests")
@@ -395,12 +399,10 @@ export const updateTodoStatus = mutation({
       const validRequest = acceptedRequests.find(request => request.ideaId === todo.ideaId);
 
       if (!validRequest) {
-        throw new Error("You are not authorized to modify todos for this idea.");
+        throw new Error("You are not authorized to modify todos for this idea. You must be the author, assigned user, or have an accepted contribution request.");
       }
       isAcceptedContributor = true;
     }
-
-    // No need to validate status as it's already union-typed
 
     await ctx.db.patch(todo._id, {
       status: args.status,
@@ -525,10 +527,10 @@ export const getTodosForIdea = query({
             avatar: assignedUser.avatar,
           } : null,
           canEdit: currentUser
-            ? currentUser._id === todo.authorId
+            ? (currentUser._id === todo.authorId || isAuthor || isAcceptedContributor || (todo.assignedTo === currentUser._id))
             : false,
           canDelete: currentUser
-            ? currentUser._id === todo.authorId
+            ? (currentUser._id === todo.authorId || isAuthor)
             : false,
         };
       })
@@ -599,6 +601,7 @@ export const getTodosGroupedByStatus = query({
 
     for (const todoItem of todos) {
       const author = await ctx.db.get(todoItem.authorId);
+      const assignedUser = todoItem.assignedTo ? await ctx.db.get(todoItem.assignedTo) : null;
       const todoWithAuthor = {
         ...todoItem,
         author: author ? {
@@ -607,11 +610,17 @@ export const getTodosGroupedByStatus = query({
           username: author.username,
           avatar: author.avatar,
         } : null,
+        assignedTo: assignedUser ? {
+          _id: assignedUser._id,
+          name: assignedUser.displayName,
+          username: assignedUser.username,
+          avatar: assignedUser.avatar,
+        } : null,
         canEdit: currentUser
-          ? currentUser._id === todoItem.authorId
+          ? (currentUser._id === todoItem.authorId || isAuthor || isAcceptedContributor || (todoItem.assignedTo === currentUser._id))
           : false,
         canDelete: currentUser
-          ? currentUser._id === todoItem.authorId
+          ? (currentUser._id === todoItem.authorId || isAuthor)
           : false,
       };
 
