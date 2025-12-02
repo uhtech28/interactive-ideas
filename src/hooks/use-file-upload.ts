@@ -65,7 +65,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
 
   const addFiles = (incoming: File[]) => {
     const errs: string[] = []
-    let next = [...files]
+    const next = [...files]
     for (const file of incoming) {
       if (next.length >= maxFiles) {
         errs.push(`Maximum ${maxFiles} file(s) allowed`)

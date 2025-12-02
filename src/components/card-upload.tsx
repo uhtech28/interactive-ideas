@@ -237,7 +237,7 @@ export default function CardUpload({
                 if (!offCtx) return undefined;
                 off.width = viewport.width;
                 off.height = viewport.height;
-                await page.render({ canvasContext: offCtx, viewport }).promise;
+                await page.render({ canvasContext: offCtx, viewport, canvas: off }).promise;
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 if (!ctx) return undefined;
@@ -582,7 +582,7 @@ export default function CardUpload({
 
             {/* Error Messages */}
             {errors.length > 0 && (
-                <Alert variant="destructive" appearance="light" className="mt-5">
+                <Alert variant="destructive" className="mt-5">
                     <AlertIcon>
                         <TriangleAlert />
                     </AlertIcon>
