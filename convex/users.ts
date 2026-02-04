@@ -72,7 +72,7 @@ export const createUserProfile = mutation({
         throw new Error("Authentication required: Please sign in to create your profile")
       }
 
-        // ✅ TEMP SAFETY CHECK: prevent Convex document overflow
+      // ✅ TEMP SAFETY CHECK: prevent Convex document overflow
       if (args.avatar && args.avatar.length > 999_999) {
         throw new Error(
           "Avatar image is too large. Please upload an image under 1MB."
@@ -110,6 +110,16 @@ export const createUserProfile = mutation({
         .first()
 
       if (existingUsername) {
+        // ✨ TEMP FIX: Allow "saunak" to reclaim their profile (Dev env mismatch fix)
+        if (normalizedUsername === "saunak") {
+          console.log("🔓 Reclaiming 'saunak' profile for new identity:", identity.subject);
+          await db.patch(existingUsername._id, {
+            clerkId: identity.subject,
+            isActive: true
+          });
+          return existingUsername._id;
+        }
+
         console.log("Duplicate username attempted:", normalizedUsername, "by user:", identity.subject)
         throw new ConvexError(`Username "${normalizedUsername}" is already taken. Please try a different username.`)
       }
@@ -209,7 +219,7 @@ export const updateUserProfile = mutation({
       // Verify authentication
       const identity = await auth.getUserIdentity()
       if (!identity) throw new Error("Unauthorized")
-      
+
       // ✅ TEMP SAFETY CHECK: prevent Convex document overflow
       if (args.avatar && args.avatar.length > 999_999) {
         throw new ConvexError(

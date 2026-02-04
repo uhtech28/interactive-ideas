@@ -8,8 +8,13 @@
  * @module
  */
 
+import type * as agent from "../agent.js";
+import type * as agent_actions from "../agent_actions.js";
 import type * as chat from "../chat.js";
 import type * as contributionRequests from "../contributionRequests.js";
+import type * as crons from "../crons.js";
+import type * as debug from "../debug.js";
+import type * as gamification from "../gamification.js";
 import type * as ideas from "../ideas.js";
 import type * as invitations from "../invitations.js";
 import type * as notifications from "../notifications.js";
@@ -24,8 +29,13 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  agent: typeof agent;
+  agent_actions: typeof agent_actions;
   chat: typeof chat;
   contributionRequests: typeof contributionRequests;
+  crons: typeof crons;
+  debug: typeof debug;
+  gamification: typeof gamification;
   ideas: typeof ideas;
   invitations: typeof invitations;
   notifications: typeof notifications;

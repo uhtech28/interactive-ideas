@@ -15,6 +15,7 @@ import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { MobileBottomNav } from '@/components/mobile-bottom-nav'
+import { StreakIndicator } from '@/components/gamification/StreakIndicator'
 
 const menuItems = [
     { name: 'Feed', href: '/feed' },
@@ -22,10 +23,10 @@ const menuItems = [
     { name: 'Community', href: '/community' },
 ]
 
-export const HeroHeader = ({ 
-    searchQuery, 
-    onSearchChange 
-}: { 
+export const HeroHeader = ({
+    searchQuery,
+    onSearchChange
+}: {
     searchQuery?: string;
     onSearchChange?: (query: string) => void;
 }) => {
@@ -106,8 +107,9 @@ export const HeroHeader = ({
                             </SignedOut>
                             <SignedIn>
                                 <div className="flex items-center gap-3">
+                                    <StreakIndicator />
                                     <NotificationBell />
-                                    
+
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -132,8 +134,8 @@ export const HeroHeader = ({
                                                             <span>Profile Page</span>
                                                         </Link>
                                                     </Button>
-                                                    <Button 
-                                                        variant="ghost" 
+                                                    <Button
+                                                        variant="ghost"
                                                         className="justify-start gap-2 px-2 w-full text-red-500 hover:text-red-600 hover:bg-red-50"
                                                         onClick={() => signOut()}
                                                     >
@@ -150,8 +152,8 @@ export const HeroHeader = ({
 
                         {/* Mobile Actions (Top Bar) */}
                         <div className="flex lg:hidden items-center gap-2">
-                             {/* Mobile Search - Compact */}
-                             <div className="w-32 sm:w-48">
+                            {/* Mobile Search - Compact */}
+                            <div className="w-32 sm:w-48">
                                 <SearchBar
                                     value={searchQuery}
                                     onSearch={(query, type) => {
@@ -161,8 +163,9 @@ export const HeroHeader = ({
                                     className="w-full h-9 text-xs"
                                 />
                             </div>
-                            
+
                             <SignedIn>
+                                <StreakIndicator />
                                 <NotificationBell />
                             </SignedIn>
                             <ThemeToggle />
@@ -177,7 +180,7 @@ export const HeroHeader = ({
                     </div>
                 </div>
             </nav>
-            
+
             {/* Mobile Bottom Navigation */}
             <MobileBottomNav />
         </header>

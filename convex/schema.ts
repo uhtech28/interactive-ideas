@@ -217,5 +217,18 @@ export default defineSchema({
     .index("by_invitee", ["inviteeId"])
     .index("by_idea_status", ["ideaId", "status"])
     .index("by_invitee_status", ["inviteeId", "status"])
-    .index("by_created_at", ["createdAt"])
+    .index("by_created_at", ["createdAt"]),
+
+  // Gamification: User Streaks
+  userStreaks: defineTable({
+    userId: v.id("users"), // Reference to users table
+    currentStreak: v.number(), // Current active streak in days
+    longestStreak: v.number(), // All-time longest streak
+    lastLoginDate: v.string(), // YYYY-MM-DD of last login
+    lastStreakUpdate: v.number(), // Unix timestamp of last streak increment
+    recoveryAvailable: v.boolean(), // Streak freeze/recovery available
+  })
+    .index("by_user", ["userId"])
+    .index("by_current_streak", ["currentStreak"])
+    .index("by_last_login", ["lastLoginDate"]),
 })
