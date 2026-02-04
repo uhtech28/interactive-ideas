@@ -195,6 +195,7 @@ export default function ProfileSetupPage() {
     if (existingProfile && !profilePopulated) {
       setFormData(prev => ({
         ...prev,
+        username: existingProfile.username || prev.username, // Use DB username, not Clerk suggestion
         displayName: existingProfile.displayName || prev.displayName,
         bio: existingProfile.bio || prev.bio,
         avatar: existingProfile.avatar || prev.avatar,
