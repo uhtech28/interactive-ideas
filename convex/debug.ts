@@ -32,7 +32,6 @@ export const claimUsername = mutation({
         // Update the Clerk ID to the current user's ID
         await db.patch(existingUser._id, {
             clerkId: identity.subject,
-            email: identity.email, // If we tracked email
             isActive: true, // Reactivate if dormant
         });
 
