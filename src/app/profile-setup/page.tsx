@@ -231,6 +231,17 @@ export default function ProfileSetupPage() {
       });
     }
 
+    // Validate displayName (required by Convex mutation)
+    if (!formData.displayName.trim()) {
+      errors.push("Display name is required");
+      toast({
+        title: "Display name required",
+        description: "Please enter your full name to continue.",
+        variant: "destructive",
+        duration: 4000,
+      });
+    }
+
     return errors;
   };
 
@@ -250,10 +261,13 @@ export default function ProfileSetupPage() {
     setError("");
 
     try {
+      // Ensure displayName has a value (fallback to username if empty)
+      const finalDisplayName = formData.displayName.trim() || formData.username;
+
       if (existingProfile) {
         // Update existing profile
         await updateUserProfile({
-          displayName: formData.displayName,
+          displayName: finalDisplayName,
           bio: formData.bio || undefined,
           avatar: formData.avatar || undefined,
           industry: formData.industries.length > 0 ? formData.industries[0] : undefined,
@@ -264,7 +278,7 @@ export default function ProfileSetupPage() {
         // Create new profile
         await createUserProfile({
           username: formData.username,
-          displayName: formData.displayName,
+          displayName: finalDisplayName,
           bio: formData.bio || undefined,
           avatar: formData.avatar || undefined,
           industry: formData.industries.length > 0 ? formData.industries[0] : undefined,
@@ -430,7 +444,7 @@ export default function ProfileSetupPage() {
                           readOnly={!!existingProfile}
                         />
                         <div className="absolute top-full left-0 w-full mt-0.5">
-                           <UsernameValidationStatus />
+                          <UsernameValidationStatus />
                         </div>
                       </div>
                     </div>
@@ -457,7 +471,7 @@ export default function ProfileSetupPage() {
                         <Label className="text-xs font-medium">Industries</Label>
                         <IndustriesMultiSelect
                           selectedIndustries={formData.industries}
-                          onChange={(newIndustries) => 
+                          onChange={(newIndustries) =>
                             setFormData(prev => ({ ...prev, industries: newIndustries }))
                           }
                         />
@@ -467,7 +481,7 @@ export default function ProfileSetupPage() {
                         <Label className="text-xs font-medium">Skills</Label>
                         <SkillsMultiSelect
                           selectedSkills={formData.skills}
-                          onChange={(newSkills) => 
+                          onChange={(newSkills) =>
                             setFormData(prev => ({ ...prev, skills: newSkills }))
                           }
                         />
