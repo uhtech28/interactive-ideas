@@ -248,6 +248,28 @@ export default function ProfileSetupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Block submission if username is taken (for new profiles only)
+    if (!existingProfile && usernameValidation.available === false) {
+      setError("Username is already taken. Please choose a different username.");
+      toast({
+        title: "Username unavailable",
+        description: "This username is already taken. Please choose one of the suggestions or try a different username.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      return;
+    }
+
+    // Block submission if username validation is still in progress
+    if (!existingProfile && usernameValidation.checking) {
+      toast({
+        title: "Please wait",
+        description: "Checking username availability...",
+        duration: 2000,
+      });
+      return;
+    }
+
     // Validate form
     const validationErrors = validateForm();
     if (validationErrors.length > 0) {
