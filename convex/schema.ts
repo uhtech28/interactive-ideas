@@ -22,6 +22,8 @@ export default defineSchema({
     role: v.optional(v.string()), // User role (user, moderator, admin)
     followersCount: v.optional(v.number()), // Number of followers
     followingCount: v.optional(v.number()), // Number of users followed
+    xp: v.optional(v.number()), // Experience points
+    level: v.optional(v.number()), // User level
     lastLoginAt: v.optional(v.number()), // Last login timestamp
     createdAt: v.number(), // Unix timestamp
     updatedAt: v.number(), // Unix timestamp
@@ -233,4 +235,25 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_current_streak", ["currentStreak"])
     .index("by_last_login", ["lastLoginDate"]),
+
+  // Gamification: User Wallets (IdeaCoins)
+  wallets: defineTable({
+    userId: v.id("users"), // Owner of the wallet
+    balance: v.number(), // Current balance of IdeaCoins
+    updatedAt: v.number(), // Last transaction timestamp
+  })
+    .index("by_user", ["userId"]),
+
+  // Gamification: Point Transactions Ledger
+  transactions: defineTable({
+    walletId: v.id("wallets"), // Reference to wallet
+    amount: v.number(), // Positive for earnings, negative for spending
+    type: v.string(), // e.g., 'daily_login', 'create_idea', 'spark_idea', 'badge_reward'
+    description: v.string(), // Human readable description
+    relatedId: v.optional(v.string()), // ID of related entity (ideaId, badgeId, etc.)
+    createdAt: v.number(), // Unix timestamp
+  })
+    .index("by_wallet", ["walletId"])
+    .index("by_wallet_created", ["walletId", "createdAt"])
+    .index("by_type", ["type"]),
 })
