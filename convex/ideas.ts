@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, internalQuery } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 import { createContributionRequest, updateRequestStatus, getRequestsByIdea, getIncomingRequests } from "./contributionRequests";
 
 // Create a new idea (root or with parent) with proper authorization checks
@@ -133,6 +134,21 @@ export const createIdea = mutation({
       // For private ideas, only notify the author (which is already excluded above)
       // Private ideas don't generate public notifications to maintain privacy
     }
+
+
+    // Gamification: Award XP and Coins for creating an idea
+    await ctx.scheduler.runAfter(0, internal.gamification.internalAwardXP, {
+      userId: user._id,
+      amount: 50,
+      action: "create_idea",
+    });
+
+    await ctx.scheduler.runAfter(0, internal.gamification.internalAwardPoints, {
+      userId: user._id,
+      amount: 50,
+      type: "create_idea",
+      description: "Created a new idea"
+    });
 
     return { ideaId, message: "Idea created successfully" };
   },
@@ -465,6 +481,21 @@ export const toggleSpark = mutation({
         });
       }
 
+
+      // Gamification: Award XP and Coins for sparking
+      await ctx.scheduler.runAfter(0, internal.gamification.internalAwardXP, {
+        userId: user._id,
+        amount: 1,
+        action: "spark_idea",
+      });
+
+      await ctx.scheduler.runAfter(0, internal.gamification.internalAwardPoints, {
+        userId: user._id,
+        amount: 1,
+        type: "spark_idea",
+        description: "Sparked an idea"
+      });
+
       return { action: "added", sparkCount: idea.sparkCount + 1 };
     }
   },
@@ -719,6 +750,21 @@ export const addComment = mutation({
         createdAt: now,
       });
     }
+
+
+    // Gamification: Award XP and Coins for commenting
+    await ctx.scheduler.runAfter(0, internal.gamification.internalAwardXP, {
+      userId: user._id,
+      amount: 5,
+      action: "comment",
+    });
+
+    await ctx.scheduler.runAfter(0, internal.gamification.internalAwardPoints, {
+      userId: user._id,
+      amount: 5,
+      type: "comment",
+      description: "Commented on an idea"
+    });
 
     return { commentId, message: "Comment added successfully" };
   },
