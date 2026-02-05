@@ -16,6 +16,7 @@ import { api } from "../../convex/_generated/api"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 import { StreakIndicator } from '@/components/gamification/StreakIndicator'
+import { CoinBalance } from '@/components/gamification/CoinBalance'
 
 const menuItems = [
     { name: 'Feed', href: '/feed' },
@@ -107,6 +108,7 @@ export const HeroHeader = ({
                             </SignedOut>
                             <SignedIn>
                                 <div className="flex items-center gap-3">
+                                    <CoinBalance />
                                     <StreakIndicator />
                                     <NotificationBell />
 
@@ -165,6 +167,7 @@ export const HeroHeader = ({
                             </div>
 
                             <SignedIn>
+                                <CoinBalance />
                                 <StreakIndicator />
                                 <NotificationBell />
                             </SignedIn>
