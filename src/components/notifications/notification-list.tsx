@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
-import { Sparkles, MessageCircle, UserPlus, Bell, X } from "lucide-react"
+import { Sparkles, MessageCircle, UserPlus, Bell, X, Medal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -55,9 +55,10 @@ const NotificationItem = ({ notification, onMarkAsRead, onDismiss }: Notificatio
       case 'contribution_request_rejected':
         return <UserPlus className="h-4 w-4 text-green-500" />
       case 'invitation_received':
-      case 'invitation_accepted':
       case 'invitation_rejected':
         return <Bell className="h-4 w-4 text-purple-500" />
+      case 'badge_awarded':
+        return <Medal className="h-4 w-4 text-yellow-500" />
       default:
         return <Bell className="h-4 w-4 text-gray-500" />
     }
@@ -77,6 +78,8 @@ const NotificationItem = ({ notification, onMarkAsRead, onDismiss }: Notificatio
       case 'invitation_accepted':
       case 'invitation_rejected':
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+      case 'badge_awarded':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
     }
@@ -92,15 +95,17 @@ const NotificationItem = ({ notification, onMarkAsRead, onDismiss }: Notificatio
         window.location.href = `/idea/${notification.relatedId}`
       } else if (['invitation_received', 'invitation_accepted', 'invitation_rejected'].includes(notification.type)) {
         window.location.href = `/idea/${notification.relatedId}`
+      } else if (notification.type === 'badge_awarded') {
+        const username = notification.sender?.username;
+        if (username) window.location.href = `/profile/${username}`;
       }
     }
   }
 
   return (
     <div
-      className={`p-3 sm:p-4 cursor-pointer hover:bg-muted/50 transition-colors w-full relative group ${
-        !notification.isRead ? 'bg-blue-50/50 dark:bg-blue-950/10' : ''
-      }`}
+      className={`p-3 sm:p-4 cursor-pointer hover:bg-muted/50 transition-colors w-full relative group ${!notification.isRead ? 'bg-blue-50/50 dark:bg-blue-950/10' : ''
+        }`}
       onClick={handleClick}
     >
       <div className="flex items-start gap-3 w-full">
@@ -117,7 +122,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onDismiss }: Notificatio
         </div>
 
         <div className="flex-1 min-w-0 space-y-1">
-           <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start justify-between gap-2">
             <p className="text-sm text-foreground leading-snug">
               <span className="font-semibold">{notification.sender?.name || 'Someone'}</span>{' '}
               <span className="text-muted-foreground">
@@ -128,14 +133,14 @@ const NotificationItem = ({ notification, onMarkAsRead, onDismiss }: Notificatio
               {formatRelativeTime(notification.createdAt)}
             </span>
           </div>
-          
+
           <div className="flex items-center justify-between">
-             <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 h-5 font-normal ${getNotificationBadgeColor(notification.type)}`}>
+            <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 h-5 font-normal ${getNotificationBadgeColor(notification.type)}`}>
               {notification.type.replace(/_/g, ' ')}
             </Badge>
-            
+
             <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-               {!notification.isRead && (
+              {!notification.isRead && (
                 <div className="w-2 h-2 bg-blue-500 rounded-full" title="Unread" />
               )}
               <Button
@@ -154,7 +159,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onDismiss }: Notificatio
         </div>
       </div>
       {!notification.isRead && (
-         <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
       )}
     </div>
   )
@@ -205,16 +210,16 @@ export const NotificationList = () => {
   if (notifications.length === 0) {
     return (
       <div className="flex flex-col h-full bg-background">
-         <div className="flex items-center justify-between px-4 py-3 border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-            <h3 className="font-semibold text-sm">Notifications</h3>
-         </div>
-         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
-            <div className="bg-muted/50 p-4 rounded-full mb-4">
-              <Bell className="h-8 w-8 opacity-50" />
-            </div>
-            <p className="text-sm font-medium">No notifications yet</p>
-            <p className="text-xs mt-1 max-w-[200px]">When someone interacts with your ideas, you'll see it here.</p>
-         </div>
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+          <h3 className="font-semibold text-sm">Notifications</h3>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
+          <div className="bg-muted/50 p-4 rounded-full mb-4">
+            <Bell className="h-8 w-8 opacity-50" />
+          </div>
+          <p className="text-sm font-medium">No notifications yet</p>
+          <p className="text-xs mt-1 max-w-[200px]">When someone interacts with your ideas, you'll see it here.</p>
+        </div>
       </div>
     )
   }
@@ -247,11 +252,10 @@ export const NotificationList = () => {
       <div className="px-4 pt-3 pb-2 bg-background border-b">
         <div className="flex p-1 bg-muted/50 rounded-lg">
           <button
-            className={`flex-1 flex items-center justify-center py-1.5 text-xs font-medium rounded-md transition-all ${
-              activeTab === 'all' 
-                ? 'bg-background text-foreground shadow-sm' 
-                : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
-            }`}
+            className={`flex-1 flex items-center justify-center py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === 'all'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+              }`}
             onClick={() => setActiveTab('all')}
           >
             All
@@ -260,11 +264,10 @@ export const NotificationList = () => {
             </span>
           </button>
           <button
-            className={`flex-1 flex items-center justify-center py-1.5 text-xs font-medium rounded-md transition-all ${
-              activeTab === 'interactions' 
-                ? 'bg-background text-foreground shadow-sm' 
-                : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
-            }`}
+            className={`flex-1 flex items-center justify-center py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === 'interactions'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+              }`}
             onClick={() => setActiveTab('interactions')}
           >
             Interactions
@@ -275,11 +278,10 @@ export const NotificationList = () => {
             )}
           </button>
           <button
-            className={`flex-1 flex items-center justify-center py-1.5 text-xs font-medium rounded-md transition-all ${
-              activeTab === 'requests' 
-                ? 'bg-background text-foreground shadow-sm' 
-                : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
-            }`}
+            className={`flex-1 flex items-center justify-center py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === 'requests'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+              }`}
             onClick={() => setActiveTab('requests')}
           >
             Requests
@@ -296,14 +298,14 @@ export const NotificationList = () => {
       <div className="flex-1 overflow-y-auto">
         {activeTab === 'all' && (
           <div className="divide-y divide-border/50">
-             {notifications.map((notification: Notification) => (
-                <NotificationItem
-                  key={notification._id}
-                  notification={notification}
-                  onMarkAsRead={handleMarkAsRead}
-                  onDismiss={handleDismiss}
-                />
-              ))}
+            {notifications.map((notification: Notification) => (
+              <NotificationItem
+                key={notification._id}
+                notification={notification}
+                onMarkAsRead={handleMarkAsRead}
+                onDismiss={handleDismiss}
+              />
+            ))}
           </div>
         )}
 

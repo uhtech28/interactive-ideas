@@ -487,6 +487,12 @@ export const updateRequestStatus = mutation({
           await ctx.scheduler.runAfter(0, internal.gamification.internalAwardXP, { userId: request.contributorId, amount: contributorPoints, action: "request_accepted_contributor" });
           await ctx.scheduler.runAfter(0, internal.gamification.internalAwardPoints, { userId: request.contributorId, amount: contributorPoints, type: "contribution_accepted", description: "Contribution request accepted" });
 
+          // Gamification: Badges Check (Collaborator)
+          await ctx.scheduler.runAfter(0, internal.badges.checkBadges, {
+            userId: user._id,
+            trigger: "accept_contribution",
+          });
+
         } else if (args.status === 'rejected') {
           // Rejected: Author +1 (Public) / +0 (Private)
           const authorPoints = isPublic ? 1 : 0;

@@ -14,6 +14,7 @@ import { RequestStatusCard, ContributionRequest } from "@/components/requests/re
 import { useChat } from "@/components/chat/ChatContext";
 import { InvitationButton } from "@/components/requests/invitation-button";
 import { LevelProgress } from "@/components/gamification/LevelProgress";
+import { BadgeList } from "@/components/gamification/BadgeList";
 
 export interface UserProfile {
   _id: Id<"users">;
@@ -252,6 +253,11 @@ export const CompactProfileView: React.FC<CompactProfileViewProps> = ({
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* 1.5 Badges (Span 2) */}
+        <div className="md:col-span-2">
+          <BadgeList userId={profile._id as Id<"users">} />
         </div>
 
       </div>

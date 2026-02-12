@@ -531,6 +531,14 @@ export const toggleSpark = mutation({
 
       // Gamification: Award XP and Points for sparking
 
+      // 0. Check Badges for Author (Trendsetter)
+      if (idea.authorId !== user._id) {
+        await ctx.scheduler.runAfter(0, internal.badges.checkBadges, {
+          userId: idea.authorId,
+          trigger: "spark",
+        });
+      }
+
       // 1. Award Sparker (Actor) - 1 Point
       await ctx.scheduler.runAfter(0, internal.gamification.internalAwardXP, {
         userId: user._id,
@@ -798,6 +806,18 @@ export const addComment = mutation({
     });
 
     // Increment comment count
+    await ctx.db.patch(args.ideaId, {
+      commentCount: (idea.commentCount || 0) + 1,
+      updatedAt: now,
+    });
+
+    // Gamification: Badges Check (Chatterbox)
+    await ctx.scheduler.runAfter(0, internal.badges.checkBadges, {
+      userId: user._id,
+      trigger: "comment",
+    });
+
+    // Gamification: Award XP and Points for commenting
     await ctx.db.patch(idea._id, {
       commentCount: idea.commentCount + 1,
       updatedAt: now,

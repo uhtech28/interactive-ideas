@@ -195,7 +195,14 @@ export default defineSchema({
     senderId: v.id("users"), // User who triggered the notification
     type: v.string(), // Notification type (new_idea, comment, spark, etc.)
     message: v.string(), // Notification message text
-    relatedId: v.optional(v.union(v.id("ideas"), v.id("comments"), v.id("contributionRequests"), v.id("todos"), v.id("invitations"))), // ID of related item
+    relatedId: v.optional(v.union(
+      v.id("ideas"),
+      v.id("comments"),
+      v.id("contributionRequests"),
+      v.id("todos"),
+      v.id("invitations"),
+      v.id("badges")
+    )), // ID of related item
     isRead: v.boolean(), // Read status
     createdAt: v.number(), // Unix timestamp
   })
@@ -257,4 +264,26 @@ export default defineSchema({
     .index("by_wallet", ["walletId"])
     .index("by_wallet_created", ["walletId", "createdAt"])
     .index("by_type", ["type"]),
+
+  // Gamification: Badges Definitions
+  badges: defineTable({
+    slug: v.string(), // Unique identifier (e.g., 'first-idea')
+    name: v.string(), // Display name
+    description: v.string(), // Description
+    icon: v.string(), // Icon name (Lucide) or URL
+    category: v.string(), // e.g., 'creation', 'community', 'streak'
+    criteria: v.optional(v.any()), // Metadata for logic
+  })
+    .index("by_slug", ["slug"])
+    .index("by_category", ["category"]),
+
+  // Gamification: User Badges (Earned)
+  userBadges: defineTable({
+    userId: v.id("users"),
+    badgeId: v.id("badges"),
+    awardedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_badge", ["badgeId"])
+    .index("by_user_badge", ["userId", "badgeId"]),
 })

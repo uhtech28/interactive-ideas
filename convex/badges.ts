@@ -1,0 +1,222 @@
+import { v } from "convex/values";
+import { mutation, query, internalMutation } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
+
+const INITIAL_BADGES = [
+    {
+        slug: "first-idea",
+        name: "First Spark",
+        description: "Created your first idea",
+        icon: "Lightbulb",
+        category: "creation",
+        criteria: { type: "idea_count", threshold: 1 },
+    },
+    {
+        slug: "idea-machine",
+        name: "Idea Machine",
+        description: "Created 5 ideas",
+        icon: "Zap",
+        category: "creation",
+        criteria: { type: "idea_count", threshold: 5 },
+    },
+    {
+        slug: "trendsetter",
+        name: "Trendsetter",
+        description: "Received 10 sparks on a single idea",
+        icon: "Flame",
+        category: "social",
+        criteria: { type: "spark_count_single", threshold: 10 },
+    },
+    {
+        slug: "collaborator",
+        name: "Collaborator",
+        description: "Accepted a contribution request",
+        icon: "Users",
+        category: "collaboration",
+        criteria: { type: "contribution_accepted", threshold: 1 },
+    },
+    {
+        slug: "chatterbox",
+        name: "Chatterbox",
+        description: "Left 5 comments on ideas",
+        icon: "MessageSquare",
+        category: "social",
+        criteria: { type: "comment_count", threshold: 5 },
+    },
+];
+
+// Seed initial badges (idempotent)
+export const seedBadges = mutation({
+    args: {},
+    handler: async (ctx) => {
+        for (const badge of INITIAL_BADGES) {
+            const existing = await ctx.db
+                .query("badges")
+                .withIndex("by_slug", (q) => q.eq("slug", badge.slug))
+                .first();
+
+            if (!existing) {
+                await ctx.db.insert("badges", badge);
+            } else {
+                // Optional: Update definition if needed
+                // await ctx.db.patch(existing._id, badge);
+            }
+        }
+    },
+});
+
+export const getBadges = query({
+    args: {},
+    handler: async (ctx) => {
+        return await ctx.db.query("badges").collect();
+    },
+});
+
+export const getUserBadges = query({
+    args: { userId: v.id("users") },
+    handler: async (ctx, args) => {
+        const userBadges = await ctx.db
+            .query("userBadges")
+            .withIndex("by_user", (q) => q.eq("userId", args.userId))
+            .collect();
+
+        // Fetch details for each badge
+        const badgeDetails = await Promise.all(
+            userBadges.map(async (ub) => {
+                const badge = await ctx.db.get(ub.badgeId);
+                return badge ? { ...badge, awardedAt: ub.awardedAt } : null;
+            })
+        );
+
+        return badgeDetails.filter((b) => b !== null);
+    },
+});
+
+// Internal: Award a badge if not already owned
+export const awardBadge = internalMutation({
+    args: {
+        userId: v.id("users"),
+        slug: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const badge = await ctx.db
+            .query("badges")
+            .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+            .first();
+
+        if (!badge) return;
+
+        const existing = await ctx.db
+            .query("userBadges")
+            .withIndex("by_user_badge", (q) =>
+                q.eq("userId", args.userId).eq("badgeId", badge._id)
+            )
+            .first();
+
+        if (!existing) {
+            await ctx.db.insert("userBadges", {
+                userId: args.userId,
+                badgeId: badge._id,
+                awardedAt: Date.now(),
+            });
+            // TODO: Here we could trigger a notification
+        }
+    },
+});
+
+// Internal: Check badge conditions based on triggers
+export const checkBadges = internalMutation({
+    args: {
+        userId: v.id("users"),
+        trigger: v.string(), // 'create_idea', 'spark', 'comment', 'accept_contribution'
+    },
+    handler: async (ctx, args) => {
+        const { userId, trigger } = args;
+
+        if (trigger === "create_idea") {
+            const ideas = await ctx.db
+                .query("ideas")
+                .withIndex("by_author", (q) => q.eq("authorId", userId))
+                .collect();
+
+            const count = ideas.length;
+            if (count >= 1) await checkAndAward(ctx, userId, "first-idea");
+            if (count >= 5) await checkAndAward(ctx, userId, "idea-machine");
+        }
+
+        if (trigger === "comment") {
+            const comments = await ctx.db
+                .query("comments")
+                .withIndex("by_author", (q) => q.eq("authorId", userId))
+                .collect();
+
+            if (comments.length >= 5) await checkAndAward(ctx, userId, "chatterbox");
+        }
+
+        if (trigger === "accept_contribution") {
+            // Check if user has accepted at least one contribution as author
+            // Fallback using existing index
+            const contributions = await ctx.db
+                .query("contributionRequests")
+                .withIndex("by_author_created", (q) => q.eq("authorId", userId))
+                .collect();
+
+            const acceptedCount = contributions.filter((c) => c.status === "accepted").length;
+
+            if (acceptedCount >= 1) {
+                await checkAndAward(ctx, userId, "collaborator");
+            }
+        }
+
+        if (trigger === "spark") {
+            // Check if any of the user's ideas have 10+ sparks
+            // Optimally we'd check the specific idea, but broad check works for MVP
+            const ideas = await ctx.db
+                .query("ideas")
+                .withIndex("by_author", (q) => q.eq("authorId", userId))
+                .collect();
+
+            const hasTrendsetter = ideas.some(idea => idea.sparkCount >= 10);
+
+            if (hasTrendsetter) {
+                await checkAndAward(ctx, userId, "trendsetter");
+            }
+        }
+    },
+});
+
+// Helper for awarding
+async function checkAndAward(ctx: any, userId: Id<"users">, slug: string) {
+    const badge = await ctx.db
+        .query("badges")
+        .withIndex("by_slug", (q: any) => q.eq("slug", slug))
+        .first();
+
+    if (!badge) return;
+
+    const existing = await ctx.db
+        .query("userBadges")
+        .withIndex("by_user_badge", (q: any) =>
+            q.eq("userId", userId).eq("badgeId", badge._id)
+        )
+        .first();
+
+    if (!existing) {
+        await ctx.db.insert("userBadges", {
+            userId: userId,
+            badgeId: badge._id,
+            awardedAt: Date.now(),
+        });
+
+        // Trigger notification
+        await ctx.db.insert("notifications", {
+            recipientId: userId,
+            senderId: userId, // System notification, self-sent or we could have a system user
+            type: "badge_awarded",
+            message: `You earned the "${badge.name}" badge!`,
+            relatedId: badge._id,
+            isRead: false,
+            createdAt: Date.now(),
+        });
+    }
+}
