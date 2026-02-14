@@ -27,7 +27,7 @@ export const Logo = ({ className, uniColor }: { className?: string; uniColor?: b
             </svg>
             <span
                 className={cn(
-                    'text-sm md:text-base font-bold tracking-tight',
+                    'hidden md:block text-sm md:text-base font-bold tracking-tight ml-2',
                     uniColor ? 'text-current' : 'bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent'
                 )}>
                 Interactive Ideas

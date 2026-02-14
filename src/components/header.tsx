@@ -49,8 +49,8 @@ export const HeroHeader = ({
                 <div className={cn(
                     'mx-auto px-4 sm:px-6 lg:px-8 transition-all duration-300 ease-in-out',
                     isScrolled
-                        ? 'mt-0 lg:mt-2 max-w-5xl bg-background/80 backdrop-blur-xl border-b lg:border border-border/50 lg:rounded-2xl shadow-lg shadow-black/5'
-                        : 'mt-0 max-w-5xl bg-background/80 backdrop-blur-xl lg:bg-transparent border-b lg:border-none border-border/50'
+                        ? 'mt-0 lg:mt-2 max-w-5xl bg-background/80 backdrop-blur-xl border-b lg:border border-border/50 lg:rounded-2xl shadow-lg shadow-black/5 pt-[env(safe-area-inset-top)]'
+                        : 'mt-0 max-w-5xl bg-background/80 backdrop-blur-xl lg:bg-transparent border-b lg:border-none border-border/50 pt-[env(safe-area-inset-top)]'
                 )}>
                     <div className="flex items-center justify-between h-16 lg:h-18">
                         {/* Logo */}
@@ -153,28 +153,30 @@ export const HeroHeader = ({
                         </div>
 
                         {/* Mobile Actions (Top Bar) */}
-                        <div className="flex lg:hidden items-center gap-2">
-                            {/* Mobile Search - Compact */}
-                            <div className="w-32 sm:w-48">
+                        <div className="flex lg:hidden items-center gap-2 pl-2 w-full pr-2">
+                            {/* Mobile Search - Expanded */}
+                            <div className="flex-1 min-w-0">
                                 <SearchBar
                                     value={searchQuery}
                                     onSearch={(query, type) => {
                                         onSearchChange?.(query)
                                     }}
                                     placeholder="Search..."
-                                    className="w-full h-9 text-xs"
+                                    className="w-full h-8 text-xs"
                                 />
                             </div>
 
                             <SignedIn>
-                                <PointBalance />
-                                <StreakIndicator />
-                                <NotificationBell />
+                                <div className="scale-90 origin-right flex items-center gap-1">
+                                    <PointBalance />
+                                    <StreakIndicator />
+                                    <NotificationBell />
+                                </div>
                             </SignedIn>
-                            <ThemeToggle />
+                            {/* ThemeToggle removed to save space on mobile */}
                             <SignedOut>
                                 <SignInButton>
-                                    <Button size="sm" variant="ghost" className="px-2">
+                                    <Button size="sm" variant="ghost" className="px-2 h-8 text-xs">
                                         Login
                                     </Button>
                                 </SignInButton>

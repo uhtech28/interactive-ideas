@@ -128,14 +128,14 @@ export default function MyFeedPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <HeroHeader searchQuery={searchQuery} onSearchChange={setSearchQuery} />
-      
-      <main className="flex-1 w-full py-12 pt-24">
+
+      <main className="flex-1 w-full py-12 pt-32">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          
+
           {/* Right Sidebar - Positioned relative to content */}
           <div className="absolute top-0 -right-24 h-full hidden xl:block z-50">
             <div className="sticky top-32">
-              <RightSidebar 
+              <RightSidebar
                 filterOpen={filterOpen}
                 setFilterOpen={setFilterOpen}
                 selectedCategories={selectedCategories}
@@ -213,38 +213,38 @@ export default function MyFeedPage() {
               </div>
             )}
           </div>
-       
+
         </div>
 
         {/* Comments Dialog */}
         <Dialog open={!!activeCommentIdea} onOpenChange={(open) => !open && setActiveCommentIdea(null)}>
           <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
-             <div className="mb-4">
-                <h2 className="text-xl font-bold">Comments</h2>
-                <p className="text-sm text-muted-foreground">
-                  {activeCommentIdea?.title}
-                </p>
-             </div>
-             {activeCommentIdea && (
-                <CommentsSection 
-                  ideaId={activeCommentIdea._id as Id<"ideas">} 
-                  commentCount={activeCommentIdea.commentCount || 0} 
-                />
-             )}
+            <div className="mb-4">
+              <h2 className="text-xl font-bold">Comments</h2>
+              <p className="text-sm text-muted-foreground">
+                {activeCommentIdea?.title}
+              </p>
+            </div>
+            {activeCommentIdea && (
+              <CommentsSection
+                ideaId={activeCommentIdea._id as Id<"ideas">}
+                commentCount={activeCommentIdea.commentCount || 0}
+              />
+            )}
           </DialogContent>
         </Dialog>
 
         {/* Contribution Request Dialog */}
         <Dialog open={!!activeContributeIdea} onOpenChange={(open) => !open && setActiveContributeIdea(null)}>
           <DialogContent className="sm:max-w-[500px]">
-             {activeContributeIdea && (
-                <ContributionRequestModal
-                  ideaId={activeContributeIdea._id as Id<"ideas">}
-                  ideaTitle={activeContributeIdea.title}
-                  authorName={activeContributeIdea.author?.name || activeContributeIdea.author?.username}
-                  onClose={() => setActiveContributeIdea(null)}
-                />
-             )}
+            {activeContributeIdea && (
+              <ContributionRequestModal
+                ideaId={activeContributeIdea._id as Id<"ideas">}
+                ideaTitle={activeContributeIdea.title}
+                authorName={activeContributeIdea.author?.name || activeContributeIdea.author?.username}
+                onClose={() => setActiveContributeIdea(null)}
+              />
+            )}
           </DialogContent>
         </Dialog>
       </main>

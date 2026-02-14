@@ -141,7 +141,11 @@ export const getMyMeetings = query({
             .withIndex("by_organizer", (q) => q.eq("organizerId", user._id))
             .collect();
 
-        return organized.sort((a, b) => a.scheduledAt - b.scheduledAt);
+        return organized.sort((a, b) => {
+            const timeA = a.scheduledAt ?? (a as any).date ?? a.createdAt;
+            const timeB = b.scheduledAt ?? (b as any).date ?? b.createdAt;
+            return timeA - timeB;
+        });
     }
 });
 
@@ -152,6 +156,11 @@ export const getIdeaMeetings = query({
             .query("meetings")
             .withIndex("by_idea", (q) => q.eq("ideaId", args.ideaId))
             .collect();
-        return meetings.sort((a, b) => a.scheduledAt - b.scheduledAt);
+
+        return meetings.sort((a, b) => {
+            const timeA = a.scheduledAt ?? (a as any).date ?? a.createdAt;
+            const timeB = b.scheduledAt ?? (b as any).date ?? b.createdAt;
+            return timeA - timeB;
+        });
     }
 });

@@ -290,11 +290,13 @@ export default defineSchema({
   // Gamification V2: Meetings
   meetings: defineTable({
     ideaId: v.id("ideas"),
-    organizerId: v.id("users"),
+    organizerId: v.optional(v.id("users")), // TODO: Clean up legacy data
+    createdBy: v.optional(v.string()), // Legacy field
+    date: v.optional(v.number()), // Legacy field (use scheduledAt instead)
     title: v.string(),
     description: v.optional(v.string()),
-    scheduledAt: v.number(), // Unix timestamp
-    status: v.union(v.literal("scheduled"), v.literal("completed"), v.literal("cancelled")),
+    scheduledAt: v.optional(v.number()), // Unix timestamp (required for new records)
+    status: v.optional(v.union(v.literal("scheduled"), v.literal("completed"), v.literal("cancelled"))),
     attendees: v.array(v.id("users")), // List of user IDs
     meetingLink: v.optional(v.string()),
     createdAt: v.number(),

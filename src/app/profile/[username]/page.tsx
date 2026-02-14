@@ -43,29 +43,29 @@ export default function ProfilePage() {
       </div>
     )
   }
-if (realProfile === null) {
-  return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <HeroHeader />
-      <main className="flex-1 flex items-center justify-center px-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold text-destructive mb-2">Profile Not Found</h1>
-              <p className="text-muted-foreground mb-4">
-                The user @{username} doesn't exist or has not set up their profile.
-              </p>
-              <Button variant="outline" onClick={() => window.history.back()}>
-                Go Back
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </main>
-      <FooterSection />
-    </div>
-  )
-}
+  if (realProfile === null) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <HeroHeader />
+        <main className="flex-1 flex items-center justify-center px-4">
+          <Card className="max-w-md w-full">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <h1 className="text-2xl font-bold text-destructive mb-2">Profile Not Found</h1>
+                <p className="text-muted-foreground mb-4">
+                  The user @{username} doesn't exist or has not set up their profile.
+                </p>
+                <Button variant="outline" onClick={() => window.history.back()}>
+                  Go Back
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+        <FooterSection />
+      </div>
+    )
+  }
 
   // At this point, realProfile is loaded and not null
   const profileData = { ...realProfile, skills: realProfile.skills || [], industries: realProfile.industries || [] } as UserProfile
@@ -74,9 +74,9 @@ if (realProfile === null) {
     <div className="min-h-screen flex flex-col bg-background">
       <HeroHeader />
 
-      <main className="flex-1 container mx-auto px-4 py-12 pt-20">
-        <CompactProfileView 
-          profile={profileData} 
+      <main className="flex-1 container mx-auto px-4 py-12 pt-32">
+        <CompactProfileView
+          profile={profileData}
           isOwner={isCurrentUser}
           myRequests={myRequests}
           incomingRequests={incomingRequests}

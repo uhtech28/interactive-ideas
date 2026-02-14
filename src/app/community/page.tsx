@@ -91,7 +91,7 @@ export default function CommunityPage() {
     <div className="min-h-screen flex flex-col bg-background">
       <HeroHeader searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
-      <main className="flex-1 container mx-auto px-4 py-12 pt-24">
+      <main className="flex-1 container mx-auto px-4 py-12 pt-32">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">

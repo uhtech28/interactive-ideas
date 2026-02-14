@@ -38,6 +38,7 @@ export const getTopUsers = query({
     },
 });
 
+// Daily Leaderboard Query
 export const getDailyLeaderboard = query({
     args: {
         limit: v.optional(v.number()),

@@ -154,7 +154,7 @@ export default function FeedPage() {
     <div className="min-h-screen flex flex-col bg-background">
       <HeroHeader searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
-      <main className="flex-1 w-full py-12 pt-24">
+      <main className="flex-1 w-full py-12 pt-32">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
 
           {/* Right Sidebar - Positioned relative to content */}
