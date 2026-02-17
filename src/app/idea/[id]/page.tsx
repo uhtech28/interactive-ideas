@@ -211,7 +211,7 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
           </div>
 
           {/* Right Sidebar - Mobile/Tablet (<xl) */}
-          <div className="xl:hidden">
+          <div className="hidden">
             <IdeaSideNav
               className="fixed right-4 top-1/2 -translate-y-1/2 z-50"
               onOpenHierarchy={() => setShowHierarchy(true)}

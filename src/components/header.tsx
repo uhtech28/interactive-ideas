@@ -151,7 +151,7 @@ export const HeroHeader = ({
                         <div className="flex lg:hidden items-center justify-between w-full h-16 gap-2">
                             {/* Mobile Logo */}
                             <Link href="/" className="flex-shrink-0 flex items-center text-primary">
-                                <LogoIcon className="h-8 w-8" uniColor />
+                                <LogoIcon className="h-6 w-6" idSuffix="mobile" />
                             </Link>
 
                             {/* Persistent Mobile Search */}
@@ -166,6 +166,7 @@ export const HeroHeader = ({
 
                             {/* Mobile Actions */}
                             <div className="flex-shrink-0 flex items-center gap-1">
+                                <ThemeToggle />
                                 <SignedIn>
                                     <NotificationBell />
                                     {/* Mobile User Menu */}
