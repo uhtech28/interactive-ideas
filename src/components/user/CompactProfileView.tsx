@@ -13,11 +13,8 @@ import { Id } from "@convex/_generated/dataModel";
 import { RequestStatusCard, ContributionRequest } from "@/components/requests/request-status-card"
 import { useChat } from "@/components/chat/ChatContext";
 import { InvitationButton } from "@/components/requests/invitation-button";
-import { LevelProgress } from "@/components/gamification/LevelProgress";
-import { BadgeList } from "@/components/gamification/BadgeList";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { Medal } from "lucide-react";
 
 export interface UserProfile {
   _id: Id<"users">;
@@ -90,12 +87,6 @@ export const CompactProfileView: React.FC<CompactProfileViewProps> = ({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<"created" | "sparked" | "contributed">("created");
 
-  const dailyWins = useQuery(api.leaderboard.getDailyWins, { userId: profile._id as Id<"users"> });
-
-  const golds = dailyWins?.filter(w => w.rank === 1).length || 0;
-  const silvers = dailyWins?.filter(w => w.rank === 2).length || 0;
-  const bronzes = dailyWins?.filter(w => w.rank === 3).length || 0;
-
   const handleEditProfile = () => {
     router.push("/profile-setup");
   };
@@ -141,38 +132,6 @@ export const CompactProfileView: React.FC<CompactProfileViewProps> = ({
                   <div>
                     <h1 className="text-xl font-bold text-foreground leading-tight">{profile.displayName}</h1>
                     <p className="text-muted-foreground font-medium text-sm">@{profile.username}</p>
-
-                    <div className="pt-2 w-full max-w-[200px]">
-                      <LevelProgress currentXP={profile.xp || 0} showLabel={false} />
-                      <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                        <span className="font-semibold text-primary">Lvl {profile.level || 1}</span>
-                        <span>{profile.xp || 0} XP</span>
-                      </div>
-
-                      {/* Daily Medals */}
-                      {(golds > 0 || silvers > 0 || bronzes > 0) && (
-                        <div className="flex gap-2 mt-2 pt-2 border-t border-border/40">
-                          {golds > 0 && (
-                            <div className="flex items-center gap-1 text-[10px] text-yellow-600 bg-yellow-100/50 px-1.5 py-0.5 rounded-full border border-yellow-200">
-                              <Medal className="w-3 h-3 fill-yellow-500 text-yellow-600" />
-                              <span className="font-bold">{golds}</span>
-                            </div>
-                          )}
-                          {silvers > 0 && (
-                            <div className="flex items-center gap-1 text-[10px] text-slate-600 bg-slate-100/50 px-1.5 py-0.5 rounded-full border border-slate-200">
-                              <Medal className="w-3 h-3 fill-slate-400 text-slate-600" />
-                              <span className="font-bold">{silvers}</span>
-                            </div>
-                          )}
-                          {bronzes > 0 && (
-                            <div className="flex items-center gap-1 text-[10px] text-amber-700 bg-amber-100/50 px-1.5 py-0.5 rounded-full border border-amber-200">
-                              <Medal className="w-3 h-3 fill-amber-600 text-amber-700" />
-                              <span className="font-bold">{bronzes}</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
                   </div>
                   {isOwner ? (
                     <Button
@@ -316,9 +275,7 @@ export const CompactProfileView: React.FC<CompactProfileViewProps> = ({
         </div>
 
         {/* 1.5 Badges (Span 2) */}
-        <div className="md:col-span-2">
-          <BadgeList userId={profile._id as Id<"users">} />
-        </div>
+        {/* Removed Gamification BadgeList */}
 
       </div>
 
