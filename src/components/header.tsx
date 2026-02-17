@@ -2,7 +2,7 @@
 
 import { User, LogOut } from 'lucide-react'
 import Link from 'next/link'
-import { Logo } from '@/components/logo'
+import { LogoIcon } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { SignedIn, SignedOut, SignInButton, SignUpButton, useClerk } from '@clerk/nextjs'
@@ -14,9 +14,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { MobileBottomNav } from '@/components/mobile-bottom-nav'
-import { StreakIndicator } from '@/components/gamification/StreakIndicator'
-import { PointBalance } from '@/components/gamification/PointBalance'
+import { GlobalChatSheet } from '@/components/chat/ChatInterface'
+
 
 const menuItems = [
     { name: 'Feed', href: '/feed' },
@@ -32,6 +31,7 @@ export const HeroHeader = ({
     onSearchChange?: (query: string) => void;
 }) => {
     const [isScrolled, setIsScrolled] = React.useState(false)
+    const [isMobileSearchOpen, setIsMobileSearchOpen] = React.useState(false)
     const { signOut } = useClerk()
     const currentUser = useQuery(api.users.getCurrentUser)
 
@@ -49,17 +49,17 @@ export const HeroHeader = ({
                 <div className={cn(
                     'mx-auto px-4 sm:px-6 lg:px-8 transition-all duration-300 ease-in-out',
                     isScrolled
-                        ? 'mt-0 lg:mt-2 max-w-5xl bg-background/80 backdrop-blur-xl border-b lg:border border-border/50 lg:rounded-2xl shadow-lg shadow-black/5 pt-[env(safe-area-inset-top)]'
-                        : 'mt-0 max-w-5xl bg-background/80 backdrop-blur-xl lg:bg-transparent border-b lg:border-none border-border/50 pt-[env(safe-area-inset-top)]'
+                        ? 'mt-0 lg:mt-2 max-w-5xl bg-background/80 backdrop-blur-xl border-b lg:border border-border/50 lg:rounded-2xl shadow-lg shadow-black/5'
+                        : 'mt-0 max-w-5xl bg-background/80 backdrop-blur-xl lg:bg-transparent border-b lg:border-none border-border/50'
                 )}>
                     <div className="flex items-center justify-between h-16 lg:h-18">
                         {/* Logo */}
-                        <div className="flex-shrink-0 z-20">
+                        <div className="flex-shrink-0 z-20 hidden lg:block">
                             <Link
                                 href="/"
                                 aria-label="Interactive Ideas Home"
                                 className="flex items-center focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg">
-                                <Logo />
+                                <LogoIcon />
                             </Link>
                         </div>
 
@@ -108,8 +108,6 @@ export const HeroHeader = ({
                             </SignedOut>
                             <SignedIn>
                                 <div className="flex items-center gap-3">
-                                    <PointBalance />
-                                    <StreakIndicator />
                                     <NotificationBell />
 
                                     <Popover>
@@ -122,20 +120,17 @@ export const HeroHeader = ({
                                             </Button>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-56" align="end" forceMount>
-                                            <div className="grid gap-4">
-                                                <div className="font-medium truncate">
+                                            <div className="grid gap-2">
+                                                <Link
+                                                    href={`/profile/${currentUser?.username}`}
+                                                    className="font-medium truncate p-2 -mx-2 rounded-md hover:bg-muted transition-colors"
+                                                >
                                                     {currentUser?.displayName}
                                                     <p className="text-xs text-muted-foreground font-normal truncate">
                                                         @{currentUser?.username}
                                                     </p>
-                                                </div>
+                                                </Link>
                                                 <div className="grid gap-2">
-                                                    <Button asChild variant="ghost" className="justify-start gap-2 px-2 w-full">
-                                                        <Link href={`/profile/${currentUser?.username}`}>
-                                                            <User className="h-4 w-4" />
-                                                            <span>Profile Page</span>
-                                                        </Link>
-                                                    </Button>
                                                     <Button
                                                         variant="ghost"
                                                         className="justify-start gap-2 px-2 w-full text-red-500 hover:text-red-600 hover:bg-red-50"
@@ -153,41 +148,106 @@ export const HeroHeader = ({
                         </div>
 
                         {/* Mobile Actions (Top Bar) */}
-                        <div className="flex lg:hidden items-center gap-2 pl-2 w-full pr-2">
-                            {/* Mobile Search - Expanded */}
-                            <div className="flex-1 min-w-0">
-                                <SearchBar
-                                    value={searchQuery}
-                                    onSearch={(query, type) => {
-                                        onSearchChange?.(query)
-                                    }}
-                                    placeholder="Search..."
-                                    className="w-full h-8 text-xs"
-                                />
-                            </div>
-
-                            <SignedIn>
-                                <div className="scale-90 origin-right flex items-center gap-1">
-                                    <PointBalance />
-                                    <StreakIndicator />
-                                    <NotificationBell />
-                                </div>
-                            </SignedIn>
-                            {/* ThemeToggle removed to save space on mobile */}
-                            <SignedOut>
-                                <SignInButton>
-                                    <Button size="sm" variant="ghost" className="px-2 h-8 text-xs">
-                                        Login
+                        <div className="flex lg:hidden items-center justify-between w-full h-16">
+                            {isMobileSearchOpen ? (
+                                <div className="flex items-center w-full gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    <div className="flex-1">
+                                        <SearchBar
+                                            value={searchQuery}
+                                            onSearch={(query) => onSearchChange?.(query)}
+                                            placeholder="Search ideas..."
+                                            className="w-full h-10"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setIsMobileSearchOpen(false)}
+                                        className="shrink-0"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                                     </Button>
-                                </SignInButton>
-                            </SignedOut>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Mobile Logo */}
+                                    <Link href="/" className="flex items-center text-primary mr-2">
+                                        <LogoIcon className="h-8 w-auto" />
+                                    </Link>
+
+                                    <div className="flex items-center gap-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-9 w-9"
+                                            onClick={() => setIsMobileSearchOpen(true)}
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="20"
+                                                height="20"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                className="lucide lucide-search"
+                                            >
+                                                <circle cx="11" cy="11" r="8" />
+                                                <path d="m21 21-4.3-4.3" />
+                                            </svg>
+                                        </Button>
+
+                                        <SignedIn>
+                                            <NotificationBell />
+                                            {/* Mobile User Menu */}
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full ml-1">
+                                                        <Avatar className="h-7 w-7">
+                                                            <AvatarImage src={currentUser?.avatar} alt={currentUser?.displayName} />
+                                                            <AvatarFallback>{currentUser?.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
+                                                        </Avatar>
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-56" align="end">
+                                                    <div className="grid gap-2">
+                                                        <Link
+                                                            href={`/profile/${currentUser?.username}`}
+                                                            className="font-medium truncate p-2 -mx-2 rounded-md hover:bg-muted transition-colors"
+                                                        >
+                                                            {currentUser?.displayName}
+                                                        </Link>
+                                                        <Button
+                                                            variant="ghost"
+                                                            className="justify-start gap-2 px-2 w-full text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                            onClick={() => signOut()}
+                                                        >
+                                                            <LogOut className="h-4 w-4" />
+                                                            <span>Sign Out</span>
+                                                        </Button>
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </SignedIn>
+                                        <SignedOut>
+                                            <SignInButton>
+                                                <Button size="sm" variant="ghost" className="px-2">
+                                                    Login
+                                                </Button>
+                                            </SignInButton>
+                                        </SignedOut>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
             </nav>
 
-            {/* Mobile Bottom Navigation */}
-            <MobileBottomNav />
+
         </header>
     )
 }

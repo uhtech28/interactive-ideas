@@ -11,16 +11,18 @@ import { useChat } from "./ChatContext";
 
 const ChatThread = lazy(() => import("./ChatThread"));
 const GroupList = lazy(() => import("./GroupList"));
+const ChannelList = lazy(() => import("./ChannelList"));
 
 const ChatWidget: React.FC = () => {
-  const { 
-    isOpen, 
-    selectedConversationId, 
-    selectedIdeaId, 
+  const {
+    isOpen,
+    selectedConversationId,
+    selectedIdeaId,
     selectedReceiverId,
     closeChat,
     resetSelection,
-    openGroupChat
+    openGroupChat,
+    setIsOpen
   } = useChat();
 
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
@@ -29,11 +31,38 @@ const ChatWidget: React.FC = () => {
 
   const handleSelectGroup = useCallback((conversationId: Id<"conversations"> | undefined, ideaId: Id<"ideas">) => {
     openGroupChat(ideaId, conversationId);
+    // If no conversationId is passed, it means we selected a Community -> go to Channel List (handled by render logic)
   }, [openGroupChat]);
 
-  const handleBackToGroups = useCallback(() => {
-    resetSelection();
-  }, [resetSelection]);
+  const handleSelectChannel = useCallback((conversationId: Id<"conversations">) => {
+    if (selectedIdeaId) {
+      openGroupChat(selectedIdeaId, conversationId);
+    }
+  }, [openGroupChat, selectedIdeaId]);
+
+
+  const handleBack = useCallback(() => {
+    // Logic:
+    // If viewing ChatThread (Group): go back to ChannelList (keep IdeaId, clear ConvId)
+    // If viewing ChatThread (Direct): go back to GroupList (clear All)
+    // If viewing ChannelList: go back to GroupList (clear All)
+
+    if (selectedConversationId) {
+      if (selectedIdeaId) {
+        // It's a group chat, go back to channel list
+        openGroupChat(selectedIdeaId, undefined);
+      } else {
+        // Direct chat or orphan, go back to root
+        resetSelection();
+      }
+    } else if (selectedIdeaId) {
+      // In ChannelList, go back to Root
+      resetSelection();
+    } else {
+      resetSelection();
+    }
+
+  }, [selectedConversationId, selectedIdeaId, openGroupChat, resetSelection]);
 
   const handleClose = useCallback(() => {
     closeChat();
@@ -43,8 +72,8 @@ const ChatWidget: React.FC = () => {
   // On profile pages, move to the left (as requested "to the left part a bit")
   // On other pages, keep default behavior (left on mobile, right on desktop)
   const isProfilePage = pathname?.includes('/profile') || pathname?.includes('/profile-setup');
-  const positionClass = isProfilePage 
-    ? "fixed bottom-20 left-4 z-50" 
+  const positionClass = isProfilePage
+    ? "fixed bottom-20 left-4 z-50"
     : "fixed bottom-20 left-4 md:left-auto md:right-20 z-50";
 
   if (authLoading || !isAuthenticated || !user) {
@@ -56,17 +85,23 @@ const ChatWidget: React.FC = () => {
 
   return (
     <div className={positionClass}>
-      <Card className="w-80 h-96 shadow-lg bg-card border transition-all duration-300 ease-in-out overflow-hidden">
+      <Card className="w-[85vw] h-80 md:w-80 md:h-96 shadow-lg bg-card border transition-all duration-300 ease-in-out overflow-hidden">
         <Suspense fallback={<div className="p-4 text-center">Loading...</div>}>
-          {selectedIdeaId || selectedConversationId || selectedReceiverId ? (
-              <ChatThread
-                conversationId={selectedConversationId}
-                onBack={handleBackToGroups}
-                onClose={handleClose}
-                ideaId={selectedIdeaId}
-                receiverId={selectedReceiverId}
-              />
-            ) : (
+          {(selectedConversationId || selectedReceiverId) ? (
+            <ChatThread
+              conversationId={selectedConversationId}
+              onBack={handleBack}
+              onClose={handleClose}
+              ideaId={selectedIdeaId}
+              receiverId={selectedReceiverId}
+            />
+          ) : selectedIdeaId ? (
+            <ChannelList
+              ideaId={selectedIdeaId}
+              onBack={handleBack}
+              onSelectChannel={handleSelectChannel}
+            />
+          ) : (
             <GroupList
               onSelectGroup={handleSelectGroup}
               onClose={handleClose}

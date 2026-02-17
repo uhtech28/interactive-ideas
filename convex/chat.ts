@@ -69,6 +69,7 @@ export const getUserConversations = query({
 });
 
 // Get all group conversations for the user
+// UPDATED: Fetches groups where user is a member OR explicit Idea Communities
 export const getGroupConversationsList = query({
   args: {},
   handler: async (ctx) => {
@@ -83,63 +84,102 @@ export const getGroupConversationsList = query({
     if (!userDoc) return [];
     const userId = userDoc._id;
 
-    // 1. Get ideas where user is author
+    // 1. Get explicit group memberships
+    const memberships = await ctx.db
+      .query("conversationMembers")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    const memberGroupIds = memberships.map(m => m.conversationId);
+
+    const memberGroups = await Promise.all(
+      memberGroupIds.map(id => ctx.db.get(id))
+    );
+
+    // 2. Get "Implicit" Idea Communities (Where user is Author or Contributor)
+    // Deprecated? No, let's keep them as "General" channels for the idea.
     const authoredIdeas = await ctx.db
       .query("ideas")
       .withIndex("by_author", (q) => q.eq("authorId", userId))
       .collect();
 
-    // 2. Get ideas where user is accepted contributor
     const contributions = await ctx.db
       .query("contributionRequests")
       .withIndex("by_contributor_status", (q) => q.eq("contributorId", userId).eq("status", "accepted"))
       .collect();
 
     const contributedIdeaIds = contributions.map(c => c.ideaId);
-
-    // Fetch contributed ideas details
-    const contributedIdeas = await Promise.all(
-      contributedIdeaIds.map(id => ctx.db.get(id))
-    );
+    const contributedIdeas = await Promise.all(contributedIdeaIds.map(id => ctx.db.get(id)));
 
     const allIdeas = [...authoredIdeas, ...contributedIdeas].filter((idea): idea is NonNullable<typeof idea> => idea !== null);
-
-    // Remove duplicates
     const uniqueIdeas = Array.from(new Map(allIdeas.map(item => [item._id, item])).values());
 
-    // For each idea, find or create group conversation
-    // Note: In a query we cannot create, so we just find. 
-    // If it doesn't exist, the UI should probably trigger a mutation or we handle it differently.
-    // For now, let's assume we just return the ideas and let the UI/mutation handle conversation creation if missing,
-    // OR we can try to find existing conversations.
-
-    const groups = await Promise.all(uniqueIdeas.map(async (idea) => {
+    // Retrieve "General" conversations for these ideas
+    const generalGroups = await Promise.all(uniqueIdeas.map(async (idea) => {
       const convo = await ctx.db
         .query("conversations")
         .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
-        .first();
+        .filter(q => q.eq(q.field("type"), "group")) // Ensure it's a group
+        .collect();
 
+      // Find the "main" one (created automatically or has no custom name/creator)
+      // Or simply include ALL groups for this idea if we are "Author"?
+      // Actually, "Sub-groups" should probably require explicit membership even for Authors if we want strict separation,
+      // BUT usually Authors see everything. Let's stick to:
+      // - Sub-Groups: Only if in `conversationMembers` (or maybe Author sees all? Let's say explicit for now)
+      // - Main Idea Chat: Implicit for Authors/Contributors.
+
+      // Let's assume the "Main" chat is the one created implicitly (no creatorId or specific name?)
+      // Or we just return ALL conversations linked to these ideas, assuming Authors/Contributors have access to at least the Main one?
+      // To avoid confusion, let's stick to the current logic:
+      // We look for existing conversations for the idea.
+
+      // Filter out sub-groups from this "Implicit" list if they are meant to be private.
+      // If a sub-group has a `creatorId`, it's a sub-group.
+
+      return convo.filter(c => !c.creatorId); // implicit groups only
+    }));
+
+    const flatGeneralGroups = generalGroups.flat();
+
+    // Combine Member Groups and Implicit General Groups
+    const allGroups = [...memberGroups, ...flatGeneralGroups].filter((g): g is NonNullable<typeof g> => !!g);
+
+    // Deduplicate by ID
+    const uniqueGroupMap = new Map();
+    allGroups.forEach(g => uniqueGroupMap.set(g._id, g));
+    const uniqueGroups = Array.from(uniqueGroupMap.values());
+
+    // Format for return
+    const groupsFormatted = await Promise.all(uniqueGroups.map(async (convo) => {
       let lastMessage = null;
-      if (convo?.lastMessageId) {
+      if (convo.lastMessageId) {
         lastMessage = await ctx.db.get(convo.lastMessageId);
       }
 
+      // Get Idea Name if missing name (for implicit groups)
+      let name = convo.name;
+      if (!name && convo.ideaId) {
+        const idea = await ctx.db.get(convo.ideaId);
+        name = (idea as any)?.title || "Unknown Idea";
+      }
+
       return {
-        ideaId: idea._id,
-        conversationId: convo?._id,
-        name: idea.title,
-        // Use idea category or generic icon for avatar
+        ideaId: convo.ideaId,
+        conversationId: convo._id,
+        name: name || "Group Chat",
         avatar: null,
         lastMessage: lastMessage ? {
-          content: lastMessage.content,
-          createdAt: lastMessage.createdAt,
-          senderId: lastMessage.senderId,
+          content: (lastMessage as any).content,
+          createdAt: (lastMessage as any).createdAt,
+          senderId: (lastMessage as any).senderId,
         } : null,
-        unreadCount: convo?.unreadCount || 0, // This logic needs refinement for groups
+        unreadCount: convo.unreadCount || 0,
+        isSubGroup: !!convo.creatorId,
       };
     }));
 
-    return groups;
+    return groupsFormatted.sort((a, b) => (b.lastMessage?.createdAt || 0) - (a.lastMessage?.createdAt || 0));
   }
 });
 
@@ -218,21 +258,29 @@ export const sendMessage = mutation({
 
     // Handle Group Chat Creation/Retrieval
     if (args.ideaId) {
-      const existingConvo = await ctx.db
-        .query("conversations")
-        .withIndex("by_idea", (q) => q.eq("ideaId", args.ideaId))
-        .first();
+      if (!conversationId) {
+        // Try to find the "Main" conversation for this idea (no creatorId)
+        const existingConvo = await ctx.db
+          .query("conversations")
+          .withIndex("by_idea", (q) => q.eq("ideaId", args.ideaId))
+          .filter(q => q.eq(q.field("type"), "group"))
+          .collect();
 
-      if (existingConvo) {
-        conversationId = existingConvo._id;
-      } else {
-        // Create new group conversation
-        conversationId = await ctx.db.insert("conversations", {
-          type: 'group',
-          ideaId: args.ideaId,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        });
+        // Find one without creatorId (the specific default one)
+        const mainConvo = existingConvo.find(c => !c.creatorId);
+
+        if (mainConvo) {
+          conversationId = mainConvo._id;
+        } else {
+          // Create new DEFAULT group conversation
+          conversationId = await ctx.db.insert("conversations", {
+            type: 'group',
+            ideaId: args.ideaId,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            // No creatorId for system/default groups
+          });
+        }
       }
     }
     // Handle Direct Chat Creation/Retrieval
@@ -386,4 +434,151 @@ export const getDirectConversationId = query({
 
     return convoDoc?._id || null;
   },
+});
+
+// [NEW] Create a sub-group conversation
+export const createGroupConversation = mutation({
+  args: {
+    ideaId: v.id("ideas"),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const userDoc = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!userDoc) throw new Error("User not found");
+    const userId = userDoc._id;
+
+    // Check permissions: Must be Author or Accepted Contributor
+    const idea = await ctx.db.get(args.ideaId);
+    if (!idea) throw new Error("Idea not found");
+
+    const isAuthor = idea.authorId === userId;
+    let isContributor = false;
+
+    if (!isAuthor) {
+      const contribution = await ctx.db
+        .query("contributionRequests")
+        .withIndex("by_idea_contributor", (q) => q.eq("ideaId", args.ideaId).eq("contributorId", userId))
+        .filter(q => q.eq(q.field("status"), "accepted"))
+        .first();
+      isContributor = !!contribution;
+    }
+
+    if (!isAuthor && !isContributor) {
+      throw new Error("Only contributors can create sub-groups");
+    }
+
+    // Create Group
+    const conversationId = await ctx.db.insert("conversations", {
+      type: 'group',
+      ideaId: args.ideaId,
+      name: args.name,
+      creatorId: userId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    // Add Creator as Member (Admin)
+    await ctx.db.insert("conversationMembers", {
+      conversationId,
+      userId,
+      role: "admin",
+      joinedAt: Date.now(),
+    });
+
+    return conversationId;
+  }
+});
+
+// [NEW] Add a member to a sub-group
+export const addGroupMember = mutation({
+  args: {
+    conversationId: v.id("conversations"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const hasUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+    if (!hasUser) throw new Error("User not found");
+    const currentUserId = hasUser._id;
+
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation || conversation.type !== 'group') throw new Error("Invalid group");
+
+    // Retrieve ALL membership records for this conversation at once to check sender permission
+    // BUT we can just check if currentUser is a member
+    const userMembership = await ctx.db
+      .query("conversationMembers")
+      .withIndex("by_user_conversation", q => q.eq("userId", currentUserId).eq("conversationId", args.conversationId))
+      .first();
+
+    // Permission Check: 
+    // 1. Is Creator?
+    // 2. Is Existing Member? (Assuming any member can add, based on user request "if a contributor is there he also can add")
+    const isCreator = conversation.creatorId === currentUserId;
+    const isMember = !!userMembership;
+
+    if (!isCreator && !isMember) {
+      throw new Error("You must be a member of the group to add others");
+    }
+
+    // Check if target user is already a member
+    const targetMembership = await ctx.db
+      .query("conversationMembers")
+      .withIndex("by_user_conversation", q => q.eq("userId", args.userId).eq("conversationId", args.conversationId))
+      .first();
+
+    if (targetMembership) throw new Error("User is already a member");
+
+    // Add Member
+    await ctx.db.insert("conversationMembers", {
+      conversationId: args.conversationId,
+      userId: args.userId,
+      role: "member",
+      joinedAt: Date.now(),
+    });
+  }
+});
+
+// [NEW] Get potential members (contributors) to add
+export const getPotentialGroupMembers = query({
+  args: { ideaId: v.id("ideas") },
+  handler: async (ctx, args) => {
+    // Get Idea Author
+    const idea = await ctx.db.get(args.ideaId);
+    if (!idea) return [];
+
+    const author = await ctx.db.get(idea.authorId);
+
+    // Get Contributors
+    const contributions = await ctx.db
+      .query("contributionRequests")
+      .withIndex("by_idea_status_created", (q) => q.eq("ideaId", args.ideaId).eq("status", "accepted"))
+      .collect();
+
+    const contributorIds = contributions.map(c => c.contributorId);
+    const contributors = await Promise.all(contributorIds.map(id => ctx.db.get(id)));
+
+    const allUsers = [author, ...contributors].filter(u => u !== null);
+
+    // Dedupe
+    const uniqueUsers = Array.from(new Map(allUsers.map(item => [item._id, item])).values());
+
+    return uniqueUsers.map(u => ({
+      id: u._id,
+      displayName: u.displayName,
+      avatar: u.avatar
+    }));
+  }
 });

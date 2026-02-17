@@ -34,16 +34,15 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit, Grip, User, Trash2, MessageSquare, Paperclip, Plus } from "lucide-react";
+import { User, Plus } from "lucide-react";
 import { format } from "date-fns";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { useToast } from "@/components/ui/use-toast";
@@ -227,7 +226,7 @@ export const KanbanBoard = ({ id, children, className }: KanbanBoardProps) => {
   return (
     <div
       className={cn(
-        "flex size-full flex-col overflow-hidden rounded-xl border bg-secondary/10 text-xs shadow-sm ring-1 ring-border/50 transition-all", // Lighter bg
+        "flex size-full flex-col overflow-hidden rounded-xl border bg-secondary/10 text-xs shadow-sm ring-1 ring-border/50 transition-all",
         "min-h-[150px] h-fit",
         isOver ? "ring-2 ring-primary bg-primary/5" : "",
         className
@@ -251,12 +250,11 @@ export const KanbanCard = <T extends KanbanItemProps = KanbanItemProps>({
   deadline,
   completionTarget,
   status,
-  canDelete,
-  canEdit = true, // Default to true for backward compatibility
+  // canDelete,
+  canEdit = true,
   children,
   className,
   contributors,
-  ...props
 }: KanbanCardProps<T> & { canEdit?: boolean }) => {
   const {
     attributes,
@@ -276,7 +274,6 @@ export const KanbanCard = <T extends KanbanItemProps = KanbanItemProps>({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const updateTodo = useMutation(api.todos.updateTodo);
-  const deleteTodo = useMutation(api.todos.deleteTodo);
 
   const handleEditSave = async (updates: { assignedTo?: string; deadline?: number; completionTarget?: string }) => {
     try {
@@ -286,37 +283,30 @@ export const KanbanCard = <T extends KanbanItemProps = KanbanItemProps>({
         deadline: updates.deadline,
         completionTarget: updates.completionTarget,
       });
-      toast({
-        title: "Task updated",
-        description: "Task details have been successfully updated.",
-      });
+      // toast removed
     } catch (error) {
       console.error("Failed to update task:", error);
-      toast({
-        title: "Update failed",
-        description: "Failed to update task. Please try again.",
-        variant: "destructive",
-      });
+      // toast removed
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this todo?")) return;
-    try {
-      await deleteTodo({ todoId: id as Id<"todos"> });
-      toast({
-        title: "Task deleted",
-        description: "Task has been successfully deleted.",
-      });
-    } catch (error) {
-      console.error("Failed to delete task:", error);
-      toast({
-        title: "Delete failed",
-        description: "Failed to delete task. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
+  // const handleDelete = async () => {
+  //   if (!confirm("Are you sure you want to delete this todo?")) return;
+  //   try {
+  //     await deleteTodo({ todoId: id as Id<"todos"> });
+  //     toast({
+  //       title: "Task deleted",
+  //       description: "Task has been successfully deleted.",
+  //     });
+  //   } catch (error) {
+  //     console.error("Failed to delete task:", error);
+  //     toast({
+  //       title: "Delete failed",
+  //       description: "Failed to delete task. Please try again.",
+  //       variant: "destructive",
+  //     });
+  //   }
+  // };
 
   const style = {
     transition,
@@ -326,111 +316,58 @@ export const KanbanCard = <T extends KanbanItemProps = KanbanItemProps>({
   const cardContent = (
     <Card
       className={cn(
-        "cursor-default rounded-xl p-4 shadow-sm transition-all hover:shadow-md border-border/50 bg-card group relative",
+        "cursor-default rounded-xl p-3 shadow-sm transition-all hover:shadow-md border-border/50 bg-card group relative",
         isDragging && "pointer-events-none cursor-grabbing opacity-50 scale-105 shadow-xl rotate-2",
         status === "done" && "opacity-70",
         className
       )}
     >
-       {/* Drag Handle */}
-       {canEdit && (
-         <div {...listeners} className="absolute top-2 right-2 cursor-grab hover:bg-muted/50 rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-           <Grip className="h-4 w-4 text-muted-foreground" />
-         </div>
-       )}
 
-      <div className="space-y-3">
-        {/* Header: Date Badge */}
-        <div className="flex items-center justify-between">
-           <div className={cn(
-             "flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full w-fit",
-             deadlineIndicator.color === "destructive" ? "bg-red-50 text-red-600" :
-             deadlineIndicator.color === "yellow" ? "bg-yellow-50 text-yellow-600" :
-             deadlineIndicator.color === "green" ? "bg-green-50 text-green-600" :
-             "bg-muted text-muted-foreground"
-           )}>
-             <div className={cn("w-1.5 h-1.5 rounded-full", 
-                deadlineIndicator.color === "destructive" ? "bg-red-500" :
-                deadlineIndicator.color === "yellow" ? "bg-yellow-500" :
-                deadlineIndicator.color === "green" ? "bg-green-500" :
-                "bg-muted-foreground"
-             )} />
-             {deadline ? format(new Date(deadline), "MMM dd, yyyy") : "No deadline"}
-           </div>
-           
-           {/* Actions */}
-           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-             <Button
-               variant="ghost"
-               size="icon"
-               className="h-6 w-6"
-               onClick={(e) => {
-                 e.stopPropagation();
-                 setIsEditDialogOpen(true);
-               }}
-             >
-               <Edit className="h-3 w-3 text-muted-foreground" />
-             </Button>
-             {canDelete && (
-               <Button
-                 variant="ghost"
-                 size="icon"
-                 className="h-6 w-6 text-destructive hover:text-destructive/80 hover:bg-destructive/10"
-                 onClick={(e) => {
-                   e.stopPropagation();
-                   handleDelete();
-                 }}
-               >
-                 <Trash2 className="h-3 w-3" />
-               </Button>
-             )}
-           </div>
-        </div>
 
-        {/* Title */}
-        <div>
-          <p className="font-semibold text-sm text-foreground leading-snug">{name}</p>
-          {completionTarget && (
-             <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{completionTarget}</p>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between pt-2">
-          {/* Icons (Mocked for now, can be wired up) */}
-          <div className="flex items-center gap-3 text-muted-foreground">
-             <div className="flex items-center gap-1 text-xs">
-               <MessageSquare className="w-3.5 h-3.5" />
-               <span>0</span>
-             </div>
-             <div className="flex items-center gap-1 text-xs">
-               <Paperclip className="w-3.5 h-3.5" />
-               <span>0</span>
-             </div>
+      <div className="space-y-2">
+        {/* Header: Drag Handle & Metadata (Deadline + Assignee) */}
+        <div
+          className="flex items-start justify-between mb-1.5 cursor-grab active:cursor-grabbing"
+          {...listeners}
+          {...attributes}
+        >
+          {/* Deadline Badge */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+            <div className={cn("w-2 h-2 rounded-full",
+              deadlineIndicator.color === "destructive" ? "bg-red-500" :
+                deadlineIndicator.color === "yellow" ? "bg-amber-500" :
+                  deadlineIndicator.color === "green" ? "bg-emerald-500" :
+                    "bg-blue-400"
+            )} />
+            {deadline ? format(new Date(deadline), "MMM dd") : "No deadline"}
           </div>
 
-          {/* Assignee */}
-          <div className="flex items-center gap-2">
+          {/* Assignee (Moved here) */}
+          <div className="flex items-center gap-2 ml-2">
             {assignedTo ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground font-medium hidden sm:inline-block">
-                  {assignedTo.name?.split(' ')[0]}
-                </span>
-                <Avatar className="h-6 w-6 shrink-0 ring-1 ring-border">
-                  <AvatarImage src={assignedTo.avatar} alt={assignedTo.name} />
-                  <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                    {assignedTo.name
-                      ? assignedTo.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-                      : assignedTo.username.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
+              <Avatar className="h-5 w-5 shrink-0 ring-1 ring-background">
+                <AvatarImage src={assignedTo.avatar} alt={assignedTo.name} />
+                <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
+                  {assignedTo.name
+                    ? assignedTo.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+                    : assignedTo.username.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
             ) : (
-              <div className="flex items-center gap-1.5 text-muted-foreground/70">
-                <User className="h-3.5 w-3.5" />
+              <div className="flex items-center text-muted-foreground/40">
+                <User className="h-4 w-4" />
               </div>
             )}
           </div>
+        </div>
+
+        {/* Title / Body */}
+        <div className="mb-0">
+          {children ? (
+            children
+          ) : (
+            <p className="font-medium text-sm text-foreground leading-relaxed">{name}</p>
+          )}
         </div>
       </div>
     </Card>
@@ -498,23 +435,15 @@ export const KanbanCards = <T extends KanbanItemProps = KanbanItemProps>({
       <SortableContext items={items}>
         <div
           className={cn(
-            "flex flex-col gap-3 p-3", // Increased gap and padding
+            "flex flex-col gap-2 p-2",
             filteredData.length === 0 ? "min-h-[100px] h-full" : "",
             className
           )}
           {...props}
         >
-          {filteredData.map((item) => <Fragment key={item.id}>{children(item)}</Fragment>)}
-          
-          {/* Add Task Button */}
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-muted/50 h-9 px-2 text-sm font-normal"
-            onClick={onAdd}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add task
-          </Button>
+          {filteredData.map((item) => (
+            <Fragment key={item.id}>{children(item)}</Fragment>
+          ))}
         </div>
       </SortableContext>
       <ScrollBar orientation="vertical" />
@@ -536,11 +465,13 @@ export const KanbanHeader = ({ className, color = "default", count, children, ..
   };
 
   return (
-    <div className={cn("flex items-center justify-between m-0 p-3 font-semibold text-sm rounded-t-xl border-b", colorStyles[color], className)} {...props}>
-      <span>{children}</span>
-      {count !== undefined && (
-        <span className="text-xs opacity-70 bg-white/40 px-2 py-0.5 rounded-full font-normal">{count}</span>
-      )}
+    <div className={cn("flex items-center justify-between m-0 p-2 font-semibold text-sm rounded-t-xl border-b", colorStyles[color], className)} {...props}>
+      <div className="flex items-center gap-2">
+        <span>{children}</span>
+        {count !== undefined && (
+          <span className="text-xs opacity-70 bg-white/40 px-2 py-0.5 rounded-full font-normal">{count}</span>
+        )}
+      </div>
     </div>
   );
 };
@@ -578,7 +509,6 @@ export const KanbanProvider = <
   const checkDeadlinesAndNotify = useMutation(api.todos.checkDeadlinesAndNotify);
   const { toast } = useToast();
 
-  // Check for deadline notifications when Kanban loads
   useEffect(() => {
     checkDeadlinesAndNotify();
   }, [checkDeadlinesAndNotify]);
@@ -619,13 +549,11 @@ export const KanbanProvider = <
 
     if (activeColumn !== overColumn) {
       try {
-        // Update the backend first
         await updateTodoStatus({
           todoId: active.id as Id<"todos">,
           status: overColumn as "todo" | "in_progress" | "done",
         });
 
-        // Then update local state
         let newData = [...data];
         const activeIndex = newData.findIndex((item) => item.id === active.id);
         const overIndex = newData.findIndex((item) => item.id === over.id);
@@ -636,17 +564,12 @@ export const KanbanProvider = <
 
         onDataChange?.(newData);
 
-        toast({
-          title: "Task status updated",
-          description: `Task moved to ${overColumn.replace('_', ' ')}`,
-        });
+        onDataChange?.(newData);
+
+        // toast removed
       } catch (error) {
         console.error("Failed to update task status:", error);
-        toast({
-          title: "Update failed",
-          description: "Failed to update task status. Please try again.",
-          variant: "destructive",
-        });
+        // toast removed
       }
     }
 
@@ -655,7 +578,6 @@ export const KanbanProvider = <
 
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveCardId(null);
-
     onDragEnd?.(event);
 
     const { active, over } = event;
@@ -665,36 +587,30 @@ export const KanbanProvider = <
     }
 
     let newData = [...data];
-
     const oldIndex = newData.findIndex((item) => item.id === active.id);
     const newIndex = newData.findIndex((item) => item.id === over.id);
 
     newData = arrayMove(newData, oldIndex, newIndex);
-
     onDataChange?.(newData);
   };
 
   const announcements: Announcements = {
     onDragStart({ active }) {
       const { name, column } = data.find((item) => item.id === active.id) ?? {};
-
       return `Picked up the card "${name}" from the "${column}" column`;
     },
     onDragOver({ active, over }) {
       const { name } = data.find((item) => item.id === active.id) ?? {};
       const newColumn = columns.find((column) => column.id === over?.id)?.name;
-
       return `Dragged the card "${name}" over the "${newColumn}" column`;
     },
     onDragEnd({ active, over }) {
       const { name } = data.find((item) => item.id === active.id) ?? {};
       const newColumn = columns.find((column) => column.id === over?.id)?.name;
-
       return `Dropped the card "${name}" into the "${newColumn}" column`;
     },
     onDragCancel({ active }) {
       const { name } = data.find((item) => item.id === active.id) ?? {};
-
       return `Cancelled dragging the card "${name}"`;
     },
   };
@@ -712,12 +628,14 @@ export const KanbanProvider = <
       >
         <div
           className={cn(
-               "grid size-full gap-4", // Increased gap
-               "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
-               className
-             )}
+            "grid size-full gap-2",
+            "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+            className
+          )}
         >
-          {columns.map((column) => <Fragment key={column.id}>{children(column)}</Fragment>)}
+          {columns.map((column) => (
+            <Fragment key={column.id}>{children(column)}</Fragment>
+          ))}
         </div>
         {typeof window !== "undefined" &&
           createPortal(

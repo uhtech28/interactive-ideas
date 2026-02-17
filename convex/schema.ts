@@ -176,7 +176,7 @@ export default defineSchema({
     participant2: v.optional(v.id("users")), // Second participant user ID (optional for groups)
     type: v.optional(v.string()), // 'direct' or 'group'
     ideaId: v.optional(v.id("ideas")), // Reference to idea for group chats
-    creatorId: v.optional(v.string()), // Creator of group chat (stored as string ID)
+    creatorId: v.optional(v.union(v.string(), v.id("users"))), // Creator of group chat (stored as string ID or User ID)
     name: v.optional(v.string()), // Group chat name
     createdAt: v.number(), // Unix timestamp
     updatedAt: v.number(), // Unix timestamp
@@ -229,6 +229,16 @@ export default defineSchema({
     .index("by_idea_status", ["ideaId", "status"])
     .index("by_invitee_status", ["inviteeId", "status"])
     .index("by_created_at", ["createdAt"]),
+
+  // Conversation Members table - tracks membership in group chats
+  conversationMembers: defineTable({
+    conversationId: v.id("conversations"), // Reference to conversations
+    userId: v.id("users"), // Reference to users
+    role: v.optional(v.string()), // 'admin' or 'member'
+    joinedAt: v.number(), // Unix timestamp
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_conversation", ["userId", "conversationId"]),
 
   // Gamification: User Streaks
   userStreaks: defineTable({
