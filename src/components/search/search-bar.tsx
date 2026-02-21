@@ -280,7 +280,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       {(showSearchResults || (showSuggestions && popularSuggestions.length > 0)) && (
         <div
           ref={suggestionsRef}
-          className="absolute top-full left-0 right-0 z-50 bg-background border border-t-0 rounded-b-md shadow-lg max-h-96 overflow-y-auto"
+          className="fixed top-14 left-2 right-2 lg:absolute lg:top-full lg:left-0 lg:right-0 z-50 bg-background border lg:border-t-0 rounded-md lg:rounded-t-none lg:rounded-b-md shadow-xl lg:shadow-lg max-h-[80vh] lg:max-h-96 overflow-y-auto"
           role="listbox"
         >
           {/* Show search results when query is active */}
