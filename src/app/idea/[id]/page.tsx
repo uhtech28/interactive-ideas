@@ -468,11 +468,11 @@ const IdeaContent: React.FC<{
               {getInitials(idea.author?.name || idea.author?.username || 'U')}
             </div>
           )}
-          <div className="flex flex-col min-w-0 pr-2 hidden sm:flex">
-            <span className="text-xs font-semibold text-foreground/90 leading-none truncate max-w-[100px]">
+          <div className="flex flex-col min-w-0 pr-2">
+            <span className="text-[11px] font-semibold text-foreground/90 leading-none truncate max-w-[80px] sm:max-w-[150px]">
               {idea.author?.name || idea.author?.username || 'Unknown'}
             </span>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-[9px] text-muted-foreground pt-0.5">
               {formatDistanceToNow(idea.createdAt, { addSuffix: true })}
             </span>
           </div>
@@ -480,25 +480,25 @@ const IdeaContent: React.FC<{
 
         {/* Edit Actions (Bottom Right of Header) */}
         {(idea.isAuthor || false) && !isEditing && (
-          <div className="absolute bottom-4 right-4 flex gap-2 z-10">
+          <div className="absolute bottom-2 right-2 flex gap-1.5 z-10">
             <Button
               variant="secondary"
-              size="sm"
+              size="icon"
               onClick={handleEdit}
-              className="bg-background/50 backdrop-blur-md hover:bg-background/80 border border-white/10"
+              className="h-8 w-8 rounded-full bg-background/50 backdrop-blur-md hover:bg-background/80 border border-white/10 shadow-sm"
             >
-              <Pencil className="w-4 h-4 mr-2" />
-              Edit
+              <Pencil className="w-4 h-4 text-foreground/80" />
+              <span className="sr-only">Edit</span>
             </Button>
             <Button
               variant="destructive"
-              size="sm"
+              size="icon"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-red-500/80 backdrop-blur-md hover:bg-red-600/90 border border-white/10"
+              className="h-8 w-8 rounded-full bg-red-500/80 backdrop-blur-md hover:bg-red-600/90 border border-white/10 shadow-sm"
             >
-              {isDeleting ? <Spinner size={16} className="mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
-              Delete
+              {isDeleting ? <Spinner size={14} /> : <Trash2 className="w-4 h-4 text-white" />}
+              <span className="sr-only">Delete</span>
             </Button>
           </div>
         )}
