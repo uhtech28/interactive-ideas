@@ -246,25 +246,26 @@ export const CalendarBody = ({ features: legacyFeatures, tasks, children }: Cale
 
   // Map tasks to features
   const mappedFeatures = useMemo(() => {
-    return allTasks.map((task: Task): Feature => {
-      let color = 'gray';
-      if (task.status === 'done') color = 'green';
-      else if (task.status === 'in_progress') color = 'blue';
-      else if (task.deadline && task.deadline < Date.now()) color = 'red';
-      else color = 'yellow';
+    return allTasks
+      .filter((task: Task) => task.deadline) // only map tasks with a deadline
+      .map((task: Task): Feature => {
+        let color = '#fcd34d'; // yellow for todo
+        if (task.status === 'done') color = '#86efac'; // green for done
+        else if (task.status === 'in_progress') color = '#93c5fd'; // blue for in_progress
+        else if (task.deadline && task.deadline < Date.now()) color = '#fca5a5'; // red for overdue
 
-      return {
-        id: task._id,
-        name: task.title,
-        startAt: Date.now(), // Not used for tasks
-        endAt: task.deadline || Date.now(),
-        status: {
-          id: task.status,
-          name: task.status.replace('_', ' '),
-          color,
-        },
-      };
-    });
+        return {
+          id: task._id,
+          name: task.title,
+          startAt: task.deadline!,
+          endAt: task.deadline!,
+          status: {
+            id: task.status,
+            name: task.status.replace('_', ' '),
+            color,
+          },
+        };
+      });
   }, [allTasks]);
 
   const effectiveFeatures = legacyFeatures || mappedFeatures;
@@ -394,7 +395,7 @@ export const CalendarBody = ({ features: legacyFeatures, tasks, children }: Cale
   for (let i = 0; i < firstDay; i++) {
     const day =
       prevMonthData.prevMonthDaysArray[
-        prevMonthData.prevMonthDays - firstDay + i
+      prevMonthData.prevMonthDays - firstDay + i
       ];
 
     if (day) {

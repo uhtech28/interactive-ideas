@@ -309,9 +309,9 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
               </Dialog>
 
               <Dialog open={showCalendar} onOpenChange={setShowCalendar}>
-                <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto w-full">
+                <DialogContent className="w-[95vw] max-w-5xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
                   <DialogHeader>
-                    <DialogTitle>Calendar</DialogTitle>
+                    <DialogTitle>Project Calendar</DialogTitle>
                   </DialogHeader>
                   <CalendarSection idea={ideaQuery as ConvexIdea} />
                 </DialogContent>
@@ -970,26 +970,23 @@ const TodoSection: React.FC<{
   );
 };
 
-const CalendarSection: React.FC<{ idea: ConvexIdea }> = ({ idea: _idea }: { idea: ConvexIdea }) => { // eslint-disable-line @typescript-eslint/no-unused-vars
-  const todos = useQuery(api.todos.getTodosForCalendar) || [];
-
+const CalendarSection: React.FC<{ idea: ConvexIdea }> = ({ idea }) => {
   return (
-    <div className="w-full h-full flex flex-col p-6">
-      <div className="bg-card border border-border rounded-xl p-4 sm:p-6 transition-colors">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Calendar</h3>
+    <div className="w-full h-full flex flex-col sm:p-2 -mx-4 sm:mx-0">
+      <div className="bg-card border-y sm:border border-border sm:rounded-xl p-4 sm:p-6 transition-colors overflow-x-auto">
+        <div className="min-w-[600px]">
+          <CalendarProvider ideaId={idea._id as string}>
+            <CalendarDate>
+              <CalendarMonthPicker />
+              <CalendarYearPicker start={2023} end={2026} />
+              <CalendarDatePagination />
+            </CalendarDate>
+            <CalendarHeader />
+            <CalendarBody>
+              {({ feature, task, onEdit }) => <CalendarItem key={feature.id} feature={feature} task={task} onEdit={onEdit} />}
+            </CalendarBody>
+          </CalendarProvider>
         </div>
-        <CalendarProvider>
-          <CalendarDate>
-            <CalendarMonthPicker />
-            <CalendarYearPicker start={2023} end={2026} />
-            <CalendarDatePagination />
-          </CalendarDate>
-          <CalendarHeader />
-          <CalendarBody features={todos}>
-            {({ feature }) => <CalendarItem key={feature.id} feature={feature} />}
-          </CalendarBody>
-        </CalendarProvider>
       </div>
     </div>
   );
