@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { api } from "@convex/_generated/api";
 import { useToast } from "@/components/ui/use-toast";
 import { Id } from "@convex/_generated/dataModel";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Check } from "lucide-react";
 
 interface InvitationButtonProps {
   targetUser: {
@@ -23,6 +23,9 @@ interface InvitationButtonProps {
 export const InvitationButton: React.FC<InvitationButtonProps> = ({ targetUser, iconOnly }) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [invitationMessage, setInvitationMessage] = useState("");
+
+  const [selectedIdeas, setSelectedIdeas] = useState<Id<"ideas">[]>([]);
+  const [isSending, setIsSending] = useState(false);
 
   const { toast } = useToast();
 
@@ -46,30 +49,46 @@ export const InvitationButton: React.FC<InvitationButtonProps> = ({ targetUser, 
   // Send invitation mutation
   const sendInvitationMutation = useMutation(api.invitations.sendInvitation);
 
-  const handleSendInvitation = async (ideaId: Id<"ideas">) => {
+  const handleSendInvitations = async () => {
+    if (selectedIdeas.length === 0) return;
+
+    setIsSending(true);
     try {
-      await sendInvitationMutation({
-        ideaId,
-        username: targetUser.username,
-        message: invitationMessage.trim() || undefined,
-      });
+      await Promise.all(
+        selectedIdeas.map(ideaId =>
+          sendInvitationMutation({
+            ideaId,
+            username: targetUser.username,
+            message: invitationMessage.trim() || undefined,
+          })
+        )
+      );
 
       toast({
-        title: "Invitation sent!",
-        description: `Successfully invited ${targetUser.displayName} to collaborate.`,
+        title: "Invitations sent!",
+        description: `Successfully invited ${targetUser.displayName} to collaborate on ${selectedIdeas.length} idea(s).`,
       });
 
       // Reset state
       setIsPopoverOpen(false);
       setInvitationMessage("");
+      setSelectedIdeas([]);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       toast({
-        title: "Failed to send invitation",
-        description: message || "An error occurred while sending the invitation.",
+        title: "Failed to send invitation(s)",
+        description: message || "An error occurred while sending the invitations.",
         variant: "destructive",
       });
+    } finally {
+      setIsSending(false);
     }
+  };
+
+  const toggleIdeaSelection = (ideaId: Id<"ideas">) => {
+    setSelectedIdeas(prev =>
+      prev.includes(ideaId) ? prev.filter(id => id !== ideaId) : [...prev, ideaId]
+    );
   };
 
   if (!myIdeas) {
@@ -121,42 +140,50 @@ export const InvitationButton: React.FC<InvitationButtonProps> = ({ targetUser, 
             <div>
               <h4 className="font-medium text-sm mb-2">Invite {targetUser.displayName} to collaborate</h4>
               <p className="text-xs text-muted-foreground mb-4">
-                Select one of your ideas that you'd like {targetUser.displayName} to contribute to.
+                Select one or more of your ideas that you'd like {targetUser.displayName} to contribute to.
               </p>
             </div>
 
             <div>
               <label className="text-sm font-medium mb-2 block">
-                Select an idea:
+                Select ideas:
               </label>
               <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                {myIdeas.map((idea) => (
-                  <div
-                    key={idea._id}
-                    className="border rounded-lg p-3 cursor-pointer transition-colors border-border hover:border-primary/50"
-                    onClick={() => handleSendInvitation(idea._id)}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-sm">{idea.title}</h4>
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {idea.description}
-                        </p>
-                        <div className="flex items-center gap-2 mt-2 flex-wrap">
-                          <Badge variant="secondary" className="text-xs">
-                            {idea.category}
-                          </Badge>
-                          <Badge
-                            variant={idea.visibility === "public" ? "default" : "outline"}
-                            className="text-xs"
-                          >
-                            {idea.visibility}
-                          </Badge>
+                {myIdeas.map((idea) => {
+                  const isSelected = selectedIdeas.includes(idea._id);
+                  return (
+                    <div
+                      key={idea._id}
+                      className={`border rounded-lg p-3 cursor-pointer transition-colors hover:border-primary/50 ${isSelected ? 'border-primary bg-primary/5' : 'border-border'}`}
+                      onClick={() => toggleIdeaSelection(idea._id)}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start">
+                            <h4 className="font-medium text-sm pr-2">{idea.title}</h4>
+                            <Badge
+                              variant={idea.visibility === "public" ? "default" : "outline"}
+                              className="text-[10px] py-0 h-4 flex-shrink-0"
+                            >
+                              {idea.visibility}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                            {idea.description}
+                          </p>
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 border border-purple-500/20">
+                              {idea.category}
+                            </span>
+                          </div>
+                        </div>
+                        <div className={`mt-1 h-4 w-4 rounded-sm border flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-input bg-background'}`}>
+                          {isSelected && <Check className="h-3 w-3" />}
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -176,6 +203,24 @@ export const InvitationButton: React.FC<InvitationButtonProps> = ({ targetUser, 
                 {invitationMessage.length}/500 characters
               </p>
             </div>
+
+            <Button
+              className="w-full mt-2"
+              onClick={handleSendInvitations}
+              disabled={selectedIdeas.length === 0 || isSending}
+            >
+              {isSending ? (
+                <>
+                  <Spinner size={14} className="mr-2" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Send Invitation
+                </>
+              )}
+            </Button>
 
           </div>
         </PopoverContent>
