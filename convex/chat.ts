@@ -582,3 +582,123 @@ export const getPotentialGroupMembers = query({
     }));
   }
 });
+
+// [NEW] Get current members of a sub-group
+export const getGroupMembers = query({
+  args: { conversationId: v.id("conversations") },
+  handler: async (ctx, args) => {
+    // 1. Get all memberships for this conversation
+    const memberships = await ctx.db
+      .query("conversationMembers")
+      .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
+      .collect();
+
+    // 2. Fetch the corresponding user documents
+    const members = await Promise.all(
+      memberships.map(async (m) => {
+        const user = await ctx.db.get(m.userId);
+        if (!user) return null;
+        return {
+          id: user._id,
+          username: user.username,
+          displayName: user.displayName,
+          avatar: user.avatar,
+          role: m.role,
+          joinedAt: m.joinedAt,
+        };
+      })
+    );
+
+    return members.filter((m): m is NonNullable<typeof m> => m !== null);
+  },
+});
+
+// [NEW] Remove a member from a sub-group
+export const removeGroupMember = mutation({
+  args: {
+    conversationId: v.id("conversations"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const hasUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+    if (!hasUser) throw new Error("User not found");
+    const currentUserId = hasUser._id;
+
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation || conversation.type !== 'group') throw new Error("Invalid group");
+
+    // Only allow Creator to remove other people, OR the person themselves to leave
+    const isCreator = conversation.creatorId === currentUserId;
+    const isSelfRemove = currentUserId === args.userId;
+
+    if (!isCreator && !isSelfRemove) {
+      throw new Error("You do not have permission to remove this user");
+    }
+
+    if (isCreator && isSelfRemove) {
+      throw new Error("Creator cannot leave the group. Delete the group instead.");
+    }
+
+    // Find the membership record
+    const targetMembership = await ctx.db
+      .query("conversationMembers")
+      .withIndex("by_user_conversation", q => q.eq("userId", args.userId).eq("conversationId", args.conversationId))
+      .first();
+
+    if (!targetMembership) throw new Error("User is not a member");
+
+    // Remove the member
+    await ctx.db.delete(targetMembership._id);
+  }
+});
+
+// [NEW] Delete a sub-group entirely
+export const deleteGroupConversation = mutation({
+  args: { conversationId: v.id("conversations") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const hasUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+    if (!hasUser) throw new Error("User not found");
+    const currentUserId = hasUser._id;
+
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation || conversation.type !== 'group') throw new Error("Invalid group");
+
+    // Ensure it's not the implicit "Main" conversation (no creatorId)
+    // Actually, maybe authors shouldn't be able to delete the main conversation this way, or maybe they can.
+    // For now, only let creators delete their explicitly created groups.
+    if (!conversation.creatorId || conversation.creatorId !== currentUserId) {
+      throw new Error("Only the creator of the group can delete it");
+    }
+
+    // 1. Delete all messages
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_conversation_created", (q) => q.eq("conversationId", args.conversationId))
+      .collect();
+
+    await Promise.all(messages.map(m => ctx.db.delete(m._id)));
+
+    // 2. Delete all memberships
+    const memberships = await ctx.db
+      .query("conversationMembers")
+      .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
+      .collect();
+
+    await Promise.all(memberships.map(m => ctx.db.delete(m._id)));
+
+    // 3. Delete conversation
+    await ctx.db.delete(args.conversationId);
+  }
+});

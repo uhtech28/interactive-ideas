@@ -238,6 +238,7 @@ export default defineSchema({
     joinedAt: v.number(), // Unix timestamp
   })
     .index("by_user", ["userId"])
+    .index("by_conversation", ["conversationId"])
     .index("by_user_conversation", ["userId", "conversationId"]),
 
   // --- Gamification Tables ---
