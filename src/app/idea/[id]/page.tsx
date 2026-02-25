@@ -1213,9 +1213,8 @@ const HierarchicalIdeasSection: React.FC<{
               }
             }}>
               <DialogTrigger asChild>
-                <Button className="flex items-center gap-2" aria-label="Add sub-idea">
-                  <Plus className="w-4 h-4" />
-                  Add Sub-Idea
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Add sub-idea">
+                  <Plus className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]" aria-describedby="sub-idea-description">
