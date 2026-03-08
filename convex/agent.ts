@@ -10,12 +10,15 @@ async function getAgentUserId(ctx: MutationCtx): Promise<Id<"users">> {
         .withIndex("by_clerk_id", (q) => q.eq("clerkId", agentClerkId))
         .first();
 
-    const agentName = "Alex (AI Curator)";
+    const agentName = "Rohan (AI Curator)";
 
     if (existing) {
-        // Ensure name is up to date
+        // Ensure name and avatar are up to date
         if (existing.displayName !== agentName) {
-            await ctx.db.patch(existing._id, { displayName: agentName });
+            await ctx.db.patch(existing._id, { 
+                displayName: agentName,
+                avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Rohan&hairColor=2c1b18&skinColor=a86637" 
+            });
         }
         return existing._id;
     }
@@ -27,7 +30,7 @@ async function getAgentUserId(ctx: MutationCtx): Promise<Id<"users">> {
         username: "interactive_ai",
         displayName: agentName,
         bio: "Curating the best startup ideas with a touch of AI magic. ⚡️",
-        avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=fluffy",
+        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Rohan&hairColor=2c1b18&skinColor=a86637",
         completedOnboarding: true,
         role: "admin",
         createdAt: now,
