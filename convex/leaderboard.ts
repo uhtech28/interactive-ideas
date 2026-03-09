@@ -38,6 +38,65 @@ export const getTopUsers = query({
     },
 });
 
+// Weekly Leaderboard Query
+export const getWeeklyLeaderboard = query({
+    args: {
+        limit: v.optional(v.number()),
+    },
+    handler: async (ctx, args) => {
+        const limit = args.limit || 3;
+
+        // 1. Calculate start of the week (7 days ago)
+        const now = new Date();
+        const startOfWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const startOfWeekTimestamp = startOfWeek.getTime();
+
+        // 2. Fetch all transactions since start of week
+        const transactions = await ctx.db
+            .query("transactions")
+            .filter((q) => q.gte(q.field("createdAt"), startOfWeekTimestamp))
+            .collect();
+
+        // 3. Aggregate points per user
+        const userPoints = new Map<string, number>();
+
+        for (const tx of transactions) {
+            if (tx.amount > 0) { // Only count positive points
+                const current = userPoints.get(tx.walletId) || 0;
+                userPoints.set(tx.walletId, current + tx.amount);
+            }
+        }
+
+        // 4. Sort and take top N
+        const sortedWallets = Array.from(userPoints.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, limit);
+
+        // 5. Fetch User Details
+        const results = await Promise.all(
+            sortedWallets.map(async ([walletId, points]) => {
+                const wallet = await ctx.db.get(walletId as Id<"wallets">);
+                if (!wallet) return null;
+
+                const user = await ctx.db.get(wallet.userId);
+                if (!user) return null;
+
+                return {
+                    _id: user._id,
+                    displayName: user.displayName,
+                    username: user.username,
+                    avatar: user.avatar,
+                    points: points, // Weekly Score
+                    level: user.level || 1,
+                    rank: 0 // to be filled
+                };
+            })
+        );
+
+        return results.filter(u => u !== null).map((u, index) => ({ ...u, rank: index + 1 }));
+    }
+});
+
 // Daily Leaderboard Query
 export const getDailyLeaderboard = query({
     args: {

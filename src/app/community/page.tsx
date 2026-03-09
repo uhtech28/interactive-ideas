@@ -7,7 +7,7 @@ import { api } from "../../../convex/_generated/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, AlertCircle, Lightbulb, Sparkles, Send } from "lucide-react";
+import { Users, AlertCircle, Lightbulb, Sparkles, Send, Trophy } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import { HeroHeader } from "@/components/header";
 import { Spinner } from "@/components/ui/spinner";
@@ -108,6 +108,8 @@ export default function CommunityPage() {
             </div>
           </div>
 
+          <WeeklyLeaderboard />
+
           {/* Users Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredUsers.filter(user => user.clerkId !== clerkUser?.id).map((user: UserProfile) => (
@@ -136,6 +138,49 @@ export default function CommunityPage() {
     </div>
   );
 }
+
+// Weekly Leaderboard Component
+const WeeklyLeaderboard = () => {
+  const topUsers = useQuery(api.leaderboard.getWeeklyLeaderboard, { limit: 3 });
+
+  if (topUsers === undefined) return null; // Loading silently
+  if (topUsers === null || topUsers.length === 0) return null; // No one earned points this week
+
+  return (
+    <div className="mb-16">
+      <div className="flex items-center justify-center gap-3 mb-8">
+        <Trophy className="w-8 h-8 text-yellow-500" />
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent">Weekly Top Contributors</h2>
+        <Trophy className="w-8 h-8 text-yellow-500" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        {topUsers.map((user, index) => (
+          <Card key={user._id} className={`relative overflow-hidden border-2 flex flex-col items-center p-6 text-center ${index === 0 ? 'border-yellow-500/50 bg-yellow-500/5 shadow-yellow-500/20' : index === 1 ? 'border-gray-400/50 bg-gray-400/5 shadow-gray-400/20' : 'border-orange-700/50 bg-orange-700/5 shadow-orange-700/20'} shadow-lg transform hover:scale-105 transition-transform duration-300`}>
+            <div className={`absolute top-0 left-0 w-full h-1 ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-orange-700'}`}></div>
+            <div className={`absolute -top-4 -right-4 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg rotate-12 ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-orange-700'}`}>
+              #{index + 1}
+            </div>
+            
+            <Link href={`/profile/${encodeURIComponent(user.username)}`} className="w-full flex flex-col items-center">
+              <Avatar className={`w-20 h-20 mb-4 border-4 ${index === 0 ? 'border-yellow-500/20' : index === 1 ? 'border-gray-400/20' : 'border-orange-700/20'} shadow-md`}>
+                <AvatarImage src={user.avatar} alt={user.displayName} />
+                <AvatarFallback className="text-2xl font-semibold bg-background">{user.displayName.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              
+              <h3 className="font-bold text-lg text-foreground truncate w-full hover:text-primary transition-colors">{user.displayName}</h3>
+              <p className="text-xs text-muted-foreground mb-4">@{user.username}</p>
+              
+              <div className="bg-background rounded-full px-4 py-1.5 border border-border/50 flex items-center gap-1.5">
+                <span className="font-bold font-mono text-primary text-sm">{user.points}</span>
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Points</span>
+              </div>
+            </Link>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 // User Card Component
 interface UserCardProps {

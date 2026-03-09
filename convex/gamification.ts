@@ -35,6 +35,24 @@ export const getStreak = query({
     },
 });
 
+// Get any user's current streak
+export const getUserStreak = query({
+    args: { userId: v.id("users") },
+    handler: async ({ db }, args) => {
+        const streak = await db
+            .query("userStreaks")
+            .withIndex("by_user", (q) => q.eq("userId", args.userId))
+            .first();
+
+        return streak || {
+            currentStreak: 0,
+            longestStreak: 0,
+            lastLoginDate: "",
+            recoveryAvailable: false
+        };
+    },
+});
+
 // Update streak logic - usually called on session start
 export const updateStreak = mutation({
     handler: async ({ db, auth, scheduler }) => {
@@ -161,6 +179,19 @@ export const getWallet = query({
         const wallet = await db
             .query("wallets")
             .withIndex("by_user", (q) => q.eq("userId", user._id))
+            .first();
+
+        return wallet || { balance: 0 };
+    },
+});
+
+// Get any user's wallet balance
+export const getUserWallet = query({
+    args: { userId: v.id("users") },
+    handler: async ({ db }, args) => {
+        const wallet = await db
+            .query("wallets")
+            .withIndex("by_user", (q) => q.eq("userId", args.userId))
             .first();
 
         return wallet || { balance: 0 };

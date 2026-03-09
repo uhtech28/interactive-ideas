@@ -15,6 +15,7 @@ import { useChat } from "@/components/chat/ChatContext";
 import { InvitationButton } from "@/components/requests/invitation-button";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { Flame, Star, Trophy } from "lucide-react";
 
 export interface UserProfile {
   _id: Id<"users">;
@@ -101,6 +102,10 @@ export const CompactProfileView: React.FC<CompactProfileViewProps> = ({
       openChatWithUser(profile._id);
     }
   };
+
+  const userWallet = useQuery(api.gamification.getUserWallet, { userId: profile._id as Id<"users"> });
+  const userStreak = useQuery(api.gamification.getUserStreak, { userId: profile._id as Id<"users"> });
+  const levelInfo = useQuery(api.gamification.getLevelProgress, { xp: profile.xp || 0 });
 
   const metrics = {
     ideasCreated: profile.ideasCreated || 0,
@@ -211,6 +216,37 @@ export const CompactProfileView: React.FC<CompactProfileViewProps> = ({
 
                   {/* V2 Skill Mastery */}
                   <SkillMasteryList userId={profile._id} />
+
+                  {/* Gamification Stats */}
+                  <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-border/40">
+                    <div className="flex items-center gap-2" title="Current Level">
+                      <div className="p-1.5 bg-primary/10 rounded-md">
+                        <Trophy className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold leading-none">Level {levelInfo?.level || profile.level || 1}</span>
+                        <span className="text-[10px] text-muted-foreground">{profile.xp || 0} XP</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2" title="Total Points">
+                      <div className="p-1.5 bg-yellow-500/10 rounded-md">
+                        <Star className="w-4 h-4 text-yellow-500" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold leading-none">{userWallet?.balance || 0}</span>
+                        <span className="text-[10px] text-muted-foreground">Points</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2" title="Current Login Streak">
+                      <div className="p-1.5 bg-orange-500/10 rounded-md">
+                        <Flame className="w-4 h-4 text-orange-500" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold leading-none">{userStreak?.currentStreak || 0}</span>
+                        <span className="text-[10px] text-muted-foreground">Day Streak</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
