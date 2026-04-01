@@ -16,16 +16,21 @@ import type * as communities from "../communities.js";
 import type * as contributionRequests from "../contributionRequests.js";
 import type * as crons from "../crons.js";
 import type * as debug from "../debug.js";
+import type * as flares from "../flares.js";
 import type * as gamification from "../gamification.js";
 import type * as ideas from "../ideas.js";
 import type * as invitations from "../invitations.js";
 import type * as leaderboard from "../leaderboard.js";
+import type * as levels from "../levels.js";
 import type * as meetings from "../meetings.js";
+import type * as mentorship from "../mentorship.js";
 import type * as notifications from "../notifications.js";
 import type * as search from "../search.js";
 import type * as skillBadges from "../skillBadges.js";
 import type * as todos from "../todos.js";
 import type * as users from "../users.js";
+import type * as ventureConstants from "../ventureConstants.js";
+import type * as ventures from "../ventures.js";
 
 import type {
   ApiFromModules,
@@ -42,16 +47,21 @@ declare const fullApi: ApiFromModules<{
   contributionRequests: typeof contributionRequests;
   crons: typeof crons;
   debug: typeof debug;
+  flares: typeof flares;
   gamification: typeof gamification;
   ideas: typeof ideas;
   invitations: typeof invitations;
   leaderboard: typeof leaderboard;
+  levels: typeof levels;
   meetings: typeof meetings;
+  mentorship: typeof mentorship;
   notifications: typeof notifications;
   search: typeof search;
   skillBadges: typeof skillBadges;
   todos: typeof todos;
   users: typeof users;
+  ventureConstants: typeof ventureConstants;
+  ventures: typeof ventures;
 }>;
 
 /**

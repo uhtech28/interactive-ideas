@@ -1,0 +1,202 @@
+"use client"
+
+import { useQuery } from "convex/react"
+import { api } from "@convex/_generated/api"
+import { useParams, useRouter } from "next/navigation"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Circle,
+  Clock,
+  Trophy,
+  Skull,
+  Shield,
+} from "lucide-react"
+import { VENTURE_STAGES, BOSS_DEFINITIONS } from "@convex/ventureConstants"
+
+export default function VenturePage() {
+  const params = useParams()
+  const router = useRouter()
+  const ventureId = params.id as string
+
+  const venture = useQuery(api.ventures.getVenture, {
+    ventureId: ventureId as any,
+  })
+
+  const progress = useQuery(api.ventures.getVentureProgress, {
+    ventureId: ventureId as any,
+  })
+
+  if (!venture || !progress) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-pulse text-muted-foreground">Loading venture...</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.back()}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold">
+              Venture: {venture.ideaId ? "Loading..." : "Venture"}
+            </h1>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant={venture.status === "active" ? "default" : "secondary"}>
+                {venture.status}
+              </Badge>
+              <span className="text-sm text-muted-foreground">
+                Stage {venture.currentStage} of 8
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Progress Overview */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Trophy className="h-5 w-5" />
+              Progress
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-sm">
+                <span>Overall Completion</span>
+                <span className="font-medium">{progress.completionPercentage}%</span>
+              </div>
+              <Progress value={progress.completionPercentage} className="h-2" />
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div className="text-2xl font-bold">{progress.completedCheckpoints}</div>
+                  <div className="text-xs text-muted-foreground">Completed</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{progress.goldCheckpoints}</div>
+                  <div className="text-xs text-muted-foreground">Gold</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{progress.totalCheckpoints}</div>
+                  <div className="text-xs text-muted-foreground">Total</div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Boss Encounters */}
+        {venture.bosses.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Skull className="h-5 w-5" />
+                Boss Encounters
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                {venture.bosses.map((boss: any) => {
+                  const def = boss.definition
+                  if (!def) return null
+                  return (
+                    <div
+                      key={boss.bossId}
+                      className="p-4 rounded-lg border bg-card"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Shield className="h-4 w-4" />
+                        <span className="font-semibold">{def.name}</span>
+                        <Badge
+                          variant={
+                            boss.status === "slain"
+                              ? "default"
+                              : boss.status === "retreated"
+                              ? "secondary"
+                              : "destructive"
+                          }
+                        >
+                          {boss.status}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {def.represents}
+                      </p>
+                      <div className="flex items-center gap-2 text-xs">
+                        <span>Corruption:</span>
+                        <Progress value={boss.corruptionLevel} className="flex-1 h-1.5" />
+                        <span>{boss.corruptionLevel}%</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Stage Progress */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Stages</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {progress.stageProgress.map((stage: any) => (
+                <div key={stage.stage} className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 min-w-[120px]">
+                    {stage.isComplete ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    ) : stage.completed > 0 ? (
+                      <Clock className="h-5 w-5 text-yellow-500" />
+                    ) : (
+                      <Circle className="h-5 w-5 text-muted-foreground" />
+                    )}
+                    <span className="text-sm font-medium">
+                      Stage {stage.stage}: {stage.name}
+                    </span>
+                  </div>
+                  <Progress
+                    value={stage.total > 0 ? (stage.completed / stage.total) * 100 : 0}
+                    className="flex-1 h-2"
+                  />
+                  <span className="text-xs text-muted-foreground min-w-[60px] text-right">
+                    {stage.completed}/{stage.total}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Navigate to current checkpoint */}
+        <div className="mt-8 flex justify-center">
+          <Button
+            size="lg"
+            onClick={() =>
+              router.push(
+                `/venture/${ventureId}/stage/${venture.currentStage}/checkpoint/${venture.currentCheckpoint}`
+              )
+            }
+          >
+            Continue to Stage {venture.currentStage}, Checkpoint {venture.currentCheckpoint}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
