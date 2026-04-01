@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { BADGE_DEFINITIONS } from "./ventureConstants";
 
 const INITIAL_BADGES = [
     {
@@ -220,3 +221,87 @@ async function checkAndAward(ctx: any, userId: Id<"users">, slug: string) {
         });
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VENTURE BADGES (62-badge system)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const awardVentureBadge = mutation({
+    args: {
+        userId: v.id("users"),
+        badgeId: v.number(),
+        metadata: v.optional(v.any()),
+    },
+    handler: async (ctx, args) => {
+        const badgeDef = BADGE_DEFINITIONS.find((b) => b.id === args.badgeId)
+        if (!badgeDef) throw new Error(`Badge ${args.badgeId} not found`)
+
+        const existing = await ctx.db
+            .query("ventureBadges")
+            .withIndex("by_user_badge", (q) =>
+                q.eq("userId", args.userId).eq("badgeId", args.badgeId)
+            )
+            .first()
+
+        if (existing) return existing._id
+
+        const now = Date.now()
+
+        const badgeRecordId = await ctx.db.insert("ventureBadges", {
+            userId: args.userId,
+            badgeId: args.badgeId,
+            awardedAt: now,
+            isHidden: badgeDef.rarity === "hidden",
+            metadata: args.metadata ?? {},
+        })
+
+        await ctx.db.insert("badgeEvaluations", {
+            badgeId: args.badgeId,
+            userId: args.userId,
+            condition: badgeDef.requirement,
+            lastChecked: now,
+            isAwarded: true,
+            awardedAt: now,
+        })
+
+        return badgeRecordId
+    },
+})
+
+export const getVentureBadges = query({
+    args: { userId: v.id("users") },
+    handler: async (ctx, args) => {
+        const badges = await ctx.db
+            .query("ventureBadges")
+            .withIndex("by_user", (q) => q.eq("userId", args.userId))
+            .collect()
+
+        return badges.map((badge) => {
+            const def = BADGE_DEFINITIONS.find((b) => b.id === badge.badgeId)
+            return { ...badge, definition: def }
+        })
+    },
+})
+
+export const getAllVentureBadges = query({
+    args: {},
+    handler: async () => BADGE_DEFINITIONS,
+})
+
+export const getVentureBadgeProgress = query({
+    args: { userId: v.id("users") },
+    handler: async (ctx, args) => {
+        const earnedBadges = await ctx.db
+            .query("ventureBadges")
+            .withIndex("by_user", (q) => q.eq("userId", args.userId))
+            .collect()
+
+        const earnedIds = new Set(earnedBadges.map((b) => b.badgeId))
+
+        return BADGE_DEFINITIONS.map((def) => ({
+            ...def,
+            earned: earnedIds.has(def.id),
+            awardedAt: earnedBadges.find((b) => b.badgeId === def.id)?.awardedAt,
+        }))
+    },
+})

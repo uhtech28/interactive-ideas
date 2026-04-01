@@ -358,4 +358,191 @@ export default defineSchema({
     awardedAt: v.number(),
   })
     .index("by_user", ["userId"]),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // VENTURE PROGRESSION SYSTEM
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Ventures — wraps an existing idea with 8-stage progression tracking
+  ventures: defineTable({
+    ideaId: v.id("ideas"),
+    userId: v.id("users"),
+    currentStage: v.number(),    // 1-8
+    currentCheckpoint: v.number(), // 1-N within current stage
+    status: v.union(v.literal("active"), v.literal("completed"), v.literal("archived")),
+    assignedBosses: v.array(v.number()), // boss IDs 1-12
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_idea", ["ideaId"])
+    .index("by_user", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_user_status", ["userId", "status"]),
+
+  // Venture checkpoints — tracks completion per checkpoint within a stage
+  ventureCheckpoints: defineTable({
+    ventureId: v.id("ventures"),
+    stage: v.number(),           // 1-8
+    checkpoint: v.number(),      // 1-N within stage
+    status: v.union(v.literal("not_started"), v.literal("in_progress"), v.literal("completed"), v.literal("skipped")),
+    t1Completed: v.boolean(),
+    t2Completed: v.boolean(),
+    t3Completed: v.boolean(),
+    goldBonusEarned: v.boolean(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_venture", ["ventureId"])
+    .index("by_venture_stage", ["ventureId", "stage"])
+    .index("by_venture_status", ["ventureId", "status"]),
+
+  // Venture tasks — individual T1/T2/T3 task tracking
+  ventureTasks: defineTable({
+    checkpointId: v.id("ventureCheckpoints"),
+    taskLevel: v.union(v.literal("t1"), v.literal("t2"), v.literal("t3")),
+    toolType: v.union(
+      v.literal("write"), v.literal("table"), v.literal("map"),
+      v.literal("survey"), v.literal("poll"), v.literal("link"),
+      v.literal("upload"), v.literal("oauth"), v.literal("self_report")
+    ),
+    status: v.union(v.literal("not_started"), v.literal("in_progress"), v.literal("completed")),
+    evidenceId: v.optional(v.id("ventureEvidence")),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_checkpoint", ["checkpointId"])
+    .index("by_checkpoint_level", ["checkpointId", "taskLevel"]),
+
+  // Venture evidence — user-submitted proof of task completion
+  ventureEvidence: defineTable({
+    taskId: v.id("ventureTasks"),
+    userId: v.id("users"),
+    toolType: v.string(),
+    content: v.any(),            // Tool-specific evidence structure
+    storageId: v.optional(v.id("_storage")), // For file uploads
+    createdAt: v.number(),
+  })
+    .index("by_task", ["taskId"])
+    .index("by_user", ["userId"]),
+
+  // Venture bosses — tracks boss encounters per venture
+  ventureBosses: defineTable({
+    ventureId: v.id("ventures"),
+    bossId: v.number(),          // 1-12
+    status: v.union(v.literal("active"), v.literal("retreated"), v.literal("slain")),
+    corruptionLevel: v.number(), // 0-100
+    bossSpecificCounters: v.any(), // Boss-specific tracking data
+    assignedAt: v.number(),
+    defeatedAt: v.optional(v.number()),
+  })
+    .index("by_venture", ["ventureId"])
+    .index("by_venture_status", ["ventureId", "status"]),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // LEVEL PROGRESSION SYSTEM
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // User level progression tracking
+  userLevels: defineTable({
+    userId: v.id("users"),
+    currentLevel: v.number(),    // 1-50
+    titlePoints: v.number(),     // Points toward next level
+    totalPoints: v.number(),     // All-time points earned
+    goldCheckpoints: v.number(), // Total gold checkpoints earned
+    fullLifecycles: v.number(),  // Stage 1→8 completions
+    helpfulFlareResponses: v.number(),
+    flaresResolved: v.number(),
+    menteesCount: v.number(),
+    menteeCheckpointAdvances: v.number(),
+    menteeLevelAchievements: v.number(),
+    ideasLaunched: v.number(),
+    ideasScaled: v.number(),
+    collaboratorsRecruited: v.number(),
+    collaboratorsJoined: v.number(),
+    commentsCount: v.number(),
+    upvotedCommentsCount: v.number(),
+    ideasCreated: v.number(),
+    ideasWithStage6: v.number(),
+    ideasWithStage8: v.number(),
+    activeIdeaTypes: v.array(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_level", ["currentLevel"])
+    .index("by_total_points", ["totalPoints"]),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // FLARE SYSTEM (Help Requests)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Flares — help requests fired by users
+  flares: defineTable({
+    userId: v.id("users"),       // Who fired the flare
+    ventureId: v.optional(v.id("ventures")),
+    checkpointId: v.optional(v.id("ventureCheckpoints")),
+    description: v.string(),     // What they need help with
+    status: v.union(v.literal("open"), v.literal("resolved"), v.literal("closed")),
+    createdAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_status_created", ["status", "createdAt"])
+    .index("by_venture", ["ventureId"]),
+
+  // Flare responses — community responses to flares
+  flareResponses: defineTable({
+    flareId: v.id("flares"),
+    userId: v.id("users"),       // Who responded
+    content: v.string(),
+    isHelpful: v.optional(v.boolean()), // Marked by flare sender
+    createdAt: v.number(),
+  })
+    .index("by_flare", ["flareId"])
+    .index("by_user", ["userId"])
+    .index("by_flare_created", ["flareId", "createdAt"]),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // MENTORSHIP SYSTEM
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Mentorships — mentor-mentee relationships
+  mentorships: defineTable({
+    mentorId: v.id("users"),
+    menteeId: v.id("users"),
+    status: v.union(v.literal("active"), v.literal("completed"), v.literal("ended")),
+    startedAt: v.number(),
+    endedAt: v.optional(v.number()),
+  })
+    .index("by_mentor", ["mentorId"])
+    .index("by_mentee", ["menteeId"])
+    .index("by_mentor_status", ["mentorId", "status"])
+    .index("by_mentee_status", ["menteeId", "status"]),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // BADGE SYSTEM (Extended — 62 badges)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Venture badges — tracks which badges a user has earned (extends existing userBadges)
+  ventureBadges: defineTable({
+    userId: v.id("users"),
+    badgeId: v.number(),         // 1-62 (references BADGE_DEFINITIONS)
+    awardedAt: v.number(),
+    isHidden: v.boolean(),       // Hidden until earned
+    metadata: v.any(),           // Context for award
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_badge", ["userId", "badgeId"])
+    .index("by_badge", ["badgeId"]),
+
+  // Badge evaluation tracking — avoids re-evaluating everything
+  badgeEvaluations: defineTable({
+    badgeId: v.number(),         // 1-62
+    userId: v.id("users"),
+    condition: v.string(),       // Condition being tracked
+    lastChecked: v.number(),
+    isAwarded: v.boolean(),
+    awardedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_badge", ["userId", "badgeId"])
+    .index("by_awarded", ["isAwarded"]),
 })
