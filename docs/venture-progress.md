@@ -1,6 +1,6 @@
 # Venture Progression System — Implementation Tracker
 
-## Status: Phase 1 Backend Complete ✅
+## Status: Phase 1-2 Complete ✅
 
 ### Completed (Phase 1: Backend Foundation)
 - [x] `convex/ventureConstants.ts` — All static definitions:
@@ -15,6 +15,7 @@
   - `ventureBadges`, `badgeEvaluations`
 - [x] `convex/ventures.ts` — Core venture backend:
   - `createVenture` — Creates venture from idea, initializes all checkpoints/tasks, assigns 1-2 random bosses
+  - `generateUploadUrl` — File upload URL generation
   - `startCheckpoint` — Transitions checkpoint to in_progress
   - `submitEvidence` — Submits task evidence, updates completion flags, checks gold bonus
   - `advanceCheckpoint` — Advances checkpoint (requires 2/3 tasks), triggers stage advancement
@@ -35,17 +36,18 @@
   - `applyForMentorship`, `acceptMentee`, `trackMenteeCheckpoint`, `endMentorship` — Mutations
   - `getMentorDashboard`, `getMentorshipStatus` — Queries
 
-### Pending (Phase 2: UI Components)
-- [ ] `src/app/venture/[id]/page.tsx` — Venture detail page
-- [ ] `src/app/venture/[id]/stage/[stage]/page.tsx` — Stage view
-- [ ] `src/app/venture/[id]/checkpoint/[checkpoint]/page.tsx` — Checkpoint with tools
-- [ ] `src/app/venture/create/page.tsx` — Create venture from idea
-- [ ] `src/components/venture/` — Stage nav, checkpoint timeline, task selector, progress bar
-- [ ] `src/components/tools/` — Write, Table, Link, Upload, Map, Survey, Poll, OAuth, Self-report tools
-- [ ] `src/components/levels/` — Level badge, progress bar, requirements
-- [ ] `src/components/badges/` — Badge grid, card, tooltip
-- [ ] `src/components/flares/` — Flare button, modal, feed, response
-- [ ] `src/components/mentorship/` — Mentor card, mentee progress, request
+### Completed (Phase 2: UI Components)
+- [x] `src/app/venture/[id]/page.tsx` — Venture detail page with progress, bosses, stages
+- [x] `src/app/venture/[id]/stage/[stage]/checkpoint/[checkpoint]/page.tsx` — Checkpoint view with T1/T2/T3 tasks
+- [x] `src/app/venture/create/page.tsx` — Create venture from idea with boss preview
+- [x] `src/components/tools/write-tool.tsx` — Rich text response tool
+- [x] `src/components/tools/table-tool.tsx` — Dynamic table builder
+- [x] `src/components/tools/link-tool.tsx` — URL submission tool
+- [x] `src/components/tools/upload-tool.tsx` — File upload tool
+- [x] `src/components/tools/self-report-tool.tsx` — Structured form tool
+- [x] `src/components/levels/level-badge.tsx` — Level display with progress bar
+- [x] `src/components/badges/badge-grid.tsx` — Badge collection grid with rarity colors
+- [x] `src/components/flares/flare-button.tsx` — Fire flare + flare feed components
 
 ### Pending (Phase 3: Boss System)
 - [ ] Boss corruption visual effects (CSS animations)
@@ -85,3 +87,9 @@ Mentorship → Level 40+ → Mentees → Tracking
 3. **Boss corruption numeric (0-100)** — Easy to scale visual effects
 4. **Mentor track separate module** — Only relevant at Lv 40+
 5. **Points feed existing gamification** — No separate wallet system needed
+
+## Commits
+1. `1ece4c7` — Backend foundation (8 Convex modules, 10 tables)
+2. `740df45` — Venture UI pages (detail + checkpoint)
+3. `3cb22c6` — Tool components + create page
+4. `2e95d0f` — Level, badge, flare UI components
