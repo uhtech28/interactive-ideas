@@ -157,24 +157,24 @@ export default function VenturePage() {
           <CardContent>
             <div className="space-y-4">
               {progress.stageProgress.map((stage: any) => (
-                <div key={stage.stage} className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 min-w-[120px]">
+                <div key={stage.stage} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                  <div className="flex items-center gap-2 sm:min-w-[120px]">
                     {stage.isComplete ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 shrink-0" />
                     ) : stage.completed > 0 ? (
-                      <Clock className="h-5 w-5 text-yellow-500" />
+                      <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 shrink-0" />
                     ) : (
-                      <Circle className="h-5 w-5 text-muted-foreground" />
+                      <Circle className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
                     )}
-                    <span className="text-sm font-medium">
-                      Stage {stage.stage}: {stage.name}
+                    <span className="text-xs sm:text-sm font-medium truncate">
+                      {stage.stage}: {stage.name}
                     </span>
                   </div>
                   <Progress
                     value={stage.total > 0 ? (stage.completed / stage.total) * 100 : 0}
                     className="flex-1 h-2"
                   />
-                  <span className="text-xs text-muted-foreground min-w-[60px] text-right">
+                  <span className="text-xs text-muted-foreground sm:min-w-[60px] text-right self-end sm:self-auto">
                     {stage.completed}/{stage.total}
                   </span>
                 </div>
@@ -187,6 +187,7 @@ export default function VenturePage() {
         <div className="mt-8 flex justify-center">
           <Button
             size="lg"
+            className="w-full sm:w-auto"
             onClick={() =>
               router.push(
                 `/venture/${ventureId}/stage/${venture.currentStage}/checkpoint/${venture.currentCheckpoint}`
