@@ -1,6 +1,7 @@
 "use client"
 
-import { useQuery } from "convex/react"
+import { useState } from "react"
+import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -8,7 +9,16 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { ArrowLeft, Check, X, Star, FileText, Table2, Map, Link2, Upload, ExternalLink, HelpCircle } from "lucide-react"
-import { CHECKPOINT_DEFINITIONS, TOOL_TYPES, VENTURE_STAGES } from "@convex/ventureConstants"
+import { CHECKPOINT_DEFINITIONS, VENTURE_STAGES } from "@convex/ventureConstants"
+import { WriteTool } from "@/components/tools/write-tool"
+import { TableTool } from "@/components/tools/table-tool"
+import { LinkTool } from "@/components/tools/link-tool"
+import { UploadTool } from "@/components/tools/upload-tool"
+import { SelfReportTool } from "@/components/tools/self-report-tool"
+import { MapTool } from "@/components/tools/map-tool"
+import { SurveyTool } from "@/components/tools/survey-tool"
+import { PollTool } from "@/components/tools/poll-tool"
+import { OAuthTool } from "@/components/tools/oauth-tool"
 
 const TOOL_ICONS: Record<string, any> = {
   write: FileText,
@@ -29,11 +39,12 @@ export default function CheckpointPage() {
   const stageNum = parseInt(params.stage as string)
   const checkpointNum = parseInt(params.checkpoint as string)
 
-  const venture = useQuery(api.ventures.getVenture, {
-    ventureId: ventureId as any,
-  })
+  const [activeTask, setActiveTask] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  // Find the checkpoint in the venture data
+  const venture = useQuery(api.ventures.getVenture, { ventureId: ventureId as any })
+  const submitEvidence = useMutation(api.ventures.submitEvidence)
+
   const checkpoint = venture?.checkpoints?.find(
     (cp: any) => cp.stage === stageNum && cp.checkpoint === checkpointNum
   )
@@ -52,19 +63,48 @@ export default function CheckpointPage() {
 
   const completedCount = [checkpoint.t1Completed, checkpoint.t2Completed, checkpoint.t3Completed]
     .filter(Boolean).length
-
   const canAdvance = completedCount >= 2
+
+  const handleSubmitEvidence = async (taskId: string, toolType: string, content: any) => {
+    setSubmitting(true)
+    try {
+      await submitEvidence({ taskId: taskId as any, content })
+      setActiveTask(null)
+    } catch (error) {
+      console.error("Failed to submit evidence:", error)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const renderTool = (task: any, def: { prompt: string; tool: string }) => {
+    const props = {
+      prompt: def.prompt,
+      onSubmit: (content: any) => handleSubmitEvidence(task._id, def.tool, content),
+      initialContent: task?.evidence?.content,
+      isSubmitting: submitting,
+    }
+
+    switch (def.tool) {
+      case "write": return <WriteTool {...props} />
+      case "table": return <TableTool {...props} />
+      case "link": return <LinkTool {...props} />
+      case "upload": return <UploadTool {...props} taskId={task._id} />
+      case "map": return <MapTool {...props} />
+      case "survey": return <SurveyTool {...props} />
+      case "poll": return <PollTool {...props} />
+      case "oauth": return <OAuthTool {...props} />
+      case "self_report": return <SelfReportTool {...props} fields={[]} />
+      default: return <WriteTool {...props} />
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.push(`/venture/${ventureId}`)}
-          >
+          <Button variant="ghost" size="icon" onClick={() => router.push(`/venture/${ventureId}`)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
@@ -98,32 +138,24 @@ export default function CheckpointPage() {
 
         {/* Tasks */}
         <div className="space-y-6">
-          {/* T1 - Easy */}
-          <TaskCard
-            task={checkpoint.tasks?.find((t: any) => t.taskLevel === "t1")}
-            def={cpDef.t1}
-            level="t1"
-            label="Task 1 — Easy"
-            description="20% points"
-          />
-
-          {/* T2 - Medium */}
-          <TaskCard
-            task={checkpoint.tasks?.find((t: any) => t.taskLevel === "t2")}
-            def={cpDef.t2}
-            level="t2"
-            label="Task 2 — Medium"
-            description="20% points"
-          />
-
-          {/* T3 - Stretch */}
-          <TaskCard
-            task={checkpoint.tasks?.find((t: any) => t.taskLevel === "t3")}
-            def={cpDef.t3}
-            level="t3"
-            label="Task 3 — Stretch"
-            description="35% points (optional, largest reward)"
-          />
+          {[
+            { task: checkpoint.tasks?.find((t: any) => t.taskLevel === "t1"), def: cpDef.t1, level: "t1", label: "Task 1 — Easy", desc: "20% points" },
+            { task: checkpoint.tasks?.find((t: any) => t.taskLevel === "t2"), def: cpDef.t2, level: "t2", label: "Task 2 — Medium", desc: "20% points" },
+            { task: checkpoint.tasks?.find((t: any) => t.taskLevel === "t3"), def: cpDef.t3, level: "t3", label: "Task 3 — Stretch", desc: "35% points" },
+          ].map(({ task, def, level, label, desc }) => (
+            <TaskCard
+              key={level}
+              task={task}
+              def={def}
+              level={level}
+              label={label}
+              description={desc}
+              isActive={activeTask === task?._id}
+              onActivate={() => task && setActiveTask(task._id)}
+              onClose={() => setActiveTask(null)}
+              renderTool={() => task ? renderTool(task, def) : null}
+            />
+          ))}
         </div>
 
         {/* Advance Button */}
@@ -143,8 +175,7 @@ export default function CheckpointPage() {
               variant="outline"
               onClick={() => {
                 const nextCp = venture.checkpoints?.find(
-                  (cp: any) =>
-                    cp.stage === stageNum && cp.checkpoint === checkpointNum + 1
+                  (cp: any) => cp.stage === stageNum && cp.checkpoint === checkpointNum + 1
                 )
                 if (nextCp) {
                   router.push(`/venture/${ventureId}/stage/${stageNum}/checkpoint/${checkpointNum + 1}`)
@@ -176,12 +207,20 @@ function TaskCard({
   level,
   label,
   description,
+  isActive,
+  onActivate,
+  onClose,
+  renderTool,
 }: {
   task: any
   def: { prompt: string; tool: string }
   level: string
   label: string
   description: string
+  isActive: boolean
+  onActivate: () => void
+  onClose: () => void
+  renderTool: () => React.ReactNode
 }) {
   const isComplete = task?.status === "completed"
   const Icon = TOOL_ICONS[def.tool] || FileText
@@ -203,13 +242,9 @@ function TaskCard({
           <div className="flex items-center gap-2">
             <Badge variant="outline">{description}</Badge>
             {isComplete ? (
-              <Badge variant="default">
-                <Check className="h-3 w-3 mr-1" /> Done
-              </Badge>
+              <Badge variant="default"><Check className="h-3 w-3 mr-1" /> Done</Badge>
             ) : (
-              <Badge variant="secondary">
-                <X className="h-3 w-3 mr-1" /> Pending
-              </Badge>
+              <Badge variant="secondary"><X className="h-3 w-3 mr-1" /> Pending</Badge>
             )}
           </div>
         </div>
@@ -220,10 +255,16 @@ function TaskCard({
           <span>Tool:</span>
           <Badge variant="outline" className="capitalize">{def.tool}</Badge>
         </div>
-        {!isComplete && (
-          <Button className="mt-4" size="sm">
+        {!isComplete && !isActive && (
+          <Button className="mt-4" size="sm" onClick={onActivate}>
             Start Task
           </Button>
+        )}
+        {!isComplete && isActive && (
+          <div className="mt-4 space-y-3">
+            {renderTool()}
+            <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          </div>
         )}
         {isComplete && task?.evidence && (
           <div className="mt-4 p-3 rounded bg-background border text-sm">

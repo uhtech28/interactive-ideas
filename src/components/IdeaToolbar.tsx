@@ -1,11 +1,13 @@
 import React from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { 
   GitBranch, 
   ListTodo, 
   Calendar, 
   MessageCircle, 
-  Users
+  Users,
+  Rocket,
 } from "lucide-react";
 import {
   Tooltip,
@@ -21,7 +23,7 @@ interface IdeaToolbarProps {
   onOpenTodos: () => void;
   onOpenCalendar: () => void;
   onOpenComments: () => void;
-
+  ideaId: string;
   requestCount?: number;
   commentCount?: number;
   todoCount?: number;
@@ -33,7 +35,7 @@ export function IdeaToolbar({
   onOpenTodos,
   onOpenCalendar,
   onOpenComments,
-
+  ideaId,
   requestCount = 0,
   commentCount = 0,
   todoCount = 0,
@@ -101,6 +103,19 @@ export function IdeaToolbar({
             </Button>
           </TooltipTrigger>
           <TooltipContent>Comments</TooltipContent>
+        </Tooltip>
+
+        <div className="w-px h-4 bg-border mx-1" />
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button asChild variant="outline" size="icon" className="h-8 w-8 text-amber-600 border-amber-200 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-950">
+              <Link href={`/venture/create?ideaId=${ideaId}`}>
+                <Rocket className="w-4 h-4" />
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Convert to Venture</TooltipContent>
         </Tooltip>
       </div>
     </TooltipProvider>
