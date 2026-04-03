@@ -12,7 +12,8 @@ import {
   Plus,
   GitBranchPlus,
   Search,
-  X
+  X,
+  Rocket,
 } from "lucide-react";
 import { useState } from "react";
 import { LogoIcon } from "@/components/logo";
@@ -183,6 +184,20 @@ export function IdeaSideNav({
 
               <div className="hidden lg:block w-8 h-[1px] bg-border/50 my-1" />
             </>
+          )}
+
+          {/* Convert to Venture — only show for idea authors on idea pages */}
+          {ideaId && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href={`/venture/create?ideaId=${ideaId}`}>
+                  <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10 hover:bg-amber-500/10 hover:text-amber-500 transition-all duration-200">
+                    <Rocket className="w-5 h-5" />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="left">Convert to Venture</TooltipContent>
+            </Tooltip>
           )}
 
           {/* Global Actions (from RightSidebar) */}
