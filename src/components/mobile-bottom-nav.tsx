@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Star, Users, User, PlusCircle } from "lucide-react";
@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
-export const MobileBottomNav = () => {
+function MobileBottomNavContent() {
   const pathname = usePathname();
   const currentUser = useQuery(api.users.getCurrentUser);
 
@@ -65,5 +65,13 @@ export const MobileBottomNav = () => {
       </nav>
     </div>
   );
-};
+}
+
+export function MobileBottomNav() {
+  return (
+    <Suspense fallback={null}>
+      <MobileBottomNavContent />
+    </Suspense>
+  );
+}
 

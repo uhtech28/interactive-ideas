@@ -9,6 +9,7 @@ export const Logo = ({ className }: { className?: string; uniColor?: boolean; id
                 alt="Interactive Ideas Logo"
                 width={28}
                 height={28}
+                style={{ width: 'auto', height: 'auto' }}
                 className="rounded-lg"
                 priority
             />
@@ -26,6 +27,7 @@ export const LogoIcon = ({ className }: { className?: string; uniColor?: boolean
             alt="Interactive Ideas"
             width={28}
             height={28}
+            style={{ width: 'auto', height: 'auto' }}
             className={cn('rounded-lg', className)}
             priority
         />

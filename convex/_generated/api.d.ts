@@ -31,6 +31,7 @@ import type * as todos from "../todos.js";
 import type * as users from "../users.js";
 import type * as ventureConstants from "../ventureConstants.js";
 import type * as ventures from "../ventures.js";
+import type * as worldMap from "../worldMap.js";
 
 import type {
   ApiFromModules,
@@ -62,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   users: typeof users;
   ventureConstants: typeof ventureConstants;
   ventures: typeof ventures;
+  worldMap: typeof worldMap;
 }>;
 
 /**
