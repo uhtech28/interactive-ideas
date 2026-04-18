@@ -52,19 +52,19 @@
  */
 export interface CheckpointState {
   /** Convex document `_id` as a plain string. */
-  id: string
+  id: string;
   /** Stage number 1–8. */
-  stage: number
+  stage: number;
   /** Checkpoint number within the stage (1-based). */
-  checkpoint: number
+  checkpoint: number;
   /** Derived display status for the Phaser map node. */
-  status: 'locked' | 'active' | 'in_progress' | 'completed' | 'gold'
+  status: "locked" | "active" | "in_progress" | "completed" | "gold";
   /** Whether Task 1 has been submitted and accepted. */
-  t1: boolean
+  t1: boolean;
   /** Whether Task 2 has been submitted and accepted. */
-  t2: boolean
+  t2: boolean;
   /** Whether Task 3 has been submitted and accepted. */
-  t3: boolean
+  t3: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -79,26 +79,32 @@ export interface CheckpointState {
  */
 export type ReactToPhaserEvent =
   /** Push a new world-brightness percentage (0–100) into the game. */
-  | { type: 'UPDATE_BRIGHTNESS'; brightness: number }
+  | { type: "UPDATE_BRIGHTNESS"; brightness: number }
   /** Replace the full checkpoint state array rendered on the world map. */
-  | { type: 'UPDATE_CHECKPOINTS'; checkpoints: CheckpointState[] }
+  | { type: "UPDATE_CHECKPOINTS"; checkpoints: CheckpointState[] }
   /**
    * Tell the game which venture is active and which character sprite to use.
    * Should be dispatched once after the game boots and whenever the user
    * switches the active venture.
    */
-  | { type: 'SET_ACTIVE_VENTURE'; ventureId: string; personaGender: 'male' | 'female' }
+  | {
+      type: "SET_ACTIVE_VENTURE";
+      ventureId: string;
+      personaGender: "male" | "female";
+      assignedBosses?: string[];
+      currentStage?: number;
+    }
   /** Ask the camera to pan/zoom to bring a checkpoint node into view. */
-  | { type: 'SCROLL_TO_CHECKPOINT'; checkpointId: string }
+  | { type: "SCROLL_TO_CHECKPOINT"; checkpointId: string }
   /** Pause the Phaser game loop (e.g. modal is open). */
-  | { type: 'GAME_PAUSE' }
+  | { type: "GAME_PAUSE" }
   /** Resume the Phaser game loop after a pause. */
-  | { type: 'GAME_RESUME' }
+  | { type: "GAME_RESUME" }
   /**
    * Notify the game that the canvas container has been resized so it can
    * call `game.scale.resize()`.
    */
-  | { type: 'RESIZE'; width: number; height: number }
+  | { type: "RESIZE"; width: number; height: number };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Phaser → React events
@@ -113,18 +119,23 @@ export type ReactToPhaserEvent =
  */
 export type PhaserToReactEvent =
   /** Emitted once the boot scene has finished and the game is interactive. */
-  | { type: 'PHASER_READY' }
+  | { type: "PHASER_READY" }
   /**
    * User tapped/clicked a checkpoint node on the world map.
    * React should open the relevant checkpoint modal.
    */
-  | { type: 'CHECKPOINT_CLICKED'; checkpointId: string; stage: number; checkpoint: number }
+  | {
+      type: "CHECKPOINT_CLICKED";
+      checkpointId: string;
+      stage: number;
+      checkpoint: number;
+    }
   /** A Phaser scene has finished its `create()` lifecycle. */
-  | { type: 'SCENE_LOADED'; scene: string }
+  | { type: "SCENE_LOADED"; scene: string }
   /** Periodic frame-rate report from the game loop (throttled to ~1 Hz). */
-  | { type: 'FPS_UPDATE'; fps: number }
+  | { type: "FPS_UPDATE"; fps: number }
   /** An unrecoverable error occurred inside the game; React may show a fallback UI. */
-  | { type: 'ERROR'; message: string }
+  | { type: "ERROR"; message: string };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal listener registry types
@@ -132,7 +143,7 @@ export type PhaserToReactEvent =
 
 /** Generic event handler. Typed loosely so handlers can be stored uniformly. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type EventHandler = (event: any) => void
+type EventHandler = (event: any) => void;
 
 /**
  * Internal namespace keys that separate Phaser-bound from React-bound
@@ -146,8 +157,8 @@ type EventHandler = (event: any) => void
  * Phaser scenes should subscribe with the raw event type (no prefix) — the
  * bridge internally routes to the correct namespace.
  */
-const PHASER_NS = 'PHASER:' as const
-const REACT_NS  = 'REACT:'  as const
+const PHASER_NS = "PHASER:" as const;
+const REACT_NS = "REACT:" as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EventBridge class
@@ -175,14 +186,14 @@ class EventBridge {
    *   'PHASER:UPDATE_BRIGHTNESS'  ← only fired by dispatchToPhaser
    *   'REACT:PHASER_READY'        ← only fired by dispatchToReact
    */
-  private readonly listeners: Map<string, Set<EventHandler>>
+  private readonly listeners: Map<string, Set<EventHandler>>;
 
   /** Tracks whether a warning about unhandled events has been issued. */
-  private readonly warnedTypes: Set<string>
+  private readonly warnedTypes: Set<string>;
 
   constructor() {
-    this.listeners = new Map()
-    this.warnedTypes = new Set()
+    this.listeners = new Map();
+    this.warnedTypes = new Set();
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
@@ -191,12 +202,12 @@ class EventBridge {
    * Ensure a listener set exists for `key` and return it.
    */
   private bucket(key: string): Set<EventHandler> {
-    let set = this.listeners.get(key)
+    let set = this.listeners.get(key);
     if (!set) {
-      set = new Set()
-      this.listeners.set(key, set)
+      set = new Set();
+      this.listeners.set(key, set);
     }
-    return set
+    return set;
   }
 
   /**
@@ -205,24 +216,24 @@ class EventBridge {
    * handlers have run, so one bad handler cannot silently block others.
    */
   private fire(key: string, event: unknown): void {
-    const set = this.listeners.get(key)
-    if (!set || set.size === 0) return
+    const set = this.listeners.get(key);
+    if (!set || set.size === 0) return;
 
-    const errors: unknown[] = []
+    const errors: unknown[] = [];
     for (const handler of set) {
       try {
-        handler(event)
+        handler(event);
       } catch (err) {
-        errors.push(err)
+        errors.push(err);
       }
     }
 
     if (errors.length > 0) {
       // Re-throw the first error; remaining are logged.
       for (let i = 1; i < errors.length; i++) {
-        console.error('[EventBridge] handler error:', errors[i])
+        console.error("[EventBridge] handler error:", errors[i]);
       }
-      throw errors[0]
+      throw errors[0];
     }
   }
 
@@ -247,9 +258,9 @@ class EventBridge {
    * unsub()
    */
   on(eventType: string, handler: EventHandler): () => void {
-    this.bucket(PHASER_NS + eventType).add(handler)
-    this.bucket(REACT_NS  + eventType).add(handler)
-    return () => this.off(eventType, handler)
+    this.bucket(PHASER_NS + eventType).add(handler);
+    this.bucket(REACT_NS + eventType).add(handler);
+    return () => this.off(eventType, handler);
   }
 
   /**
@@ -262,13 +273,13 @@ class EventBridge {
    * @returns          Unsubscribe function.
    */
   onPhaser(
-    eventType: ReactToPhaserEvent['type'],
-    handler: EventHandler
+    eventType: ReactToPhaserEvent["type"],
+    handler: EventHandler,
   ): () => void {
-    this.bucket(PHASER_NS + eventType).add(handler)
+    this.bucket(PHASER_NS + eventType).add(handler);
     return () => {
-      this.listeners.get(PHASER_NS + eventType)?.delete(handler)
-    }
+      this.listeners.get(PHASER_NS + eventType)?.delete(handler);
+    };
   }
 
   /**
@@ -281,13 +292,13 @@ class EventBridge {
    * @returns          Unsubscribe function.
    */
   onReact(
-    eventType: PhaserToReactEvent['type'],
-    handler: EventHandler
+    eventType: PhaserToReactEvent["type"],
+    handler: EventHandler,
   ): () => void {
-    this.bucket(REACT_NS + eventType).add(handler)
+    this.bucket(REACT_NS + eventType).add(handler);
     return () => {
-      this.listeners.get(REACT_NS + eventType)?.delete(handler)
-    }
+      this.listeners.get(REACT_NS + eventType)?.delete(handler);
+    };
   }
 
   /**
@@ -298,8 +309,8 @@ class EventBridge {
    * @param handler    The exact handler reference passed to `on`.
    */
   off(eventType: string, handler: EventHandler): void {
-    this.listeners.get(PHASER_NS + eventType)?.delete(handler)
-    this.listeners.get(REACT_NS  + eventType)?.delete(handler)
+    this.listeners.get(PHASER_NS + eventType)?.delete(handler);
+    this.listeners.get(REACT_NS + eventType)?.delete(handler);
   }
 
   /**
@@ -312,26 +323,26 @@ class EventBridge {
    * @param event      The full event payload (must include at minimum `{ type }`).
    */
   emit(eventType: string, event: unknown): void {
-    let handled = false
+    let handled = false;
 
-    const phaserSet = this.listeners.get(PHASER_NS + eventType)
+    const phaserSet = this.listeners.get(PHASER_NS + eventType);
     if (phaserSet && phaserSet.size > 0) {
-      this.fire(PHASER_NS + eventType, event)
-      handled = true
+      this.fire(PHASER_NS + eventType, event);
+      handled = true;
     }
 
-    const reactSet = this.listeners.get(REACT_NS + eventType)
+    const reactSet = this.listeners.get(REACT_NS + eventType);
     if (reactSet && reactSet.size > 0) {
-      this.fire(REACT_NS + eventType, event)
-      handled = true
+      this.fire(REACT_NS + eventType, event);
+      handled = true;
     }
 
     if (!handled && !this.warnedTypes.has(eventType)) {
-      this.warnedTypes.add(eventType)
+      this.warnedTypes.add(eventType);
       console.warn(
         `[EventBridge] No listeners registered for event type "${eventType}". ` +
-        `This warning is shown once per type.`
-      )
+          `This warning is shown once per type.`,
+      );
     }
   }
 
@@ -349,21 +360,21 @@ class EventBridge {
    * eventBridge.dispatchToPhaser({ type: 'GAME_PAUSE' })
    */
   dispatchToPhaser(event: ReactToPhaserEvent): void {
-    const key = PHASER_NS + event.type
-    const set = this.listeners.get(key)
+    const key = PHASER_NS + event.type;
+    const set = this.listeners.get(key);
 
     if (!set || set.size === 0) {
       if (!this.warnedTypes.has(key)) {
-        this.warnedTypes.add(key)
+        this.warnedTypes.add(key);
         console.warn(
           `[EventBridge] dispatchToPhaser("${event.type}"): no Phaser listeners. ` +
-          `Has the Phaser scene subscribed yet?`
-        )
+            `Has the Phaser scene subscribed yet?`,
+        );
       }
-      return
+      return;
     }
 
-    this.fire(key, event)
+    this.fire(key, event);
   }
 
   /**
@@ -379,21 +390,21 @@ class EventBridge {
    * eventBridge.dispatchToReact({ type: 'CHECKPOINT_CLICKED', checkpointId: id, stage: 2, checkpoint: 3 })
    */
   dispatchToReact(event: PhaserToReactEvent): void {
-    const key = REACT_NS + event.type
-    const set = this.listeners.get(key)
+    const key = REACT_NS + event.type;
+    const set = this.listeners.get(key);
 
     if (!set || set.size === 0) {
       if (!this.warnedTypes.has(key)) {
-        this.warnedTypes.add(key)
+        this.warnedTypes.add(key);
         console.warn(
           `[EventBridge] dispatchToReact("${event.type}"): no React listeners. ` +
-          `Is the relevant component mounted?`
-        )
+            `Is the relevant component mounted?`,
+        );
       }
-      return
+      return;
     }
 
-    this.fire(key, event)
+    this.fire(key, event);
   }
 
   /**
@@ -404,8 +415,8 @@ class EventBridge {
    * afterEach(() => eventBridge.removeAllListeners())
    */
   removeAllListeners(): void {
-    this.listeners.clear()
-    this.warnedTypes.clear()
+    this.listeners.clear();
+    this.warnedTypes.clear();
   }
 
   /**
@@ -413,11 +424,11 @@ class EventBridge {
    * types and namespaces. Useful for debugging and leak detection.
    */
   listenerCount(): number {
-    let total = 0
+    let total = 0;
     for (const set of this.listeners.values()) {
-      total += set.size
+      total += set.size;
     }
-    return total
+    return total;
   }
 
   /**
@@ -430,8 +441,8 @@ class EventBridge {
    */
   registeredTypes(): string[] {
     return Array.from(this.listeners.keys()).filter(
-      (k) => (this.listeners.get(k)?.size ?? 0) > 0
-    )
+      (k) => (this.listeners.get(k)?.size ?? 0) > 0,
+    );
   }
 }
 
@@ -450,7 +461,7 @@ class EventBridge {
  * The same object reference is guaranteed across the entire module graph
  * (Next.js module caching) so React and Phaser always share one bus.
  */
-export const eventBridge = new EventBridge()
+export const eventBridge = new EventBridge();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // React convenience hook
@@ -482,26 +493,42 @@ export const eventBridge = new EventBridge()
  * }
  */
 export function useGameEvent(eventType: string, handler: EventHandler): void {
-  // Dynamic import of React hooks keeps this file loadable outside a React
-  // context (e.g. inside Phaser or in Node test environments) without errors.
-  // In practice, Next.js will tree-shake this correctly.
-  const { useEffect, useRef } = require('react') as typeof import('react')
+  // Note: This hook should only be called from React components.
+  // The event bridge itself can be used in Phaser contexts without React.
+  let useEffect: any;
+  let useRef: any;
+
+  try {
+    // Conditional import for React hooks - only available in React contexts
+    const React = typeof window !== "undefined" ? require("react") : null;
+    if (React) {
+      useEffect = React.useEffect;
+      useRef = React.useRef;
+    } else {
+      // Fallback for non-React contexts (should not be called)
+      console.warn("useGameEvent called outside of React context");
+      return;
+    }
+  } catch {
+    console.warn("React not available for useGameEvent");
+    return;
+  }
 
   // Keep a stable ref to the latest handler so the effect does not need to
   // re-subscribe every time an inline handler changes identity.
-  const handlerRef = useRef<EventHandler>(handler)
+  const handlerRef = useRef<EventHandler>(handler);
   useEffect(() => {
-    handlerRef.current = handler
-  }, [handler])
+    handlerRef.current = handler;
+  }, [handler]);
 
   useEffect(() => {
-    const stableHandler: EventHandler = (event) => handlerRef.current(event)
-    const unsubscribe = eventBridge.on(eventType, stableHandler)
-    return unsubscribe
-  }, [eventType]) // Only re-subscribe when eventType changes.
+    const stableHandler: EventHandler = (event) => handlerRef.current(event);
+    const unsubscribe = eventBridge.on(eventType, stableHandler);
+    return unsubscribe;
+  }, [eventType]); // Only re-subscribe when eventType changes.
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Re-export the class type for consumers that need it (e.g. for mocking)
 // ─────────────────────────────────────────────────────────────────────────────
-export type { EventBridge }
+export type { EventBridge };
