@@ -31,12 +31,13 @@ export function createGameConfig(
     parent,
     width: 1280,
     height: 720,
-    backgroundColor: "#0A0D12", // Match feed page background
+    backgroundColor: "#0A0D12",
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
       width: 1280,
       height: 720,
+      resizeInterval: 200,
     },
     physics: {
       default: "arcade",
@@ -47,8 +48,12 @@ export function createGameConfig(
     },
     scene: [WorldMapScene],
     render: {
-      antialias: false, // Pixel art needs sharp rendering
+      antialias: false,
       pixelArt: true,
+      powerPreference: "high-performance",
+    },
+    fps: {
+      target: 60,
     },
   };
 }

@@ -38,27 +38,27 @@ export function MapHUD(props: MapHUDProps) {
         transition={{ duration: 0.5 }}
         className="absolute top-0 left-0 right-0 z-40 pointer-events-none"
       >
-        <div className="bg-gradient-to-b from-black/90 via-black/70 to-transparent backdrop-blur-md px-6 py-4 border-b border-white/10">
-          <div className="flex items-center justify-between max-w-7xl mx-auto gap-6">
+        <div className="bg-gradient-to-b from-black/90 via-black/70 to-transparent backdrop-blur-md px-2 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 border-b border-white/10">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between max-w-7xl mx-auto gap-2 sm:gap-4 md:gap-6">
             
             {/* Left: Stage Info */}
             <div className="flex items-center gap-4 pointer-events-auto">
               <motion.div 
-                className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] px-5 py-3 rounded-xl border border-[#6366f1]/30 shadow-lg shadow-[#6366f1]/20"
+                className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] px-2 sm:px-3 md:px-5 py-2 sm:py-2 md:py-3 rounded-lg sm:rounded-xl border border-[#6366f1]/30 shadow-lg shadow-[#6366f1]/20"
                 whileHover={{ scale: 1.02 }}
               >
-                <div className="flex items-center gap-3">
-                  <div className="text-3xl">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="text-2xl sm:text-2xl md:text-3xl">
                     {getStageIcon(props.currentStage)}
                   </div>
                   <div>
-                    <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                    <div className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-wider font-semibold">
                       Stage {props.currentStage}/8
                     </div>
-                    <div className="text-lg font-bold text-white leading-tight">
+                    <div className="text-sm sm:text-lg md:text-lg font-bold text-white leading-tight">
                       {props.stageName}
                     </div>
-                    <div className="text-xs text-[#6366f1] font-medium">
+                    <div className="text-[10px] sm:text-xs text-[#6366f1] font-medium">
                       {props.biomeName}
                     </div>
                   </div>
@@ -66,19 +66,19 @@ export function MapHUD(props: MapHUDProps) {
               </motion.div>
               
               <motion.div 
-                className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] px-5 py-3 rounded-xl border border-emerald-500/30 shadow-lg shadow-emerald-500/20"
+                className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] px-2 sm:px-3 md:px-5 py-2 sm:py-2 md:py-3 rounded-lg sm:rounded-xl border border-emerald-500/30 shadow-lg shadow-emerald-500/20"
                 whileHover={{ scale: 1.02 }}
               >
-                <div className="flex items-center gap-3">
-                  <Target className="w-6 h-6 text-emerald-400" />
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <Target className="w-4 h-4 sm:w-5 md:w-6 sm:h-5 md:h-6 text-emerald-400" />
                   <div>
-                    <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                    <div className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-wider font-semibold">
                       Progress
                     </div>
-                    <div className="text-2xl font-bold text-white leading-tight">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-white leading-tight">
                       {props.checkpointsCompleted}<span className="text-gray-500">/{props.checkpointsTotal}</span>
                     </div>
-                    <div className="w-32 h-1.5 bg-gray-700/50 rounded-full overflow-hidden mt-1">
+                    <div className="w-20 sm:w-24 md:w-32 h-1.5 bg-gray-700/50 rounded-full overflow-hidden mt-1">
                       <motion.div 
                         className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400"
                         initial={{ width: 0 }}
@@ -110,19 +110,19 @@ export function MapHUD(props: MapHUDProps) {
             {/* Right: User Info */}
             <div className="flex items-center gap-4 pointer-events-auto">
               <motion.div 
-                className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] px-5 py-3 rounded-xl border border-purple-500/30 shadow-lg shadow-purple-500/20"
+                className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] px-2 sm:px-3 md:px-5 py-2 sm:py-2 md:py-3 rounded-lg sm:rounded-xl border border-purple-500/30 shadow-lg shadow-purple-500/20"
                 whileHover={{ scale: 1.02 }}
               >
-                <div className="flex items-center gap-3">
-                  <TrendingUp className="w-6 h-6 text-purple-400" />
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <TrendingUp className="w-4 h-4 sm:w-5 md:w-6 sm:h-5 md:h-6 text-purple-400" />
                   <div>
-                    <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                    <div className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-wider font-semibold">
                       Level
                     </div>
-                    <div className="text-2xl font-bold text-white leading-tight">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-white leading-tight">
                       {props.level}
                     </div>
-                    <div className="w-32 h-2 bg-gray-700/50 rounded-full overflow-hidden mt-1">
+                    <div className="w-20 sm:w-24 md:w-32 h-1.5 sm:h-2 bg-gray-700/50 rounded-full overflow-hidden mt-1">
                       <motion.div 
                         className="h-full bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]"
                         initial={{ width: 0 }}
@@ -130,7 +130,7 @@ export function MapHUD(props: MapHUDProps) {
                         transition={{ duration: 0.8, ease: "easeOut" }}
                       />
                     </div>
-                    <div className="text-xs text-gray-500 mt-0.5">
+                    <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
                       {props.xp}/{props.xpToNext} XP
                     </div>
                   </div>
@@ -138,14 +138,14 @@ export function MapHUD(props: MapHUDProps) {
               </motion.div>
               
               <motion.div 
-                className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] px-4 py-3 rounded-xl border border-white/20 shadow-lg"
+                className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] px-2 sm:px-3 md:px-4 py-2 sm:py-2 md:py-3 rounded-lg sm:rounded-xl border border-white/20 shadow-lg"
                 whileHover={{ scale: 1.05 }}
               >
                 <div className="text-center">
-                  <div className="text-4xl mb-1">
+                  <div className="text-2xl sm:text-3xl md:text-4xl mb-1">
                     {props.personaGender === "male" ? "👨" : "👩"}
                   </div>
-                  <div className="text-xs text-gray-400 font-semibold">
+                  <div className="text-[10px] sm:text-xs text-gray-400 font-semibold">
                     {props.personaGender === "male" ? "Founder" : "Visionary"}
                   </div>
                 </div>
@@ -160,7 +160,7 @@ export function MapHUD(props: MapHUDProps) {
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ delay: 0.3 }}
-        className="absolute bottom-6 left-6 bg-black/80 backdrop-blur-sm px-4 py-3 rounded-lg border border-white/10 text-xs font-mono text-white/70 pointer-events-none z-40"
+        className="absolute bottom-2 sm:bottom-4 md:left-6 left-2 sm:left-4 bg-black/80 backdrop-blur-sm px-2 sm:px-3 md:px-4 py-2 sm:py-3 rounded-lg border border-white/10 text-[10px] sm:text-xs font-mono text-white/70 pointer-events-none z-40"
       >
         <div className="flex items-center gap-2 mb-1">
           <Zap className="w-3 h-3 text-green-400" />
@@ -177,13 +177,13 @@ export function MapHUD(props: MapHUDProps) {
         initial={{ x: 20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="absolute bottom-6 right-6 bg-black/80 backdrop-blur-sm px-5 py-4 rounded-lg border border-white/10 text-sm text-white/90 pointer-events-none z-40"
+        className="absolute bottom-2 sm:bottom-4 md:bottom-6 right-2 sm:right-4 md:right-6 bg-black/80 backdrop-blur-sm px-3 sm:px-4 md:px-5 py-2 sm:py-3 md:py-4 rounded-lg border border-white/10 text-xs sm:text-sm text-white/90 pointer-events-none z-40"
       >
-        <div className="font-semibold mb-3 text-white flex items-center gap-2">
-          <span className="text-lg">🎮</span>
+        <div className="font-semibold mb-2 sm:mb-3 text-white flex items-center gap-2">
+          <span className="text-sm sm:text-lg">🎮</span>
           Controls
         </div>
-        <div className="space-y-2 text-xs">
+        <div className="space-y-1 sm:space-y-2 text-[10px] sm:text-xs">
           <div className="flex items-center gap-2">
             <span className="text-blue-400">🖱️</span>
             <span>Drag to pan camera</span>
@@ -204,7 +204,7 @@ export function MapHUD(props: MapHUDProps) {
         initial={{ x: 20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ delay: 0.4 }}
-        className="absolute top-24 right-6 bg-black/80 backdrop-blur-sm px-4 py-3 rounded-lg border border-white/10 text-xs text-white/80 pointer-events-none z-40"
+        className="absolute top-20 sm:top-24 right-2 sm:right-4 md:right-6 bg-black/80 backdrop-blur-sm px-2 sm:px-3 md:px-4 py-2 sm:py-3 rounded-lg border border-white/10 text-[10px] sm:text-xs text-white/80 pointer-events-none z-40"
       >
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-4">

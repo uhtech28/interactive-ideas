@@ -126,6 +126,19 @@
     background-image:
       radial-gradient(circle at top, rgba(99, 102, 241, 0.14), transparent 28%),
       linear-gradient(180deg, rgba(10, 13, 18, 0.98), rgba(10, 13, 18, 1));
+    overscroll-behavior: none;
+  }
+
+  @media (max-width: 640px) {
+    html {
+      font-size: 14px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    html {
+      font-size: 13px;
+    }
   }
 }
 

@@ -278,12 +278,12 @@ export default function MapPage() {
 
       {/* Main Map View */}
       {!showIntro && (
-        <div className="relative w-full h-screen bg-[#0A0D12]">
+        <div className="relative w-full h-[100dvh] bg-[#0A0D12]">
           {/* Phaser canvas container */}
           <div
             ref={containerRef}
-            className="w-full h-full"
-            style={{ touchAction: "none" }} // Prevent mobile scroll interference
+            className="w-full h-full min-h-0"
+            style={{ touchAction: "none" }}
           />
 
           {/* MapHUD - Shows all progress and stats */}
