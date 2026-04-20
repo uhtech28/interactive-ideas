@@ -41,10 +41,12 @@ export interface CheckpointConfig {
   y: number;
   /** Sub-task 1 completion flag. */
   t1: boolean;
-  /** Sub-task 2 completion flag. */
+
   t2: boolean;
   /** Sub-task 3 completion flag. */
   t3: boolean;
+  /** The 1-based global checkpoint number (1 to 36) */
+  globalIndex: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -85,8 +87,7 @@ export class CheckpointNode extends Phaser.GameObjects.Container {
   private mainSprite: Phaser.GameObjects.Image;
   private pulseRing: Phaser.GameObjects.Arc;
   private glowCircle: Phaser.GameObjects.Arc;
-  private labelText: Phaser.GameObjects.Text;
-  private progressDots: Phaser.GameObjects.Arc[];
+  private numberText: Phaser.GameObjects.Text;
   private pulseTween: Phaser.Tweens.Tween | null = null;
   private shimmerTween: Phaser.Tweens.Tween | null = null;
 
@@ -142,53 +143,30 @@ export class CheckpointNode extends Phaser.GameObjects.Container {
     );
     this.mainSprite.setOrigin(0.5, 0.5);
 
-    // ── Progress dots (T1, T2, T3) ──────────────────────────────────────────
-    this.progressDots = [];
-    const dotSpacing = 14;
-    const dotY = 46;
-    const startX = -dotSpacing;
-
-    for (let i = 0; i < 3; i++) {
-      const dot = new Phaser.GameObjects.Arc(
-        scene,
-        startX + i * dotSpacing,
-        dotY,
-        6,
-        0,
-        360,
-        false,
-        0x374151,
-      );
-      this.progressDots.push(dot);
-    }
-
-    // Update progress dot colors based on config
-    this.updateProgressDots(config.t1, config.t2, config.t3);
-
-    // ── Label text ──────────────────────────────────────────────────────────
-    this.labelText = new Phaser.GameObjects.Text(
+    // ── Global Number Text (Massive inside button) ─────────────────────────
+    this.numberText = new Phaser.GameObjects.Text(
       scene,
       0,
-      62,
-      `S${config.stage}·C${config.checkpoint}`,
+      0,
+      `${config.globalIndex}`,
       {
-        fontSize: "11px",
-        fontFamily: '"Courier New", Courier, monospace',
-        color: "#94A3B8",
+        fontSize: "24px",
+        fontFamily: '"SF Pro Rounded", "Arial Rounded MT Bold", Arial, sans-serif',
+        color: "#ffffff",
         align: "center",
-        stroke: "#0a0a14",
+        fontStyle: "900",
+        stroke: "#b0003a", // Dark red shadow matches the button rim shadow
         strokeThickness: 3,
       },
     );
-    this.labelText.setOrigin(0.5, 0);
+    this.numberText.setOrigin(0.5, 0.5);
 
     // ── Assemble container ──────────────────────────────────────────────────
     this.add([
       this.glowCircle,
       this.pulseRing,
       this.mainSprite,
-      ...this.progressDots,
-      this.labelText,
+      this.numberText,
     ]);
 
     scene.add.existing(this);
@@ -211,33 +189,10 @@ export class CheckpointNode extends Phaser.GameObjects.Container {
   }
 
   /**
-   * Update the progress dots to reflect task completion.
-   *
-   * @param t1 Task 1 completion.
-   * @param t2 Task 2 completion.
-   * @param t3 Task 3 completion.
-   * @param isGold Optional flag indicating if checkpoint is gold status.
+   * Updates progress visual states (no-op for new design)
    */
-  updateProgressDots(
-    t1: boolean,
-    t2: boolean,
-    t3: boolean,
-    isGold = false,
-  ): void {
-    const tasks = [t1, t2, t3];
-
-    for (let i = 0; i < 3; i++) {
-      const dot = this.progressDots[i];
-      if (!dot) continue;
-
-      if (tasks[i]) {
-        // Completed task
-        dot.setFillStyle(isGold ? 0xf59e0b : 0x22c55e);
-      } else {
-        // Incomplete task
-        dot.setFillStyle(0x374151);
-      }
-    }
+  updateProgressDots(t1: boolean, t2: boolean, t3: boolean, isGold = false): void {
+    // Progress stars disabled in favor of purely numbered map nodes
   }
 
   /**
@@ -379,28 +334,23 @@ export class CheckpointNode extends Phaser.GameObjects.Container {
     switch (this._status) {
       case "locked":
         this.mainSprite.setAlpha(0.72);
-        this.labelText.setColor("#6B7280");
         break;
 
       case "active":
         this.mainSprite.setAlpha(1.0);
-        this.labelText.setColor("#93C5FD");
         this.startPulse();
         break;
 
       case "in_progress":
         this.mainSprite.setAlpha(1.0);
-        this.labelText.setColor("#FCD34D");
         break;
 
       case "completed":
         this.mainSprite.setAlpha(1.0);
-        this.labelText.setColor("#4ADE80");
         break;
 
       case "gold":
         this.mainSprite.setAlpha(1.0);
-        this.labelText.setColor("#FEF08A");
         this.startGoldShimmer();
         this.glowCircle.setVisible(true);
         this.glowCircle.setFillStyle(0xf59e0b, 0.25);

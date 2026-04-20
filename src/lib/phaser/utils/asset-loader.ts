@@ -132,7 +132,32 @@ export class AssetLoader {
     scene.load.image("guide_male", "/assets/skeld/guide_male.png");
     scene.load.image("guide_female", "/assets/skeld/guide_female.png");
 
-    // Try to load persona sprite sheets (will use generated placeholders if not found)
+    // Keys for sprite sheets that may not exist on disk.
+    // If Phaser fails to load them we remove the broken texture entry so that
+    // createPersonaSpriteSheets() can generate procedural placeholders instead.
+    const optionalSheetKeys = new Set([
+      "persona_male_idle_sheet",
+      "persona_male_walk_sheet",
+      "persona_female_idle_sheet",
+      "persona_female_walk_sheet",
+    ]);
+
+    // Silence the browser 404 by intercepting Phaser's loaderror event.
+    const onLoadError = (file: { key: string }) => {
+      if (optionalSheetKeys.has(file.key)) {
+        // Remove the broken __MISSING texture so the placeholder generator runs
+        if (scene.textures.exists(file.key)) {
+          scene.textures.remove(file.key);
+        }
+      }
+    };
+    scene.load.on("loaderror", onLoadError);
+    // Clean up listener once loading finishes
+    scene.load.once("complete", () => {
+      scene.load.off("loaderror", onLoadError);
+    });
+
+    // Try to load persona sprite sheets (will fall back to placeholders on 404)
     scene.load.spritesheet(
       "persona_male_idle_sheet",
       "/assets/persona/male_idle.png",
@@ -238,25 +263,19 @@ export class AssetLoader {
         gfx.fillStyle(0x333333, 1);
         gfx.fillRect(bodyX + 1, bodyY + bodyHeight, 2, 8 + legOffset);
         gfx.fillRect(bodyX + 5, bodyY + bodyHeight, 2, 8 - legOffset);
-
-        // Frame number label (for debugging)
-        const text = scene.add.text(
-          x + FRAME_WIDTH / 2,
-          FRAME_HEIGHT - 6,
-          `${i + 1}`,
-          {
-            fontSize: "8px",
-            color: "#ffffff",
-            backgroundColor: "#000000",
-          },
-        );
-        text.setOrigin(0.5, 0.5);
-        text.setAlpha(0.7);
       }
 
-      // Generate texture
+      // Generate a plain canvas texture
       gfx.generateTexture(sheet.key, width, height);
       gfx.destroy();
+
+      // Add numbered frame data so generateFrameNumbers() works on the
+      // placeholder. Without this Phaser cannot slice the canvas into frames.
+      const texture = scene.textures.get(sheet.key);
+      for (let f = 0; f < sheet.frames; f++) {
+        // texture.add(name, sourceIndex, x, y, width, height)
+        texture.add(f, 0, f * FRAME_WIDTH, 0, FRAME_WIDTH, FRAME_HEIGHT);
+      }
     }
 
     // Create animations if they don't exist
@@ -339,148 +358,158 @@ export class AssetLoader {
   // ── Checkpoint: cp_locked ──────────────────────────────────────────────────
 
   /**
-   * **cp_locked** — 48×48
-   * Gray square with lock icon (Among Us task style)
+   * **cp_locked** — 64×64
+   * Dim/Grey glossy button
    */
   private static createLockedTexture(scene: Phaser.Scene): void {
     const gfx = scene.add.graphics();
-    const size = 48;
+    const size = 64;
+    const center = size / 2;
+    const radius = 20;
 
-    // Main square background
-    gfx.fillStyle(0x4a5a62, 1);
-    gfx.fillRoundedRect(0, 0, size, size, 8);
+    // Drop shadow
+    gfx.fillStyle(0x000000, 0.4);
+    gfx.fillCircle(center, center + 4, radius);
 
-    // Border
-    gfx.lineStyle(2, 0x6b7b82, 1);
-    gfx.strokeRoundedRect(0, 0, size, size, 8);
+    // Thick white border
+    gfx.lineStyle(4, 0x94a3b8, 1);
+    gfx.strokeCircle(center, center, radius);
 
-    // Lock icon - shackle
-    gfx.lineStyle(3, 0xffffff, 1);
-    gfx.strokeCircle(size / 2, size / 2 - 4, 8);
+    // Grey body
+    gfx.fillStyle(0x475569, 1);
+    gfx.fillCircle(center, center, radius - 2);
 
-    // Lock icon - body
-    gfx.fillStyle(0xffffff, 1);
-    gfx.fillRect(size / 2 - 6, size / 2 + 4, 12, 10);
+    // Top glossy highlight
+    gfx.fillStyle(0xffffff, 0.2);
+    gfx.beginPath();
+    gfx.arc(center, center, radius - 2, Math.PI, 0, false);
+    gfx.fillPath();
 
     gfx.generateTexture("cp_locked", size, size);
     gfx.destroy();
   }
 
-  // ── Checkpoint: cp_active ──────────────────────────────────────────────────
-
   /**
-   * **cp_active** — 48×48
-   * Yellow/orange task icon with exclamation mark (Among Us style)
+   * **cp_active** — 64×64
+   * Shiny Red/Pink Button (Current Target)
    */
   private static createActiveTexture(scene: Phaser.Scene): void {
     const gfx = scene.add.graphics();
-    const size = 48;
+    const size = 64;
+    const center = size / 2;
+    const radius = 24; // slightly larger when active
 
-    // Main orange/yellow square
-    gfx.fillStyle(0xf39c12, 1);
-    gfx.fillRoundedRect(0, 0, size, size, 8);
+    // Outer Glow
+    gfx.fillStyle(0xffffff, 0.5);
+    gfx.fillCircle(center, center, radius + 4);
 
-    // Bright border
-    gfx.lineStyle(3, 0xffd93d, 1);
-    gfx.strokeRoundedRect(0, 0, size, size, 8);
+    // Drop shadow
+    gfx.fillStyle(0x000000, 0.4);
+    gfx.fillCircle(center, center + 4, radius);
 
-    // Exclamation mark - line
-    gfx.fillStyle(0xffffff, 1);
-    gfx.fillRect(size / 2 - 3, 12, 6, 18);
+    // Thick white border
+    gfx.lineStyle(5, 0xffffff, 1);
+    gfx.strokeCircle(center, center, radius);
 
-    // Exclamation mark - dot
-    gfx.fillCircle(size / 2, 36, 3);
+    // Glossy Red body
+    gfx.fillStyle(0xe91e63, 1);
+    gfx.fillCircle(center, center, radius - 2.5);
+
+    // Top glossy highlight
+    gfx.fillStyle(0xffffff, 0.35);
+    gfx.beginPath();
+    gfx.arc(center, center, radius - 2.5, Math.PI, 0, false);
+    gfx.fillPath();
 
     gfx.generateTexture("cp_active", size, size);
     gfx.destroy();
   }
 
-  // ── Checkpoint: cp_in_progress ─────────────────────────────────────────────
-
   /**
-   * **cp_in_progress** — 48×48
-   * Orange progress square with star (Among Us task style)
+   * **cp_in_progress** — 64×64
+   * Amber active process node
    */
   private static createInProgressTexture(scene: Phaser.Scene): void {
     const gfx = scene.add.graphics();
-    const size = 48;
+    const size = 64;
+    const center = size / 2;
+    const radius = 22;
 
-    // Main orange square
+    gfx.fillStyle(0x000000, 0.4);
+    gfx.fillCircle(center, center + 4, radius);
+
+    gfx.lineStyle(4, 0xffffff, 1);
+    gfx.strokeCircle(center, center, radius);
+
     gfx.fillStyle(0xf59e0b, 1);
-    gfx.fillRoundedRect(0, 0, size, size, 8);
+    gfx.fillCircle(center, center, radius - 2);
 
-    // Progress indicator (lighter overlay on right half)
-    gfx.fillStyle(0xfcd34d, 0.5);
-    gfx.fillRoundedRect(size / 2, 0, size / 2, size, 8);
-
-    // Border
-    gfx.lineStyle(2, 0xffa500, 1);
-    gfx.strokeRoundedRect(0, 0, size, size, 8);
-
-    // Star in center
-    AssetLoader.drawStar(gfx, size / 2, size / 2, 5, 8, 4, 0xffffff);
+    gfx.fillStyle(0xffffff, 0.3);
+    gfx.beginPath();
+    gfx.arc(center, center, radius - 2, Math.PI, 0, false);
+    gfx.fillPath();
 
     gfx.generateTexture("cp_in_progress", size, size);
     gfx.destroy();
   }
 
-  // ── Checkpoint: cp_completed ───────────────────────────────────────────────
-
   /**
-   * **cp_completed** — 48×48
-   * Green checkmark square (Among Us task style)
+   * **cp_completed** — 64×64
+   * Red Button with Gold rim
    */
   private static createCompletedTexture(scene: Phaser.Scene): void {
     const gfx = scene.add.graphics();
-    const size = 48;
+    const size = 64;
+    const center = size / 2;
+    const radius = 20;
 
-    // Main green square
-    gfx.fillStyle(0x27ae60, 1);
-    gfx.fillRoundedRect(0, 0, size, size, 8);
+    gfx.fillStyle(0x000000, 0.4);
+    gfx.fillCircle(center, center + 4, radius);
 
-    // Border
-    gfx.lineStyle(2, 0x2ecc71, 1);
-    gfx.strokeRoundedRect(0, 0, size, size, 8);
+    // Gold border
+    gfx.lineStyle(4, 0xffd700, 1);
+    gfx.strokeCircle(center, center, radius);
 
-    // Big checkmark
-    gfx.lineStyle(4, 0xffffff, 1);
+    // Red body
+    gfx.fillStyle(0xd81b60, 1);
+    gfx.fillCircle(center, center, radius - 2);
+
+    // Top glossy highlight
+    gfx.fillStyle(0xffffff, 0.3);
     gfx.beginPath();
-    gfx.moveTo(12, size / 2);
-    gfx.lineTo(size / 2 - 4, size - 14);
-    gfx.lineTo(size - 12, 14);
-    gfx.strokePath();
+    gfx.arc(center, center, radius - 2, Math.PI, 0, false);
+    gfx.fillPath();
 
     gfx.generateTexture("cp_completed", size, size);
     gfx.destroy();
   }
 
-  // ── Checkpoint: cp_gold ────────────────────────────────────────────────────
-
   /**
-   * **cp_gold** — 48×48
-   * Golden star task square (Among Us style)
+   * **cp_gold** — 64×64
+   * Radiant Gold Button
    */
   private static createGoldTexture(scene: Phaser.Scene): void {
     const gfx = scene.add.graphics();
-    const size = 48;
+    const size = 64;
+    const center = size / 2;
+    const radius = 20;
 
-    // Main gold square
-    gfx.fillStyle(0xf1c40f, 1);
-    gfx.fillRoundedRect(0, 0, size, size, 8);
+    gfx.fillStyle(0xffd700, 0.3);
+    gfx.fillCircle(center, center, radius + 8);
 
-    // Border glow
-    gfx.lineStyle(3, 0xffd700, 1);
-    gfx.strokeRoundedRect(0, 0, size, size, 8);
+    gfx.fillStyle(0x000000, 0.4);
+    gfx.fillCircle(center, center + 4, radius);
 
-    // Star in center
-    AssetLoader.drawStar(gfx, size / 2, size / 2, 5, 12, 6, 0xffffff);
+    gfx.lineStyle(4, 0xffffff, 1);
+    gfx.strokeCircle(center, center, radius);
 
-    // Corner sparkles
-    gfx.fillStyle(0xffffff, 0.8);
-    gfx.fillCircle(8, 8, 2);
-    gfx.fillCircle(size - 8, 8, 2);
-    gfx.fillCircle(8, size - 8, 2);
-    gfx.fillCircle(size - 8, size - 8, 2);
+    gfx.fillStyle(0xfbc02d, 1);
+    gfx.fillCircle(center, center, radius - 2);
+
+    gfx.fillStyle(0xffffff, 0.4);
+    gfx.beginPath();
+    gfx.arc(center, center, radius - 2, Math.PI, 0, false);
+    gfx.fillPath();
 
     gfx.generateTexture("cp_gold", size, size);
     gfx.destroy();
@@ -909,20 +938,20 @@ export class AssetLoader {
   private static createSlimeTexture(scene: Phaser.Scene): void {
     const gfx = scene.add.graphics();
     const SIZE = 48;
-    
+
     // Slime body (green blob)
     gfx.fillStyle(0x4caf50, 0.8);
     gfx.fillEllipse(SIZE / 2, SIZE / 2 + 8, 20, 16);
-    
+
     // Eyes
     gfx.fillStyle(0x000000, 1);
     gfx.fillCircle(SIZE / 2 - 6, SIZE / 2, 3);
     gfx.fillCircle(SIZE / 2 + 6, SIZE / 2, 3);
-    
+
     // Shine
     gfx.fillStyle(0xffffff, 0.6);
     gfx.fillCircle(SIZE / 2 - 4, SIZE / 2 - 2, 2);
-    
+
     gfx.generateTexture("enemy_slime", SIZE, SIZE);
     gfx.destroy();
   }
@@ -933,27 +962,30 @@ export class AssetLoader {
   private static createVultureTexture(scene: Phaser.Scene): void {
     const gfx = scene.add.graphics();
     const SIZE = 48;
-    
+
     // Body
     gfx.fillStyle(0x5d4037, 1);
     gfx.fillEllipse(SIZE / 2, SIZE / 2 + 4, 12, 16);
-    
+
     // Head
     gfx.fillCircle(SIZE / 2, SIZE / 2 - 8, 8);
-    
+
     // Beak
     gfx.fillStyle(0xffa726, 1);
     gfx.fillTriangle(
-      SIZE / 2 + 8, SIZE / 2 - 8,
-      SIZE / 2 + 4, SIZE / 2 - 10,
-      SIZE / 2 + 4, SIZE / 2 - 6
+      SIZE / 2 + 8,
+      SIZE / 2 - 8,
+      SIZE / 2 + 4,
+      SIZE / 2 - 10,
+      SIZE / 2 + 4,
+      SIZE / 2 - 6,
     );
-    
+
     // Wings
     gfx.fillStyle(0x3e2723, 0.8);
     gfx.fillEllipse(SIZE / 2 - 12, SIZE / 2, 8, 12);
     gfx.fillEllipse(SIZE / 2 + 12, SIZE / 2, 8, 12);
-    
+
     gfx.generateTexture("enemy_vulture", SIZE, SIZE);
     gfx.destroy();
   }
@@ -964,25 +996,25 @@ export class AssetLoader {
   private static createUndeadTexture(scene: Phaser.Scene): void {
     const gfx = scene.add.graphics();
     const SIZE = 48;
-    
+
     // Skull
     gfx.fillStyle(0xeeeeee, 1);
     gfx.fillCircle(SIZE / 2, SIZE / 2 - 4, 12);
-    
+
     // Eye sockets
     gfx.fillStyle(0x000000, 1);
     gfx.fillCircle(SIZE / 2 - 4, SIZE / 2 - 6, 3);
     gfx.fillCircle(SIZE / 2 + 4, SIZE / 2 - 6, 3);
-    
+
     // Glowing eyes
     gfx.fillStyle(0x5555ff, 0.8);
     gfx.fillCircle(SIZE / 2 - 4, SIZE / 2 - 6, 2);
     gfx.fillCircle(SIZE / 2 + 4, SIZE / 2 - 6, 2);
-    
+
     // Body (tattered robe)
     gfx.fillStyle(0x424242, 0.8);
     gfx.fillRect(SIZE / 2 - 8, SIZE / 2 + 8, 16, 12);
-    
+
     gfx.generateTexture("enemy_undead", SIZE, SIZE);
     gfx.destroy();
   }
@@ -993,22 +1025,22 @@ export class AssetLoader {
   private static createFrostWraithTexture(scene: Phaser.Scene): void {
     const gfx = scene.add.graphics();
     const SIZE = 48;
-    
+
     // Ghostly body
     gfx.fillStyle(0xb8d4e8, 0.7);
     gfx.fillEllipse(SIZE / 2, SIZE / 2, 14, 20);
-    
+
     // Ice crystals
     gfx.fillStyle(0x7fb3d5, 1);
     gfx.fillRect(SIZE / 2 - 2, SIZE / 2 - 12, 4, 8);
     gfx.fillRect(SIZE / 2 - 6, SIZE / 2 - 8, 4, 6);
     gfx.fillRect(SIZE / 2 + 2, SIZE / 2 - 8, 4, 6);
-    
+
     // Eyes
     gfx.fillStyle(0x00ffff, 0.9);
     gfx.fillCircle(SIZE / 2 - 4, SIZE / 2 - 4, 2);
     gfx.fillCircle(SIZE / 2 + 4, SIZE / 2 - 4, 2);
-    
+
     gfx.generateTexture("enemy_frost_wraith", SIZE, SIZE);
     gfx.destroy();
   }
@@ -1019,23 +1051,23 @@ export class AssetLoader {
   private static createGolemTexture(scene: Phaser.Scene): void {
     const gfx = scene.add.graphics();
     const SIZE = 48;
-    
+
     // Body (rocky)
     gfx.fillStyle(0x5d4037, 1);
     gfx.fillRect(SIZE / 2 - 10, SIZE / 2 - 8, 20, 24);
-    
+
     // Head
     gfx.fillRect(SIZE / 2 - 8, SIZE / 2 - 16, 16, 8);
-    
+
     // Gem core
     gfx.fillStyle(0xffa726, 0.8);
     gfx.fillCircle(SIZE / 2, SIZE / 2, 6);
-    
+
     // Eyes
     gfx.fillStyle(0xff6f00, 1);
     gfx.fillCircle(SIZE / 2 - 4, SIZE / 2 - 12, 2);
     gfx.fillCircle(SIZE / 2 + 4, SIZE / 2 - 12, 2);
-    
+
     gfx.generateTexture("enemy_golem", SIZE, SIZE);
     gfx.destroy();
   }
@@ -1046,35 +1078,41 @@ export class AssetLoader {
   private static createSeaSerpentTexture(scene: Phaser.Scene): void {
     const gfx = scene.add.graphics();
     const SIZE = 48;
-    
+
     // Serpent body (wavy)
     gfx.fillStyle(0x1565c0, 1);
     for (let i = 0; i < 3; i++) {
       const y = SIZE / 2 + i * 6;
       gfx.fillEllipse(SIZE / 2, y, 12, 8);
     }
-    
+
     // Head
     gfx.fillEllipse(SIZE / 2, SIZE / 2 - 8, 10, 12);
-    
+
     // Eyes
     gfx.fillStyle(0xffeb3b, 1);
     gfx.fillCircle(SIZE / 2 - 3, SIZE / 2 - 10, 2);
     gfx.fillCircle(SIZE / 2 + 3, SIZE / 2 - 10, 2);
-    
+
     // Fins
     gfx.fillStyle(0x64b5f6, 0.8);
     gfx.fillTriangle(
-      SIZE / 2 - 12, SIZE / 2,
-      SIZE / 2 - 8, SIZE / 2 - 4,
-      SIZE / 2 - 8, SIZE / 2 + 4
+      SIZE / 2 - 12,
+      SIZE / 2,
+      SIZE / 2 - 8,
+      SIZE / 2 - 4,
+      SIZE / 2 - 8,
+      SIZE / 2 + 4,
     );
     gfx.fillTriangle(
-      SIZE / 2 + 12, SIZE / 2,
-      SIZE / 2 + 8, SIZE / 2 - 4,
-      SIZE / 2 + 8, SIZE / 2 + 4
+      SIZE / 2 + 12,
+      SIZE / 2,
+      SIZE / 2 + 8,
+      SIZE / 2 - 4,
+      SIZE / 2 + 8,
+      SIZE / 2 + 4,
     );
-    
+
     gfx.generateTexture("enemy_sea_serpent", SIZE, SIZE);
     gfx.destroy();
   }
@@ -1085,24 +1123,24 @@ export class AssetLoader {
   private static createHarpyTexture(scene: Phaser.Scene): void {
     const gfx = scene.add.graphics();
     const SIZE = 48;
-    
+
     // Body
     gfx.fillStyle(0x9c27b0, 1);
     gfx.fillEllipse(SIZE / 2, SIZE / 2, 10, 14);
-    
+
     // Head
     gfx.fillCircle(SIZE / 2, SIZE / 2 - 10, 6);
-    
+
     // Wings
     gfx.fillStyle(0xb39ddb, 0.8);
     gfx.fillEllipse(SIZE / 2 - 14, SIZE / 2 - 4, 10, 16);
     gfx.fillEllipse(SIZE / 2 + 14, SIZE / 2 - 4, 10, 16);
-    
+
     // Eyes
     gfx.fillStyle(0xff0000, 1);
     gfx.fillCircle(SIZE / 2 - 2, SIZE / 2 - 10, 2);
     gfx.fillCircle(SIZE / 2 + 2, SIZE / 2 - 10, 2);
-    
+
     gfx.generateTexture("enemy_harpy", SIZE, SIZE);
     gfx.destroy();
   }
@@ -1113,27 +1151,27 @@ export class AssetLoader {
   private static createBureaucratTexture(scene: Phaser.Scene): void {
     const gfx = scene.add.graphics();
     const SIZE = 48;
-    
+
     // Body (armored)
     gfx.fillStyle(0x757575, 1);
     gfx.fillRect(SIZE / 2 - 8, SIZE / 2 - 4, 16, 20);
-    
+
     // Head (helmet)
     gfx.fillRect(SIZE / 2 - 6, SIZE / 2 - 14, 12, 10);
-    
+
     // Visor
     gfx.fillStyle(0xff0000, 0.8);
     gfx.fillRect(SIZE / 2 - 4, SIZE / 2 - 10, 8, 2);
-    
+
     // Shoulders
     gfx.fillStyle(0xffd54f, 1);
     gfx.fillRect(SIZE / 2 - 12, SIZE / 2 - 4, 4, 6);
     gfx.fillRect(SIZE / 2 + 8, SIZE / 2 - 4, 4, 6);
-    
+
     // Scroll (bureaucracy symbol)
     gfx.fillStyle(0xffffff, 0.9);
     gfx.fillRect(SIZE / 2 - 3, SIZE / 2 + 2, 6, 8);
-    
+
     gfx.generateTexture("enemy_bureaucrat", SIZE, SIZE);
     gfx.destroy();
   }

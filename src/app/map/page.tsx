@@ -24,6 +24,7 @@ import { HUD } from "@/components/hud/HUD";
 import { LevelUpSequence } from "@/components/animations/LevelUpSequence";
 import { BadgeAwardSequence } from "@/components/animations/BadgeAwardSequence";
 import { IntroScreen } from "@/components/map/IntroScreen";
+import { StageSelectionScreen } from "@/components/map/StageSelectionScreen";
 import {
   activeVentureAtom,
   userProgressAtom,
@@ -90,62 +91,8 @@ const STAGES: Stage[] = [
     biome: "The Forest",
     mini: "Pathwarden Wraith",
     glow: "#a78bfa", // Violet 400
-    checkpoints: 5,
+    checkpoints: 4,
     icon: "🔬",
-  },
-  {
-    id: 3,
-    name: "Validation",
-    biome: "The Arena",
-    mini: "Advocate of Comfortable Lies",
-    glow: "#6366f1", // Indigo 500
-    checkpoints: 4,
-    icon: "⚔️",
-  },
-  {
-    id: 4,
-    name: "Offer Design",
-    biome: "Artisan's Quarter",
-    mini: "Unfinished Golem",
-    glow: "#8b5cf6", // Violet 500
-    checkpoints: 5,
-    icon: "🎨",
-  },
-  {
-    id: 5,
-    name: "Build & Deliver",
-    biome: "The Mine",
-    mini: "Collapse Specter",
-    glow: "#a855f7", // Purple 500
-    checkpoints: 6,
-    icon: "⚙️",
-  },
-  {
-    id: 6,
-    name: "Launch",
-    biome: "The Harbour",
-    mini: "Harbourmaster of Hesitation",
-    glow: "#4f46e5", // Indigo 600
-    checkpoints: 3,
-    icon: "🚀",
-  },
-  {
-    id: 7,
-    name: "Iteration",
-    biome: "Crossroads Town",
-    mini: "Babel Merchant",
-    glow: "#7c3aed", // Violet 600
-    checkpoints: 4,
-    icon: "🔄",
-  },
-  {
-    id: 8,
-    name: "Scale",
-    biome: "The Capital",
-    mini: "Iron Bureaucrat",
-    glow: "#9333ea", // Purple 600
-    checkpoints: 5,
-    icon: "👑",
   },
 ];
 
@@ -298,7 +245,8 @@ function StageStrip({
                       : "rgba(255,255,255,0.1)"
                 }`,
                 boxShadow: isCurrent ? `0 0 15px ${st.glow}` : "none",
-                transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease",
+                transition:
+                  "width 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease",
               }}
             />
             <span
@@ -360,13 +308,18 @@ function CheckpointPanel({
         <button
           onClick={onClose}
           className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-[14px] transition-all duration-200 bg-white/5 hover:bg-white/10"
-          style={{ border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1" }}
+          style={{
+            border: "1px solid rgba(255,255,255,0.1)",
+            color: "#cbd5e1",
+          }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.2)";
+            (e.currentTarget as HTMLElement).style.borderColor =
+              "rgba(255,255,255,0.2)";
             (e.currentTarget as HTMLElement).style.color = "#ffffff";
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.1)";
+            (e.currentTarget as HTMLElement).style.borderColor =
+              "rgba(255,255,255,0.1)";
             (e.currentTarget as HTMLElement).style.color = "#cbd5e1";
           }}
         >
@@ -382,9 +335,7 @@ function CheckpointPanel({
             >
               Stage {detail.stage} · {detail.stageName}
             </p>
-            <h2
-              className="text-xl font-bold tracking-tight leading-tight text-white mb-2"
-            >
+            <h2 className="text-xl font-bold tracking-tight leading-tight text-white mb-2">
               {detail.title}
             </h2>
           </div>
@@ -414,7 +365,8 @@ function CheckpointPanel({
             style={{
               color: "#cbd5e1",
               borderLeft: `3px solid ${detail.stageGlow}`,
-              background: "linear-gradient(90deg, rgba(255,255,255,0.05), transparent)",
+              background:
+                "linear-gradient(90deg, rgba(255,255,255,0.05), transparent)",
               fontFamily: "var(--font-sans)",
             }}
           >
@@ -441,21 +393,21 @@ function CheckpointPanel({
                 key={i}
                 className="h-2 flex-1 rounded-full transition-all duration-300 relative overflow-hidden bg-white/5"
               >
-                 <motion.div
-                   className="absolute inset-y-0 left-0"
-                   initial={{ width: 0 }}
-                   animate={{ width: t.done ? "100%" : "0%" }}
-                   style={{
-                     background: i === 2 ? "#eab308" : "#818cf8",
-                     boxShadow: t.done ? `0 0 10px ${i === 2 ? "#eab308" : "#818cf8"}` : "none",
-                   }}
-                 />
+                <motion.div
+                  className="absolute inset-y-0 left-0"
+                  initial={{ width: 0 }}
+                  animate={{ width: t.done ? "100%" : "0%" }}
+                  style={{
+                    background: i === 2 ? "#eab308" : "#818cf8",
+                    boxShadow: t.done
+                      ? `0 0 10px ${i === 2 ? "#eab308" : "#818cf8"}`
+                      : "none",
+                  }}
+                />
               </div>
             ))}
           </div>
-          <p
-            className="text-[11px] font-medium tracking-wide text-slate-400"
-          >
+          <p className="text-[11px] font-medium tracking-wide text-slate-400">
             {doneTasks}/3 tasks ·{" "}
             {2 - doneTasks > 0 && !canAdvance
               ? `${2 - doneTasks} more to advance`
@@ -465,12 +417,8 @@ function CheckpointPanel({
           </p>
 
           {/* Crossing animation label */}
-          <div
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/5 bg-white/[0.02] mt-auto"
-          >
-            <span
-              className="text-[10px] tracking-[0.15em] font-semibold uppercase text-slate-500"
-            >
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/5 bg-white/[0.02] mt-auto">
+            <span className="text-[10px] tracking-[0.15em] font-semibold uppercase text-slate-500">
               Crossing:
             </span>
             <span
@@ -504,18 +452,26 @@ function CheckpointPanel({
                     : canAdvance
                       ? "1px solid rgba(99, 102, 241, 0.4)"
                       : "1px solid rgba(255, 255, 255, 0.1)",
-                  color: isGold ? "#fde047" : canAdvance ? "#818cf8" : "#64748b",
+                  color: isGold
+                    ? "#fde047"
+                    : canAdvance
+                      ? "#818cf8"
+                      : "#64748b",
                   cursor: canAdvance ? "pointer" : "not-allowed",
-                  boxShadow: isGold ? "0 4px 20px rgba(234, 179, 8, 0.15)" : canAdvance ? "0 4px 20px rgba(99, 102, 241, 0.15)" : "none",
+                  boxShadow: isGold
+                    ? "0 4px 20px rgba(234, 179, 8, 0.15)"
+                    : canAdvance
+                      ? "0 4px 20px rgba(99, 102, 241, 0.15)"
+                      : "none",
                 }}
               >
                 {canAdvance && (
-                   <motion.div
-                     className="absolute inset-0 bg-white/10"
-                     initial={{ x: "-100%" }}
-                     whileHover={{ x: "100%" }}
-                     transition={{ duration: 0.5, ease: "easeInOut" }}
-                   />
+                  <motion.div
+                    className="absolute inset-0 bg-white/10"
+                    initial={{ x: "-100%" }}
+                    whileHover={{ x: "100%" }}
+                    transition={{ duration: 0.5, ease: "easeInOut" }}
+                  />
                 )}
                 <span className="relative z-10">
                   {isGold
@@ -588,14 +544,16 @@ function TaskCard({
           ? "rgba(99, 102, 241, 0.05)"
           : "rgba(255, 255, 255, 0.02)",
         border: "1px solid",
-        borderColor: task.done ? "rgba(99, 102, 241, 0.2)" : "rgba(255,255,255,0.05)",
+        borderColor: task.done
+          ? "rgba(99, 102, 241, 0.2)"
+          : "rgba(255,255,255,0.05)",
         cursor: locked ? "default" : "pointer",
         opacity: task.done ? 0.6 : 1,
       }}
     >
       {/* Hover glow */}
       {!locked && !task.done && (
-         <div className="absolute inset-0 bg-gradient-to-r from-white/[0.02] to-transparent opacity-0 group-hover/task:opacity-100 transition-opacity" />
+        <div className="absolute inset-0 bg-gradient-to-r from-white/[0.02] to-transparent opacity-0 group-hover/task:opacity-100 transition-opacity" />
       )}
       {/* Left accent bar */}
       <div
@@ -626,14 +584,10 @@ function TaskCard({
             {task.label}
           </span>
         </div>
-        <p
-          className="text-[13px] leading-relaxed text-slate-300 font-medium"
-        >
+        <p className="text-[13px] leading-relaxed text-slate-300 font-medium">
           {task.description}
         </p>
-        <p
-          className="text-[10px] tracking-[0.1em] mt-2 font-semibold uppercase text-slate-500"
-        >
+        <p className="text-[10px] tracking-[0.1em] mt-2 font-semibold uppercase text-slate-500">
           {task.tool}
         </p>
       </div>
@@ -743,13 +697,21 @@ export default function MapPage() {
 
   // ── Intro screen (persona gender selection) ───────────────────────────────
   const [showIntro, setShowIntro] = useState(true);
+  const [showStages, setShowStages] = useState(false);
   const [selectedGender, setSelectedGender] = useState<"male" | "female">(
     "male",
   );
+  const [selectedStageId, setSelectedStageId] = useState<number | null>(null);
 
   const handleStartJourney = useCallback((gender: "male" | "female") => {
     setSelectedGender(gender);
     setShowIntro(false);
+    setShowStages(true);
+  }, []);
+
+  const handleSelectStage = useCallback((stageId: number) => {
+    setSelectedStageId(stageId);
+    setShowStages(false);
   }, []);
 
   // ── Audio unlock on first interaction ─────────────────────────────────────
@@ -780,7 +742,9 @@ export default function MapPage() {
 
   const worldMapData = useQuery(
     api.worldMap.getWorldMapData,
-    activeVenture && !showIntro ? { ventureId: activeVenture._id } : "skip",
+    activeVenture && !showIntro && !showStages
+      ? { ventureId: activeVenture._id }
+      : "skip",
   );
 
   // currentUser needed for level + streak + badge lookups
@@ -1338,11 +1302,24 @@ export default function MapPage() {
     [checkpoints],
   );
 
+  useEffect(() => {
+    if (selectedStageId && checkpoints.length > 0 && phaserReady) {
+      // Small delay to ensure Phaser has created the checkpoint nodes
+      const timer = setTimeout(() => {
+        handleStageSelect(selectedStageId);
+        setSelectedStageId(null);
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedStageId, checkpoints, phaserReady, handleStageSelect]);
+
   // ── Loading / no-venture guard ─────────────────────────────────────────────
   // worldMapData is "skip"ped while intro is showing, so only check it after
   const isLoading =
-    ventures === undefined ||
-    (!showIntro && activeVenture !== null && worldMapData === undefined);
+    !showIntro &&
+    !showStages &&
+    (ventures === undefined ||
+      (activeVenture !== null && worldMapData === undefined));
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -1365,9 +1342,9 @@ export default function MapPage() {
         style={{ touchAction: "none" }}
       />
 
-      {/* Loading screen */}
+      {/* Loading screen — hidden while intro or stage-selection is visible */}
       <AnimatePresence>
-        {!phaserReady && (
+        {!phaserReady && !showIntro && !showStages && (
           <motion.div
             key="loading"
             exit={{ opacity: 0 }}
@@ -1378,7 +1355,7 @@ export default function MapPage() {
         )}
       </AnimatePresence>
 
-      {/* Loading overlay */}
+      {/* Loading overlay — hidden while intro or stage-selection is visible */}
       <AnimatePresence>
         {isLoading && (
           <motion.div
@@ -1393,9 +1370,7 @@ export default function MapPage() {
 
       {/* No venture state */}
       {!isLoading && !activeVenture && phaserReady && (
-        <div
-          className="absolute inset-0 z-30 flex items-center justify-center backdrop-blur-md"
-        >
+        <div className="absolute inset-0 z-30 flex items-center justify-center backdrop-blur-md">
           <div
             className="text-center px-10 py-12 rounded-3xl"
             style={{
@@ -1410,14 +1385,18 @@ export default function MapPage() {
             >
               No Active Venture
             </p>
-            <p className="text-sm font-medium mb-8" style={{ color: "#94a3b8" }}>
+            <p
+              className="text-sm font-medium mb-8"
+              style={{ color: "#94a3b8" }}
+            >
               Create a venture to begin your journey
             </p>
             <Link
               href="/venture/create"
               className="px-6 py-3 rounded-xl text-xs tracking-wider font-bold uppercase transition-all duration-300 hover:scale-105"
               style={{
-                background: "linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(79, 70, 229, 0.1))",
+                background:
+                  "linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(79, 70, 229, 0.1))",
                 border: "1px solid rgba(99, 102, 241, 0.4)",
                 color: "#818cf8",
                 boxShadow: "0 4px 20px rgba(99, 102, 241, 0.15)",
@@ -1450,7 +1429,27 @@ export default function MapPage() {
         )}
       </AnimatePresence>
 
-      {!showIntro && phaserReady && activeVenture && (
+      {/* Stage Selection screen */}
+      <AnimatePresence>
+        {showStages && (
+          <motion.div
+            key="stages"
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            className="absolute inset-0 z-50"
+          >
+            <StageSelectionScreen
+              onSelectStage={handleSelectStage}
+              onBack={() => {
+                setShowStages(false);
+                setShowIntro(true);
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {!showIntro && !showStages && phaserReady && activeVenture && (
         <>
           {/* Primary HUD — reads from Jotai atoms populated by Convex data */}
           <HUD />

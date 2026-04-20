@@ -10,8 +10,13 @@ interface IntroScreenProps {
   onStart: (gender: "male" | "female") => void;
 }
 
-export function IntroScreen({ ventureName = "Your Venture", onStart }: IntroScreenProps) {
-  const [selectedGender, setSelectedGender] = useState<"male" | "female" | null>(null);
+export function IntroScreen({
+  ventureName = "Your Venture",
+  onStart,
+}: IntroScreenProps) {
+  const [selectedGender, setSelectedGender] = useState<
+    "male" | "female" | null
+  >(null);
   const [showInstructions, setShowInstructions] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -36,7 +41,10 @@ export function IntroScreen({ ventureName = "Your Venture", onStart }: IntroScre
 
         {/* Nebula Glows */}
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#6366F1]/10 blur-[120px] rounded-full animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-[#8B5CF6]/10 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
+        <div
+          className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-[#8B5CF6]/10 blur-[120px] rounded-full animate-pulse"
+          style={{ animationDelay: "2s" }}
+        />
 
         {/* Moving Stars (Layer 1 - Distant) */}
         {[...Array(80)].map((_, i) => (
@@ -46,16 +54,16 @@ export function IntroScreen({ ventureName = "Your Venture", onStart }: IntroScre
             initial={{
               x: Math.random() * 100 + "%",
               y: Math.random() * 100 + "%",
-              opacity: Math.random() * 0.5
+              opacity: Math.random() * 0.5,
             }}
             animate={{
               opacity: [0.2, 0.6, 0.2],
-              scale: [1, 1.2, 1]
+              scale: [1, 1.2, 1],
             }}
             transition={{
               duration: 2 + Math.random() * 3,
               repeat: Infinity,
-              delay: Math.random() * 2
+              delay: Math.random() * 2,
             }}
           />
         ))}
@@ -89,7 +97,9 @@ export function IntroScreen({ ventureName = "Your Venture", onStart }: IntroScre
               </p>
               <div className="mt-4 sm:mt-6 flex items-center gap-3 sm:gap-4">
                 <div className="h-[1px] w-12 sm:w-24 bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
-                <span className="text-[8px] sm:text-[10px] text-indigo-400 font-black tracking-[0.2em] sm:tracking-[0.3em] uppercase whitespace-nowrap">8 Stages • 36 Checkpoints</span>
+                <span className="text-[8px] sm:text-[10px] text-indigo-400 font-black tracking-[0.2em] sm:tracking-[0.3em] uppercase whitespace-nowrap">
+                  2 Stages • 8 Checkpoints
+                </span>
                 <div className="h-[1px] w-12 sm:w-24 bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
               </div>
             </div>
@@ -150,10 +160,22 @@ export function IntroScreen({ ventureName = "Your Venture", onStart }: IntroScre
                   className="w-full max-w-xl p-6 sm:p-8 rounded-3xl bg-white/[0.03] border border-white/5 backdrop-blur-xl"
                 >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-[11px] text-white/60">
-                    <InstructionItem num="01" text="Navigate through 8 industrial stages" />
-                    <InstructionItem num="02" text="Complete 36 strategic checkpoints" />
-                    <InstructionItem num="03" text="Earn Gold status for excellence" />
-                    <InstructionItem num="04" text="Unlock stages by defeating room bosses" />
+                    <InstructionItem
+                      num="01"
+                      text="Navigate through 2 industrial stages"
+                    />
+                    <InstructionItem
+                      num="02"
+                      text="Complete 8 strategic checkpoints"
+                    />
+                    <InstructionItem
+                      num="03"
+                      text="Earn Gold status for excellence"
+                    />
+                    <InstructionItem
+                      num="04"
+                      text="Unlock stages by defeating room bosses"
+                    />
                   </div>
                 </motion.div>
               )}
@@ -168,16 +190,21 @@ export function IntroScreen({ ventureName = "Your Venture", onStart }: IntroScre
               <Button
                 onClick={handleStart}
                 disabled={!selectedGender}
-                className={`h-16 sm:h-20 px-10 sm:px-16 text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] sm:tracking-[0.4em] rounded-full transition-all duration-500 overflow-hidden relative group ${selectedGender
+                className={`h-16 sm:h-20 px-10 sm:px-16 text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] sm:tracking-[0.4em] rounded-full transition-all duration-500 overflow-hidden relative group ${
+                  selectedGender
                     ? "bg-white text-black hover:tracking-[0.6em] shadow-[0_0_50px_rgba(255,255,255,0.2)] hover:shadow-[0_0_80px_rgba(255,255,255,0.4)]"
                     : "bg-white/5 text-white/20 border border-white/5 cursor-not-allowed"
-                  }`}
+                }`}
               >
                 {selectedGender && (
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-r from-transparent via-black/10 to-transparent"
-                    animate={{ x: ['-100%', '200%'] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                    animate={{ x: ["-100%", "200%"] }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
                   />
                 )}
                 {selectedGender ? "Initiate Journey" : "Select Character"}
@@ -203,22 +230,34 @@ interface CharacterCardProps {
   themeColor: string;
 }
 
-function CharacterCard({ selected, onSelect, imageSrc, title, tagline, description, themeColor }: CharacterCardProps) {
+function CharacterCard({
+  selected,
+  onSelect,
+  imageSrc,
+  title,
+  tagline,
+  description,
+  themeColor,
+}: CharacterCardProps) {
   return (
     <motion.button
       whileHover={{ y: -5 }}
       whileTap={{ scale: 0.98 }}
       onClick={onSelect}
-      className={`group relative h-[360px] sm:h-[420px] md:h-[480px] lg:h-[500px] rounded-3xl sm:rounded-[40px] transition-all duration-500 overflow-hidden flex flex-col ${selected
+      className={`group relative h-[360px] sm:h-[420px] md:h-[480px] lg:h-[500px] rounded-3xl sm:rounded-[40px] transition-all duration-500 overflow-hidden flex flex-col ${
+        selected
           ? "w-[102%] sm:w-[110%] -mx-[1%] sm:-mx-[5%] z-20"
           : "w-full z-10"
-        }`}
+      }`}
     >
       {/* Dynamic Glass Base */}
-      <div className={`absolute inset-0 transition-all duration-500 ${selected
-          ? "bg-white/10 backdrop-blur-2xl border border-white/20 shadow-[0_0_60px_-15px_rgba(255,255,255,0.15)]"
-          : "bg-white/[0.02] backdrop-blur-sm border border-white/5 grayscale group-hover:grayscale-0 group-hover:bg-white/[0.05]"
-        }`} />
+      <div
+        className={`absolute inset-0 transition-all duration-500 ${
+          selected
+            ? "bg-white/10 backdrop-blur-2xl border border-white/20 shadow-[0_0_60px_-15px_rgba(255,255,255,0.15)]"
+            : "bg-white/[0.02] backdrop-blur-sm border border-white/5 grayscale group-hover:grayscale-0 group-hover:bg-white/[0.05]"
+        }`}
+      />
 
       {/* Selected Inner Glow */}
       <AnimatePresence>
@@ -243,12 +282,15 @@ function CharacterCard({ selected, onSelect, imageSrc, title, tagline, descripti
             />
           )}
 
-          <div className={`relative w-full h-full flex items-center justify-center transition-all duration-500 ease-out ${selected ? "scale-105 sm:scale-110 -translate-y-2" : "scale-100 opacity-60 group-hover:opacity-100 group-hover:scale-105"}`}>
+          <div
+            className={`relative w-full h-full flex items-center justify-center transition-all duration-500 ease-out ${selected ? "scale-105 sm:scale-110 -translate-y-2" : "scale-100 opacity-60 group-hover:opacity-100 group-hover:scale-105"}`}
+          >
             <div className="relative w-full h-full max-w-[200px] sm:max-w-[240px] md:max-w-[280px]">
               <Image
                 src={imageSrc}
                 alt={title}
                 fill
+                sizes="(max-width: 640px) 200px, (max-width: 768px) 240px, 280px"
                 className="object-contain drop-shadow-2xl object-bottom"
                 priority
               />
@@ -258,17 +300,21 @@ function CharacterCard({ selected, onSelect, imageSrc, title, tagline, descripti
 
         {/* Text Details */}
         <div className="text-center w-full z-10 shrink-0">
-          <span className={`text-[9px] sm:text-[10px] md:text-xs font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] transition-colors duration-500 block mb-1.5 sm:mb-2 ${selected ? "text-white" : "text-white/30 group-hover:text-white/50"}`}>
+          <span
+            className={`text-[9px] sm:text-[10px] md:text-xs font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] transition-colors duration-500 block mb-1.5 sm:mb-2 ${selected ? "text-white" : "text-white/30 group-hover:text-white/50"}`}
+          >
             {tagline}
           </span>
-          <h3 className={`text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tighter m-0 leading-none transition-all duration-500 ${selected ? "text-white scale-110" : "text-white/40 group-hover:text-white/70"}`}>
+          <h3
+            className={`text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tighter m-0 leading-none transition-all duration-500 ${selected ? "text-white scale-110" : "text-white/40 group-hover:text-white/70"}`}
+          >
             {title}
           </h3>
           <AnimatePresence>
             {selected && (
               <motion.div
                 initial={{ opacity: 0, height: 0, y: 10 }}
-                animate={{ opacity: 1, height: 'auto', y: 0 }}
+                animate={{ opacity: 1, height: "auto", y: 0 }}
                 exit={{ opacity: 0, height: 0, y: 10 }}
                 transition={{ duration: 0.3 }}
                 className="overflow-hidden"
@@ -288,8 +334,18 @@ function CharacterCard({ selected, onSelect, imageSrc, title, tagline, descripti
             animate={{ scale: 1 }}
             className="absolute top-4 sm:top-6 right-4 sm:right-6 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white flex items-center justify-center shadow-xl z-20"
           >
-            <svg className="w-4 h-4 sm:w-5 sm:h-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-4 h-4 sm:w-5 sm:h-5 text-black"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={3}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
           </motion.div>
         )}
@@ -301,7 +357,9 @@ function CharacterCard({ selected, onSelect, imageSrc, title, tagline, descripti
 function InstructionItem({ num, text }: { num: string; text: string }) {
   return (
     <div className="flex items-center gap-3 sm:gap-4">
-      <span className="text-indigo-500 font-black font-mono text-[10px] sm:text-xs">{num}</span>
+      <span className="text-indigo-500 font-black font-mono text-[10px] sm:text-xs">
+        {num}
+      </span>
       <span className="leading-tight text-[10px] sm:text-[11px]">{text}</span>
     </div>
   );
