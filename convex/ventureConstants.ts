@@ -14,6 +14,8 @@ export const TOOL_TYPES = [
   "upload",
   "oauth",
   "self_report",
+  "journal",
+  "kanban",
 ] as const;
 export type ToolType = (typeof TOOL_TYPES)[number];
 
@@ -22,7 +24,7 @@ export type ToolType = (typeof TOOL_TYPES)[number];
 // ─────────────────────────────────────────────────────────────────────────────
 export const VENTURE_STAGES = [
   { id: 1, name: "Ideation", checkpoints: 4 },
-  { id: 2, name: "Research", checkpoints: 4 },
+  { id: 2, name: "Research", checkpoints: 5 },
   { id: 3, name: "Validation", checkpoints: 4 },
   { id: 4, name: "Design", checkpoints: 5 },
   { id: 5, name: "Development", checkpoints: 6 },

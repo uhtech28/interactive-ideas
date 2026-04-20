@@ -214,6 +214,10 @@ export default defineSchema({
         v.id("todos"),
         v.id("invitations"),
         v.id("badges"),
+        v.id("ventures"),
+        v.id("ventureCheckpoints"),
+        v.id("ventureTasks"),
+        v.id("ventureEvidence"),
       ),
     ), // ID of related item
     isRead: v.boolean(), // Read status
@@ -433,6 +437,8 @@ export default defineSchema({
       v.literal("upload"),
       v.literal("oauth"),
       v.literal("self_report"),
+      v.literal("journal"),
+      v.literal("kanban"),
     ),
     status: v.union(
       v.literal("not_started"),

@@ -4,6 +4,7 @@ import { CheckpointNode, CheckpointStatus } from "../entities/Checkpoint";
 import { Persona, PersonaGender } from "../entities/Persona";
 import { BossSilhouette } from "../entities/Boss";
 import { BIOME_PALETTES } from "../utils/biome-textures";
+import { audioManager } from "../../audio/audioManager";
 
 import { eventBridge, type CheckpointState } from "../utils/event-bridge";
 import { VENTURE_STAGES } from "@convex/ventureConstants";
@@ -154,6 +155,10 @@ export class WorldMapScene extends Phaser.Scene {
    * - Starts FPS monitoring
    */
   create(): void {
+    // Initialize AudioManager on game start
+    audioManager.init();
+    console.log("[WorldMapScene] AudioManager initialized");
+
     // Initialize layer containers for parallax scrolling system
     // Background layer (depth 0) - furthest, contains distant space elements
     this.backgroundLayer = this.add.container(0, 0);
@@ -226,6 +231,8 @@ export class WorldMapScene extends Phaser.Scene {
     // Enable camera drag controls for better visibility
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       this.cameras.main.stopFollow();
+      // Unlock audio on first user interaction
+      audioManager.unlock();
     });
 
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
@@ -406,6 +413,12 @@ export class WorldMapScene extends Phaser.Scene {
         // Update boss opacity based on current stage
         if (event.currentStage) {
           this.updateBossOpacity(event.currentStage);
+
+          // Play ambience for the current stage
+          audioManager.playAmbienceForStage(event.currentStage);
+          console.log(
+            `[WorldMapScene] Playing ambience for stage ${event.currentStage}`,
+          );
         }
       }
 
@@ -687,22 +700,25 @@ export class WorldMapScene extends Phaser.Scene {
     checkpoint: number,
     _globalIndex: number,
   ): { x: number; y: number } {
-    const POSITIONS = [
-      { x: 200, y: 460 },
-      { x: 390, y: 340 },
-      { x: 560, y: 490 },
-      { x: 770, y: 360 },
-      { x: 1070, y: 440 },
-      { x: 1270, y: 330 },
-      { x: 1480, y: 470 },
-      { x: 1680, y: 350 },
-    ];
-    let idx = 0;
+    // Calculate global checkpoint index
+    let globalIndex = 0;
     for (let s = 1; s < stage; s++) {
-      idx += this.getCheckpointsForStage(s);
+      globalIndex += this.getCheckpointsForStage(s);
     }
-    idx += checkpoint - 1;
-    return POSITIONS[idx] ?? { x: 400, y: 400 };
+    globalIndex += checkpoint - 1;
+
+    // Dynamic snake-path layout for all 35 checkpoints
+    const START_X = 200;
+    const SPACING_X = 180;
+    const CENTER_Y = 400;
+    const WAVE_AMPLITUDE = 100;
+    const WAVE_FREQUENCY = 0.6;
+
+    const x = START_X + globalIndex * SPACING_X;
+    const y =
+      CENTER_Y + Math.sin(globalIndex * WAVE_FREQUENCY) * WAVE_AMPLITUDE;
+
+    return { x, y };
   }
 
   /**
@@ -822,9 +838,14 @@ export class WorldMapScene extends Phaser.Scene {
     const biomeContainer = this.add.container(biome.x, biome.y);
     this.backgroundLayer.add(biomeContainer);
 
-    // Ocean is drawn automatically via camera background.
-    // There are no static pre-rendered backgrounds for the Archipelago,
-    // everything is drawn procedurally (islands, bridges).
+    // Add biome-specific backgrounds
+    if (index === 0) {
+      // BIOME 1: Ideation Archipelago - Ocean theme
+      this.createOceanBiomeBackground(biomeContainer, biome);
+    } else if (index === 1) {
+      // BIOME 2: Research Mountains - Mountain theme
+      this.createMountainBiomeBackground(biomeContainer, biome);
+    }
 
     // Track that this biome has been loaded
     this.loadedBiomes.add(index);
@@ -832,6 +853,98 @@ export class WorldMapScene extends Phaser.Scene {
     console.log(
       `[LAZY LOADING] Biome ${index} loaded successfully. Total loaded: ${this.loadedBiomes.size}/8`,
     );
+  }
+
+  private createOceanBiomeBackground(
+    container: Phaser.GameObjects.Container,
+    biome: VentureBiome,
+  ): void {
+    const graphics = this.add.graphics();
+
+    // Deep ocean waves
+    graphics.fillStyle(0x0277bd, 0.8);
+    for (let x = 0; x < biome.width; x += 100) {
+      const y = 400 + Math.sin(x * 0.01) * 40;
+      graphics.fillCircle(x, y, 80);
+    }
+
+    // Surface waves
+    graphics.fillStyle(0x4fc3f7, 0.9);
+    for (let x = 0; x < biome.width; x += 80) {
+      const y = 380 + Math.cos(x * 0.015) * 30;
+      graphics.fillCircle(x, y, 60);
+    }
+
+    // Islands with palm trees
+    graphics.fillStyle(0x8d6e63, 1);
+    const islandPositions = [300, 700, 1100, 1400];
+    for (const x of islandPositions) {
+      const y = 500;
+      graphics.fillEllipse(x, y, 120, 60);
+      graphics.fillStyle(0x5d4037, 1);
+      graphics.fillRect(x - 8, y - 50, 16, 50);
+      graphics.fillStyle(0x558b2f, 1);
+      graphics.fillCircle(x, y - 60, 30);
+      graphics.fillStyle(0x8d6e63, 1);
+    }
+
+    // Lighthouse
+    graphics.fillStyle(0xf5f5f5, 1);
+    graphics.fillRect(280, 430, 20, 70);
+    graphics.fillStyle(0xef5350, 1);
+    graphics.fillTriangle(280, 430, 300, 430, 290, 410);
+
+    graphics.setDepth(-50);
+    container.add(graphics);
+  }
+
+  private createMountainBiomeBackground(
+    container: Phaser.GameObjects.Container,
+    biome: VentureBiome,
+  ): void {
+    const graphics = this.add.graphics();
+
+    // Distant mountains
+    graphics.fillStyle(0x90a4ae, 0.7);
+    for (let i = 0; i < 4; i++) {
+      const x = i * 450 + 200;
+      graphics.fillTriangle(x - 150, 500, x + 150, 500, x, 250);
+    }
+
+    // Mid-range mountains
+    graphics.fillStyle(0x78909c, 0.85);
+    for (let i = 0; i < 5; i++) {
+      const x = i * 360 + 100;
+      graphics.fillTriangle(x - 120, 520, x + 120, 520, x, 300);
+    }
+
+    // Foreground mountains with snow
+    graphics.fillStyle(0x607d8b, 1);
+    for (let i = 0; i < 4; i++) {
+      const x = i * 450 + 300;
+      graphics.fillTriangle(x - 150, 550, x + 150, 550, x, 320);
+      graphics.fillStyle(0xffffff, 1);
+      graphics.fillTriangle(x - 40, 360, x + 40, 360, x, 320);
+      graphics.fillStyle(0x607d8b, 1);
+    }
+
+    // Cave entrances
+    graphics.fillStyle(0x263238, 1);
+    graphics.fillEllipse(400, 520, 60, 50);
+    graphics.fillEllipse(1000, 530, 70, 55);
+    graphics.fillEllipse(1500, 525, 65, 52);
+
+    // Research flags
+    graphics.lineStyle(3, 0x5d4037, 1);
+    graphics.fillStyle(0x4caf50, 1);
+    const flagPositions = [450, 1000, 1500];
+    for (const x of flagPositions) {
+      graphics.lineBetween(x, 320, x, 270);
+      graphics.fillTriangle(x, 270, x, 290, x + 30, 280);
+    }
+
+    graphics.setDepth(-50);
+    container.add(graphics);
   }
 
   /**
@@ -900,10 +1013,19 @@ export class WorldMapScene extends Phaser.Scene {
    * Theme: Deep space with nebula clouds, stars, and dynamic lighting
    */
   private createAdventureBackground(): void {
-    // 1. Orange/amber ground fill
+    // 1. Biome-specific ground fills
     const ground = this.add.graphics();
+    // Ocean section (biome 1: 0-1600px)
+    ground.fillStyle(0x81d4fa, 1);
+    ground.fillRect(0, 0, 1600, this.MAP_HEIGHT);
+
+    // Mountain section (biome 2: 1600-3400px)
+    ground.fillStyle(0xb0bec5, 1);
+    ground.fillRect(1600, 0, 1800, this.MAP_HEIGHT);
+
+    // Future biomes (3400+)
     ground.fillStyle(0xf59e0b, 1);
-    ground.fillRect(0, 0, this.MAP_WIDTH, this.MAP_HEIGHT);
+    ground.fillRect(3400, 0, this.MAP_WIDTH - 3400, this.MAP_HEIGHT);
     ground.setDepth(-200);
     this.backgroundLayer.add(ground);
 
@@ -986,17 +1108,26 @@ export class WorldMapScene extends Phaser.Scene {
    * island base beneath each checkpoint coordinate.
    */
   private createAdventurePath(): void {
-    const TOTAL_CHECKPOINTS = 8;
-    const POSITIONS = [
-      { x: 200, y: 460 },
-      { x: 390, y: 340 },
-      { x: 560, y: 490 },
-      { x: 770, y: 360 },
-      { x: 1070, y: 440 },
-      { x: 1270, y: 330 },
-      { x: 1480, y: 470 },
-      { x: 1680, y: 350 },
-    ];
+    // Calculate total checkpoints across all stages
+    const TOTAL_CHECKPOINTS = VENTURE_STAGES.reduce(
+      (sum, stage) => sum + stage.checkpoints,
+      0,
+    );
+
+    // Generate positions dynamically using snake-path algorithm
+    const POSITIONS: { x: number; y: number }[] = [];
+    let globalIndex = 0;
+    for (const stageData of VENTURE_STAGES) {
+      for (let cp = 1; cp <= stageData.checkpoints; cp++) {
+        const pos = this.calculateCheckpointPosition(
+          stageData.id,
+          cp,
+          globalIndex,
+        );
+        POSITIONS.push(pos);
+        globalIndex++;
+      }
+    }
 
     // Pre-compute path control points (same for both outline and inner)
     const pathSegs: {
@@ -1302,6 +1433,11 @@ export class WorldMapScene extends Phaser.Scene {
 
     // Determine animation type from stage
     const animationType = getAnimationTypeForStage(stage);
+
+    // Play checkpoint SFX based on animation type and variant
+    const sfxId = `${animationType}_${variant}` as any;
+    audioManager.playCheckpointSFX(sfxId);
+    console.log(`[WorldMapScene] Playing checkpoint SFX: ${sfxId}`);
 
     // Create animation instance
     this.currentAnimation = createCheckpointAnimation(this, animationType, {

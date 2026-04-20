@@ -41,29 +41,54 @@ export type VentureBiome = {
 export const VENTURE_BIOMES: VentureBiome[] = [
   {
     id: 1,
-    name: "ARCHIPELAGO",
-    biomeName: "The Ocean of Ideas",
-    subtitle: "Stages 1-8 · Great Voyage",
+    name: "IDEATION_ARCHIPELAGO",
+    biomeName: "Ideation Archipelago",
+    subtitle: "Stages 1-2 · Birth of Ideas",
     x: 0,
+    y: 0,
+    width: 1600,
+    height: 700,
+    biomeType: "garage",
+    checkpoints: 8, // Stages 1-2: 4+4 checkpoints
+    challenges: ["Finding Direction", "Validating Assumptions"],
+    milestones: ["Define Problem", "Sketch Solution"],
+    pathColor: 0x4fc3f7, // Ocean blue
+    visualElements: ["islands", "ships", "lighthouse", "waves"],
+    icon: "🏝️",
+  },
+  {
+    id: 2,
+    name: "RESEARCH_MOUNTAINS",
+    biomeName: "Research Mountains",
+    subtitle: "Stages 3-4 · Climb to Knowledge",
+    x: 1600,
     y: 0,
     width: 1800,
     height: 700,
-    biomeType: "garage", // Note: The map scene overrides rendering, so this enum doesn't strictly matter
-    checkpoints: 8,
-    challenges: ["Navigation"],
-    milestones: ["Reach the Finish"],
-    pathColor: 0x8d6e63, // Bridge wood color
-    visualElements: ["islands", "ships", "sharks"],
-    icon: "🗺️",
+    biomeType: "office",
+    checkpoints: 9, // Stages 3-4: 4+5 checkpoints
+    challenges: ["Data Collection", "Analysis Paralysis"],
+    milestones: ["Market Analysis", "User Interviews", "Competitive Landscape"],
+    pathColor: 0x78909c, // Mountain stone gray
+    visualElements: ["peaks", "caves", "paths", "flags"],
+    icon: "⛰️",
   },
 ];
 
 /**
  * Get biome configuration by stage number
- * Everything maps to the grand ocean now for seamless snaking path
+ * Stages 1-2: Ideation Archipelago
+ * Stages 3-4: Research Mountains
+ * Stages 5-8: Falls back to last biome (to be implemented later)
  */
 export function getBiomeForStage(stage: number): VentureBiome {
-  return VENTURE_BIOMES[0];
+  if (stage <= 2) {
+    return VENTURE_BIOMES[0]; // Ideation Archipelago
+  } else if (stage <= 4) {
+    return VENTURE_BIOMES[1]; // Research Mountains
+  }
+  // Fallback for stages 5-8 (to be implemented in future phases)
+  return VENTURE_BIOMES[1];
 }
 
 /**

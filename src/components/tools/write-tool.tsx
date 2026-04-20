@@ -1,27 +1,40 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Loader2, Check } from "lucide-react"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Loader2, Check } from "lucide-react";
 
 interface WriteToolProps {
-  prompt: string
-  onSubmit: (content: { text: string; wordCount: number }) => void
-  initialContent?: string
-  isSubmitting?: boolean
+  prompt: string;
+  onSubmit: (content: { text: string; wordCount: number }) => void;
+  initialContent?: string;
+  isSubmitting?: boolean;
 }
 
-export function WriteTool({ prompt, onSubmit, initialContent, isSubmitting }: WriteToolProps) {
-  const [text, setText] = useState(initialContent || "")
-  const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0
+export function WriteTool({
+  prompt,
+  onSubmit,
+  initialContent,
+  isSubmitting,
+}: WriteToolProps) {
+  const [text, setText] = useState(initialContent || "");
+  const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
 
   const handleSubmit = () => {
-    if (!text.trim()) return
-    onSubmit({ text, wordCount })
-  }
+    if (!text.trim() || wordCount < 50) return;
+    onSubmit({ text, wordCount });
+  };
+
+  const meetsRequirement = wordCount >= 50;
 
   return (
     <Card>
@@ -39,14 +52,32 @@ export function WriteTool({ prompt, onSubmit, initialContent, isSubmitting }: Wr
             onChange={(e) => setText(e.target.value)}
             className="min-h-[200px] resize-y"
           />
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{wordCount} words</span>
-            <span>Minimum 30 words recommended</span>
+          <div className="flex items-center justify-between text-xs">
+            <span
+              className={
+                meetsRequirement
+                  ? "text-green-600 font-medium"
+                  : "text-muted-foreground"
+              }
+            >
+              {wordCount} / 50 words
+            </span>
+            {!meetsRequirement && wordCount > 0 && (
+              <span className="text-amber-600">
+                {50 - wordCount} more word{50 - wordCount !== 1 ? "s" : ""}{" "}
+                needed
+              </span>
+            )}
+            {meetsRequirement && (
+              <span className="text-green-600 font-medium">
+                ✓ Requirement met
+              </span>
+            )}
           </div>
         </div>
         <Button
           onClick={handleSubmit}
-          disabled={!text.trim() || isSubmitting}
+          disabled={!text.trim() || wordCount < 50 || isSubmitting}
           className="w-full"
         >
           {isSubmitting ? (
@@ -63,5 +94,5 @@ export function WriteTool({ prompt, onSubmit, initialContent, isSubmitting }: Wr
         </Button>
       </CardContent>
     </Card>
-  )
+  );
 }

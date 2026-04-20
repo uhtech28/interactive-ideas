@@ -962,6 +962,9 @@ export default function MapPage() {
       setShowLevelUp(true);
       // Play level-up fanfare
       audioManager.playLevelUp();
+      console.log(
+        `[MapPage] Playing level-up audio: ${prevLevelRef.current} → ${level}`,
+      );
     }
     prevLevelRef.current = level;
   }, [level, levelPhase]);
@@ -1038,6 +1041,9 @@ export default function MapPage() {
         return [...q, event];
       });
       audioManager.playBadgeSFX(event.rarity);
+      console.log(
+        `[MapPage] Playing badge SFX: ${event.name} (${event.rarity})`,
+      );
     };
     eventBridge.onReact("BADGE_AWARDED", handleBadge);
     return () => eventBridge.off("BADGE_AWARDED", handleBadge);

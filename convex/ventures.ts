@@ -181,6 +181,56 @@ export const startCheckpoint = mutation({
 });
 
 /**
+ * Validate contribution requirements based on tool type.
+ * Returns { valid: boolean, reason?: string }
+ */
+function validateContributionRequirement(
+  toolType: string,
+  content: any,
+  storageId?: string,
+): { valid: boolean; reason?: string } {
+  // For write/text tool, require minimum 50 words
+  if (toolType === "write") {
+    if (!content || !content.text) {
+      return { valid: false, reason: "Text content is required" };
+    }
+
+    const wordCount =
+      content.wordCount ||
+      (content.text.trim() ? content.text.trim().split(/\s+/).length : 0);
+
+    if (wordCount < 50) {
+      return {
+        valid: false,
+        reason: `Contribution too short. Please write at least 50 words. (Current: ${wordCount} words)`,
+      };
+    }
+
+    return { valid: true };
+  }
+
+  // For upload tool, require file to exist (storageId or in content)
+  if (toolType === "upload") {
+    const uploadStorageId = storageId || content?.storageId;
+    if (!uploadStorageId) {
+      return {
+        valid: false,
+        reason: "File upload is required. Please upload a file.",
+      };
+    }
+    return { valid: true };
+  }
+
+  // For other tools (table, map, survey, poll, link, oauth, self_report)
+  // just ensure content exists
+  if (!content) {
+    return { valid: false, reason: "Contribution content is required" };
+  }
+
+  return { valid: true };
+}
+
+/**
  * Submit evidence for a task.
  * Creates the evidence record and links it to the task.
  */
@@ -206,6 +256,17 @@ export const submitEvidence = mutation({
     const user = await getUserByClerkId(ctx, identity.subject);
     if (venture.userId !== user._id) {
       throw new Error("Not your venture");
+    }
+
+    // Validate contribution requirements
+    const validation = validateContributionRequirement(
+      task.toolType,
+      args.content,
+      args.storageId,
+    );
+
+    if (!validation.valid) {
+      throw new Error(validation.reason || "Invalid contribution");
     }
 
     const now = Date.now();
