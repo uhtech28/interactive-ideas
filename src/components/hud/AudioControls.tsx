@@ -50,33 +50,47 @@ export function AudioControls() {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3 font-sans group">
       <motion.button
         onClick={toggleMute}
-        className="relative w-8 h-8 rounded-lg bg-[#1e293b] border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+        className="relative w-9 h-9 rounded-xl bg-zinc-950/50 backdrop-blur-xl border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-all hover:bg-zinc-900/60 hover:border-indigo-500/30 shadow-lg"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         title={audioSettings.muted ? "Unmute audio" : "Mute audio"}
-        aria-label={audioSettings.muted ? "Unmute audio" : "Mute audio"}
       >
         {getVolumeIcon()}
         {audioSettings.muted && (
-          <div className="absolute inset-0 bg-red-500/20 rounded-lg" />
+          <motion.div 
+            className="absolute inset-0 bg-red-500/10 rounded-xl"
+            animate={{ opacity: [0.1, 0.3, 0.1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          />
         )}
       </motion.button>
 
-      <div className="hidden md:flex items-center gap-1.5">
-        <Music className="w-3 h-3 text-gray-500" />
-        {/* Master volume slider */}
-        <div className="relative w-16 h-4 flex items-center">
-          <div className="w-full h-1.5 bg-[#1e293b] rounded-full overflow-hidden">
+      <div className="hidden lg:flex flex-col gap-1.5 min-w-[80px]">
+        <div className="flex items-center justify-between">
+          <span className="text-[8px] text-zinc-500 uppercase tracking-[0.2em] font-black leading-none">
+            Volume
+          </span>
+          <span className="text-[8px] text-zinc-400 font-bold tabular-nums">
+            {getVolumePercentage()}%
+          </span>
+        </div>
+
+        {/* Master volume slider - custom styled bar */}
+        <div className="relative w-20 h-4 flex items-center">
+          <div className="w-full h-1.5 bg-black/40 backdrop-blur-sm rounded-full border border-white/5 overflow-hidden p-[1px]">
             <motion.div
-              className="h-full bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] rounded-full"
+              className="h-full bg-gradient-to-r from-indigo-600 via-violet-500 to-indigo-400 rounded-full relative"
               animate={{ width: `${getVolumePercentage()}%` }}
-              transition={{ type: "spring", stiffness: 200, damping: 20 }}
-            />
+              transition={{ type: "spring", stiffness: 150, damping: 20 }}
+            >
+              {/* Inner highlight */}
+              <div className="absolute inset-x-0 top-0 h-[0.5px] bg-white/20 rounded-full" />
+            </motion.div>
           </div>
-          {/* Invisible range input for accessibility and interaction */}
+          {/* Invisible range input for interaction */}
           <input
             type="range"
             min={0}
@@ -88,7 +102,6 @@ export function AudioControls() {
               setAudioSettings((prev) => ({
                 ...prev,
                 masterVolume: val,
-                // Auto-unmute when user drags the slider up
                 muted: val === 0 ? prev.muted : false,
               }));
             }}

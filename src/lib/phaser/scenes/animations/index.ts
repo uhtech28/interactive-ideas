@@ -54,10 +54,16 @@ export function createCheckpointAnimation(
 export function getAnimationTypeForStage(
   stage: number,
 ): CheckpointAnimationType {
-  // 2-Stage MVP System
+  // 8-Stage Full System
   const stageToAnimation: Record<number, CheckpointAnimationType> = {
     1: "compass_calibration", // Stage 1: Ideation - Compass snaps to new heading
     2: "beacon_lighting", // Stage 2: Research - Watchtower beacon ignites
+    3: "seal_break", // Stage 3: Planning - Seal breaks, gate opens
+    4: "rune_inscription", // Stage 4: Development - Stone tablet with rune inscription
+    5: "bridge_repair", // Stage 5: Testing - Bridge planks appear and transform
+    6: "ward_placement", // Stage 6: Launch - Ward stones create protective boundary
+    7: "beacon_lighting", // Stage 7: Growth - Reuse beacon lighting
+    8: "seal_break", // Stage 8: Scale - Final seal break with golden effects
   };
   return stageToAnimation[stage] || "compass_calibration";
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface StreakCounterProps {
   streak: number;
@@ -11,28 +11,28 @@ export function StreakCounter({ streak }: StreakCounterProps) {
 
   return (
     <motion.div
-      className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-slate-900/40 backdrop-blur-md border border-indigo-500/20 shadow-[0_2px_10px_rgba(0,0,0,0.2)] font-sans"
-      whileHover={hasStreak ? { scale: 1.05, borderColor: "rgba(99,102,241,0.4)" } : {}}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      className="flex items-center gap-3.5 px-4 py-2 bg-zinc-950/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-lg font-sans group transition-all hover:border-sky-500/30"
+      whileHover={hasStreak ? { scale: 1.02, transition: { type: "spring", stiffness: 400, damping: 20 } } : {}}
     >
-      {/* Animated flame */}
+      {/* Animated lightning icon */}
       <div className="relative">
         <motion.div
           animate={hasStreak ? { 
-            scale: [1, 1.15, 1],
-            rotate: [-2, 2, -2],
+            scale: [1, 1.1, 1],
+            rotate: [-5, 5, -5],
           } : {}}
-          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+          transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+          className="relative z-10"
         >
           <svg 
-            className="w-4.5 h-4.5 drop-shadow-[0_0_6px_rgba(56,189,248,0.5)]" 
+            className="w-5 h-5 drop-shadow-[0_0_10px_rgba(56,189,248,0.6)]" 
             viewBox="0 0 24 24" 
-            fill={hasStreak ? "url(#lightningGradient)" : "none"}
-            stroke={hasStreak ? "none" : "#475569"}
-            strokeWidth={1.5}
+            fill={hasStreak ? "url(#lightningGradientPremium)" : "none"}
+            stroke={hasStreak ? "none" : "#3f3f46"}
+            strokeWidth={2}
           >
             <defs>
-              <linearGradient id="lightningGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <linearGradient id="lightningGradientPremium" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#38bdf8" />    {/* Sky 400 */}
                 <stop offset="50%" stopColor="#6366f1" />    {/* Indigo 500 */}
                 <stop offset="100%" stopColor="#a855f7" />   {/* Purple 500 */}
@@ -43,22 +43,29 @@ export function StreakCounter({ streak }: StreakCounterProps) {
         </motion.div>
         
         {/* Glow effect when active */}
-        {hasStreak && (
-          <motion.div
-            className="absolute inset-0 blur-md bg-indigo-500/40 -z-10 rounded-full"
-            animate={{ opacity: [0.3, 0.6, 0.3], scale: [0.9, 1.2, 0.9] }}
-            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-          />
-        )}
+        <AnimatePresence>
+          {hasStreak && (
+            <motion.div
+              className="absolute inset-0 blur-xl bg-sky-500/30 -z-10 rounded-full"
+              animate={{ opacity: [0.2, 0.5, 0.2], scale: [0.8, 1.3, 0.8] }}
+              transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+            />
+          )}
+        </AnimatePresence>
       </div>
 
-      <div className="flex items-baseline gap-1.5 pr-1">
-        <span className={`text-[15px] font-black leading-none ${hasStreak ? "text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-indigo-500 drop-shadow-[0_0_8px_rgba(56,189,248,0.3)]" : "text-slate-500"}`}>
-          {streak}
+      <div className="flex flex-col pr-1">
+        <span className="text-[9px] text-zinc-500 uppercase tracking-[0.25em] font-black leading-none mb-1">
+          Streak
         </span>
-        <span className={`text-[9px] uppercase tracking-widest font-bold ${hasStreak ? "text-indigo-300" : "text-slate-600"}`}>
-          {streak === 1 ? "Day" : "Days"}
-        </span>
+        <div className="flex items-baseline gap-1.5">
+          <span className={`text-[17px] font-black leading-none tracking-tight tabular-nums ${hasStreak ? "text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-indigo-500 drop-shadow-sm" : "text-zinc-600"}`}>
+            {streak}
+          </span>
+          <span className={`text-[9px] uppercase tracking-widest font-black ${hasStreak ? "text-sky-400/80" : "text-zinc-700"}`}>
+            {streak === 1 ? "Day" : "Days"}
+          </span>
+        </div>
       </div>
     </motion.div>
   );

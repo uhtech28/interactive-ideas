@@ -30,6 +30,10 @@ export function LevelUpSequence({
   const [showContent, setShowContent] = useState(false);
   const [canSkip, setCanSkip] = useState(false);
 
+  // Calculate if this is a multi-level gain
+  const levelsGained = oldLevel ? newLevel - oldLevel : 1;
+  const isMultiLevel = levelsGained > 1;
+
   useEffect(() => {
     if (isVisible) {
       setShowContent(false);
@@ -107,7 +111,9 @@ export function LevelUpSequence({
                     className="mb-4"
                   >
                     <span className="text-[#6366f1] text-lg font-semibold uppercase tracking-widest">
-                      Level Up!
+                      {isMultiLevel
+                        ? `🎉 Multi-Level Up! +${levelsGained} Levels`
+                        : "Level Up!"}
                     </span>
                   </motion.div>
 
@@ -120,9 +126,27 @@ export function LevelUpSequence({
                     <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] rounded-2xl rotate-6" />
                     <div className="absolute inset-0 bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] rounded-2xl -rotate-3" />
                     <div className="absolute inset-0 bg-[#1e1b4b] rounded-2xl flex items-center justify-center">
-                      <span className="text-5xl font-bold text-white">
-                        {newLevel}
-                      </span>
+                      {isMultiLevel && oldLevel ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-3xl font-bold text-gray-400">
+                            {oldLevel}
+                          </span>
+                          <motion.span
+                            animate={{ x: [0, 5, 0] }}
+                            transition={{ duration: 0.8, repeat: Infinity }}
+                            className="text-2xl text-[#6366f1]"
+                          >
+                            →
+                          </motion.span>
+                          <span className="text-4xl font-bold text-white">
+                            {newLevel}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-5xl font-bold text-white">
+                          {newLevel}
+                        </span>
+                      )}
                     </div>
                   </motion.div>
 

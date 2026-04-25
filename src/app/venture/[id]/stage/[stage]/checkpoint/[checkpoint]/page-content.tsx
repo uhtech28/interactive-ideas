@@ -40,6 +40,8 @@ import { MapTool } from "@/components/tools/map-tool";
 import { SurveyTool } from "@/components/tools/survey-tool";
 import { PollTool } from "@/components/tools/poll-tool";
 import { OAuthTool } from "@/components/tools/oauth-tool";
+import { KanbanTool } from "@/components/tools/kanban-tool";
+import { JournalTool } from "@/components/tools/journal-tool";
 
 const TOOL_ICONS: Record<string, any> = {
   write: FileText,
@@ -188,6 +190,10 @@ export default function CheckpointPageContent() {
         return <OAuthTool {...props} />;
       case "self_report":
         return <SelfReportTool {...props} fields={[]} />;
+      case "kanban":
+        return <KanbanTool {...props} />;
+      case "journal":
+        return <JournalTool {...props} />;
       default:
         return <WriteTool {...props} />;
     }

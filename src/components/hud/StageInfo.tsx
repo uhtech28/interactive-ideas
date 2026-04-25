@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { motion } from "framer-motion";
 
 interface StageInfoProps {
@@ -10,13 +11,13 @@ interface StageInfoProps {
   stage?: number;
 }
 
-export function StageInfo({
+const StageInfoComponent = ({
   stageName,
   stageIcon,
   biomeName,
   centered = false,
   stage = 1,
-}: StageInfoProps) {
+}: StageInfoProps) => {
   if (centered) {
     // Centered floating title variant for dramatic reveals
     return (
@@ -27,29 +28,32 @@ export function StageInfo({
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
         className="fixed top-24 left-1/2 -translate-x-1/2 z-50 font-sans"
       >
-        <div
-          className="relative px-10 py-5 bg-slate-900/60 backdrop-blur-xl border border-white/20 rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.1)] flex flex-col items-center"
-        >
-          {/* Biome icon */}
-          <div className="absolute -top-8 left-1/2 -translate-x-1/2">
-            <div
-              className="w-16 h-16 bg-slate-800/90 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center shadow-[0_4px_20px_rgba(30,20,50,0.5)]"
+        <div className="relative px-12 py-6 bg-zinc-950/60 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] flex flex-col items-center">
+          {/* Biome icon with animated pulse */}
+          <div className="absolute -top-10 left-1/2 -translate-x-1/2">
+            <motion.div
+              animate={{ y: [0, -5, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              className="w-20 h-20 bg-zinc-900/90 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center shadow-[0_4px_30px_rgba(0,0,0,0.5)]"
             >
-              <span className="text-3xl drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">{stageIcon}</span>
-            </div>
-            {/* Subtle glow behind icon */}
-            <div className="absolute inset-0 rounded-full bg-indigo-500/20 blur-md -z-10" />
+              <span className="text-4xl drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]">
+                {stageIcon}
+              </span>
+            </motion.div>
+            <div className="absolute inset-0 rounded-full bg-indigo-500/30 blur-xl -z-10 animate-pulse" />
           </div>
 
-          {/* Title */}
-          <div className="text-center mt-4">
-            <h2
-              className="text-2xl font-black text-white uppercase tracking-[0.15em] mb-1.5 drop-shadow-[0_2px_10px_rgba(99,102,241,0.3)]"
-            >
+          {/* Title with premium spacing */}
+          <div className="text-center mt-6">
+            <span className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.4em] mb-2 block">
+              Entering Stage {stage}
+            </span>
+            <h2 className="text-3xl font-black text-white uppercase tracking-[0.2em] mb-2 drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
               {biomeName}
             </h2>
-            <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-widest text-balance max-w-[200px] leading-tight mx-auto">
-              Stage {stage} · {stageName}
+            <div className="h-[2px] w-12 bg-indigo-500 mx-auto my-3 rounded-full" />
+            <p className="text-[12px] text-zinc-400 font-bold uppercase tracking-widest leading-none">
+              {stageName}
             </p>
           </div>
         </div>
@@ -59,31 +63,36 @@ export function StageInfo({
 
   return (
     <motion.div
-      className="flex items-center gap-3.5 font-sans"
+      className="flex items-center gap-4 font-sans group"
       initial={{ x: -20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ delay: 0.1 }}
     >
       {/* Biome icon with modern frame */}
-      <div
-        className="relative w-12 h-12 bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-xl flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.2)]"
-      >
-        <span className="text-[26px] drop-shadow-[0_0_6px_rgba(255,255,255,0.3)]">{stageIcon}</span>
-        {/* Subtle inner glow */}
-        <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-500/10 to-transparent pointer-events-none" />
+      <div className="relative w-12 h-12 bg-zinc-950/50 backdrop-blur-xl border border-white/10 rounded-xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
+        <span className="text-[28px] drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
+          {stageIcon}
+        </span>
+        <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
       </div>
 
-      {/* Text info - biome name is primary */}
+      {/* Text info - premium typography */}
       <div className="flex flex-col justify-center">
-        <span
-          className="text-[13px] font-black text-white uppercase tracking-wider leading-tight drop-shadow-[0_2px_8px_rgba(99,102,241,0.3)]"
-        >
-          Stage {stage}: {biomeName}
-        </span>
-        <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-widest mt-0.5">
-          {stageName}
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className="text-[9px] bg-indigo-500/20 text-indigo-400 border border-indigo-400/30 px-1.5 py-0.5 rounded-md font-black uppercase tracking-tighter">
+            Stage {stage}
+          </span>
+          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+            {stageName}
+          </span>
+        </div>
+        <span className="text-[15px] font-black text-white uppercase tracking-wider leading-none drop-shadow-sm">
+          {biomeName}
         </span>
       </div>
     </motion.div>
   );
-}
+};
+
+// Memoize to prevent re-renders when props haven't changed
+export const StageInfo = React.memo(StageInfoComponent);

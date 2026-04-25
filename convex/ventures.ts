@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
+import { internal, api } from "./_generated/api";
 import {
   CHECKPOINT_DEFINITIONS,
   BOSS_DEFINITIONS,
@@ -364,6 +365,33 @@ export const submitEvidence = mutation({
       venture._id,
     );
 
+    // ── Trigger AI quality scoring (async, non-blocking) ─────────────────────
+    // Resolve checkpoint def for the outcome text the scorer needs
+    const checkpointDef = CHECKPOINT_DEFINITIONS.find(
+      (d) =>
+        d.stage === checkpoint.stage &&
+        d.checkpoint === checkpoint.checkpoint,
+    );
+    const contentText =
+      typeof args.content?.text === "string"
+        ? args.content.text
+        : JSON.stringify(args.content ?? "");
+    if (contentText.trim().split(/\s+/).length >= 10) {
+      await ctx.scheduler.runAfter(
+        0,
+        api.aiScoring.evaluateTaskSubmission,
+        {
+          taskId: args.taskId,
+          checkpointId: task.checkpointId,
+          ventureId: checkpoint.ventureId,
+          stageNumber: checkpoint.stage,
+          content: contentText,
+          checkpointOutcome: checkpointDef?.outcome ?? "",
+          userTier: "free",
+        },
+      );
+    }
+
     return evidenceId;
   },
 });
@@ -481,8 +509,17 @@ export const getVenture = query({
       .withIndex("by_venture", (q) => q.eq("ventureId", args.ventureId))
       .collect();
 
-    // Batch fetch all tasks for all checkpoints
-    const allTasks = await ctx.db.query("ventureTasks").collect();
+    // Batch fetch all tasks using by_checkpoint index (avoids full table scan)
+    const checkpointIds = checkpoints.map((cp) => cp._id);
+    const tasksPerCheckpoint = await Promise.all(
+      checkpointIds.map((id) =>
+        ctx.db
+          .query("ventureTasks")
+          .withIndex("by_checkpoint", (q) => q.eq("checkpointId", id))
+          .collect()
+      ),
+    );
+    const allTasks = tasksPerCheckpoint.flat();
 
     // Group tasks by checkpointId
     const tasksByCheckpoint = new Map();
@@ -600,25 +637,29 @@ export const getUserVentureSummaries = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
-    // Batch fetch checkpoints for all ventures
-    const allCheckpoints = await ctx.db.query("ventureCheckpoints").collect();
+    // Batch fetch checkpoints using by_venture index (avoids full table scan)
+    const checkpointsByVenture = new Map<string, Array<{ ventureId: Id<"ventures">; stage: number; checkpoint: number; status: string; t1Completed: boolean; t2Completed: boolean; t3Completed: boolean; goldBonusEarned: boolean; _id: Id<"ventureCheckpoints">; completedAt?: number; _creationTime: number }>>();
+    await Promise.all(
+      ventures.map(async (v) => {
+        const cps = await ctx.db
+          .query("ventureCheckpoints")
+          .withIndex("by_venture", (q) => q.eq("ventureId", v._id))
+          .collect();
+        checkpointsByVenture.set(v._id as string, cps);
+      }),
+    );
 
-    const checkpointsByVenture = new Map<string, typeof allCheckpoints>();
-    for (const cp of allCheckpoints) {
-      const existing = checkpointsByVenture.get(cp.ventureId) || [];
-      existing.push(cp);
-      checkpointsByVenture.set(cp.ventureId, existing);
-    }
-
-    // Batch fetch bosses for all ventures
-    const allBosses = await ctx.db.query("ventureBosses").collect();
-
-    const bossesByVenture = new Map<string, typeof allBosses>();
-    for (const boss of allBosses) {
-      const existing = bossesByVenture.get(boss.ventureId) || [];
-      existing.push(boss);
-      bossesByVenture.set(boss.ventureId, existing);
-    }
+    // Batch fetch bosses using by_venture index (avoids full table scan)
+    const bossesByVenture = new Map<string, Array<{ ventureId: Id<"ventures">; bossId: number; status: string; corruptionLevel: number; bossSpecificCounters: unknown; assignedAt: number; defeatedAt?: number; _id: Id<"ventureBosses">; _creationTime: number }>>();
+    await Promise.all(
+      ventures.map(async (v) => {
+        const bs = await ctx.db
+          .query("ventureBosses")
+          .withIndex("by_venture", (q) => q.eq("ventureId", v._id))
+          .collect();
+        bossesByVenture.set(v._id as string, bs);
+      }),
+    );
 
     return ventures.map((venture) => {
       const checkpoints = checkpointsByVenture.get(venture._id) || [];

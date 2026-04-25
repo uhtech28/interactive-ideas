@@ -24,6 +24,7 @@ import { HUD } from "@/components/hud/HUD";
 import { LevelUpSequence } from "@/components/animations/LevelUpSequence";
 import { BadgeAwardSequence } from "@/components/animations/BadgeAwardSequence";
 import { FirstCheckpointPulse } from "@/components/map/FirstCheckpointPulse";
+import { GoldCheckpointPopup } from "@/components/notifications/GoldCheckpointPopup";
 import { useRouter } from "next/navigation";
 import {
   activeVentureAtom,
@@ -75,6 +76,8 @@ interface Stage {
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
+// All 8 stages — visual metadata mapped from the canonical VENTURE_STAGES constant.
+// checkpoints count must match ventureConstants.ts.
 const STAGES: Stage[] = [
   {
     id: 1,
@@ -91,8 +94,62 @@ const STAGES: Stage[] = [
     biome: "The Forest",
     mini: "Pathwarden Wraith",
     glow: "#a78bfa", // Violet 400
-    checkpoints: 4,
+    checkpoints: 5,
     icon: "🔬",
+  },
+  {
+    id: 3,
+    name: "Validation",
+    biome: "The Arena",
+    mini: "Chimera of Doubt",
+    glow: "#f472b6", // Pink 400
+    checkpoints: 4,
+    icon: "✅",
+  },
+  {
+    id: 4,
+    name: "Design",
+    biome: "The Artisan Quarter",
+    mini: "The Pale Architect",
+    glow: "#34d399", // Emerald 400
+    checkpoints: 5,
+    icon: "🎨",
+  },
+  {
+    id: 5,
+    name: "Development",
+    biome: "The Mine",
+    mini: "Iron Unraveller",
+    glow: "#fb923c", // Orange 400
+    checkpoints: 6,
+    icon: "⚙️",
+  },
+  {
+    id: 6,
+    name: "Launch",
+    biome: "The Harbour",
+    mini: "The Gravemind",
+    glow: "#38bdf8", // Cyan 400
+    checkpoints: 3,
+    icon: "🚀",
+  },
+  {
+    id: 7,
+    name: "Iteration",
+    biome: "The Crossroads",
+    mini: "Shape-Shifter",
+    glow: "#facc15", // Yellow 400
+    checkpoints: 4,
+    icon: "🔄",
+  },
+  {
+    id: 8,
+    name: "Scale",
+    biome: "The Capital",
+    mini: "The Leviathan",
+    glow: "#c084fc", // Purple 400
+    checkpoints: 5,
+    icon: "📈",
   },
 ];
 
@@ -680,8 +737,10 @@ function LoadingScreen() {
 // MAIN PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Phase boundary levels (trigger phase-transition animation variant)
-const PHASE_THRESHOLDS = new Set([7, 16, 29, 40]);
+// Phase boundary checkpoint numbers (cumulative) — triggers phase-transition animation variant.
+// Boundaries: Stage 1 ends at 4, Stage 2 at 9, Stage 3 at 13, Stage 4 at 18,
+// Stage 5 at 24, Stage 6 at 27, Stage 7 at 31, Stage 8 at 36.
+const PHASE_THRESHOLDS = new Set([4, 9, 13, 18, 24, 27, 31, 36]);
 
 // Badge type shared between state and BadgeAwardSequence props
 interface BadgePayload {
@@ -738,6 +797,12 @@ export default function MapPage() {
   // ── Convex queries ─────────────────────────────────────────────────────────
   const ventures = useQuery(api.worldMap.getVenturesByUser);
   const activeVenture = ventures?.[0] ?? null;
+
+  // Subscribe to notifications for gold checkpoint awards
+  const notifications = useQuery(api.notifications.getNotifications, {
+    filterReadStatus: "unread",
+    filterType: "all",
+  });
 
   const worldMapData = useQuery(
     api.worldMap.getWorldMapData,
@@ -805,8 +870,24 @@ export default function MapPage() {
   const [showFirstCheckpointPulse, setShowFirstCheckpointPulse] =
     useState(false);
 
+  // Gold checkpoint notification state
+  const [goldCheckpointNotification, setGoldCheckpointNotification] = useState<{
+    ventureName: string;
+    stageName: string;
+    checkpoint: number;
+  } | null>(null);
+
   // Track previous level to detect level-up events
   const prevLevelRef = useRef<number | null>(null);
+
+  // ── Debug: Track badge queue state ────────────────────────────────────────
+  useEffect(() => {
+    console.log(`[MapPage] 🎖️ Badge queue updated:`, {
+      queueLength: badgeQueue.length,
+      activeBadge: activeBadge ? activeBadge.name : null,
+      queue: badgeQueue.map((b) => b.name),
+    });
+  }, [badgeQueue, activeBadge]);
 
   // ── Derived values from Convex ─────────────────────────────────────────────
   const venture = worldMapData?.venture ?? null;
@@ -820,6 +901,32 @@ export default function MapPage() {
 
   const activeStage = venture?.currentStage ?? 1;
   const activeCP = venture?.currentCheckpoint ?? 1;
+
+  // ── Detect gold checkpoint notifications ──────────────────────────────────
+  useEffect(() => {
+    if (!notifications || !venture) return;
+
+    // Find unread gold checkpoint notifications for this venture
+    const goldNotifications = notifications?.filter(
+      (n) =>
+        n.type === "venture_checkpoint_gold" &&
+        !n.isRead &&
+        n.relatedId === venture._id,
+    );
+
+    if (goldNotifications.length > 0) {
+      // Show the most recent one
+      const stageData = STAGES[activeStage - 1];
+
+      setGoldCheckpointNotification({
+        ventureName: ideaTitle,
+        stageName: stageData?.name ?? `Stage ${activeStage}`,
+        checkpoint: activeCP,
+      });
+
+      console.log("[MapPage] 🏆 Gold checkpoint notification displayed");
+    }
+  }, [notifications, venture, activeStage, activeCP, ideaTitle]);
 
   const completedCount = checkpoints.filter(
     (cp) =>
@@ -914,6 +1021,7 @@ export default function MapPage() {
         icon: b.icon,
         rarity: b.rarity,
       }));
+      console.log(`[MapPage] 🎖️ New badge(s) detected: ${newCount}`, payloads);
       setBadgeQueue((q) => [...q, ...payloads]);
       // Play SFX for the first new badge
       if (payloads[0]) {
@@ -957,10 +1065,17 @@ export default function MapPage() {
         }));
 
       if (payloads.length > 0) {
+        console.log(
+          `[MapPage] 🏆 New venture badge(s) detected: ${newCount}`,
+          payloads,
+        );
         setBadgeQueue((q) => {
           // Deduplicate by id to prevent showing the same badge twice
           const existing = new Set(q.map((b) => b.id));
           const unique = payloads.filter((p) => !existing.has(p.id));
+          console.log(
+            `[MapPage] Badge queue updated: ${unique.length} new, ${q.length} existing`,
+          );
           return [...q, ...unique];
         });
         // Play SFX for the first new badge
@@ -980,8 +1095,12 @@ export default function MapPage() {
   }, [activeStage, phaserReady]);
 
   // ── Detect level-up → trigger LevelUpSequence + fanfare ──────────────────
+  // Handles multi-level progression (XP overflow) - shows all levels gained in one animation
   useEffect(() => {
     if (prevLevelRef.current !== null && level > prevLevelRef.current) {
+      const levelsGained = level - prevLevelRef.current;
+      const isMultiLevel = levelsGained > 1;
+
       setLevelUpData({
         oldLevel: prevLevelRef.current,
         newLevel: level,
@@ -989,11 +1108,18 @@ export default function MapPage() {
         isPhaseTransition: PHASE_THRESHOLDS.has(level),
       });
       setShowLevelUp(true);
+
       // Play level-up fanfare
       audioManager.playLevelUp();
-      console.log(
-        `[MapPage] Playing level-up audio: ${prevLevelRef.current} → ${level}`,
-      );
+
+      // Enhanced logging for multi-level gains
+      if (isMultiLevel) {
+        console.log(
+          `[MapPage] 🎉 MULTI-LEVEL UP! ${prevLevelRef.current} → ${level} (+${levelsGained} levels) - XP overflow handled`,
+        );
+      } else {
+        console.log(`[MapPage] Level-up: ${prevLevelRef.current} → ${level}`);
+      }
     }
     prevLevelRef.current = level;
   }, [level, levelPhase]);
@@ -1495,6 +1621,15 @@ export default function MapPage() {
             badge={activeBadge}
             onComplete={() => setBadgeQueue((q) => q.slice(1))}
             onSkip={() => setBadgeQueue((q) => q.slice(1))}
+          />
+
+          {/* Gold checkpoint notification popup */}
+          <GoldCheckpointPopup
+            isVisible={!!goldCheckpointNotification}
+            ventureName={goldCheckpointNotification?.ventureName ?? ""}
+            stageName={goldCheckpointNotification?.stageName ?? ""}
+            checkpoint={goldCheckpointNotification?.checkpoint ?? 0}
+            onDismiss={() => setGoldCheckpointNotification(null)}
           />
 
           {/* Checkpoint detail panel */}

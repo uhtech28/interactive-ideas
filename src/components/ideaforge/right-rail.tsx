@@ -127,7 +127,7 @@ export function IdeaForgeRightRail({
             <ArrowUpRight className="h-4 w-4 text-[#9CA3AF]" />
           </div>
           <div className="mt-4 space-y-3">
-            {builders.length > 0 ? builders.map((builder) => <SuggestedBuilderCard key={builder._id || builder.id || builder.username} builder={builder} />) : (
+            {builders.length > 0 ? builders.map((builder) => <SuggestedBuilderCard key={builder._id?.toString() || builder.username} builder={builder as BuilderSuggestion} />) : (
               <p className="text-sm text-[#9CA3AF]">We are lining up collaborators based on your profile and recent ideas.</p>
             )}
           </div>

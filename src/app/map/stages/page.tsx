@@ -25,12 +25,84 @@ const STAGES = [
     name: "Research",
     subtitle: "Stage 2",
     description:
-      "Dive deep into the market. Analyze competitors, interview users, and validate your assumptions.",
+      "Dive deep into the market. Analyse competitors, interview users, and validate your assumptions.",
     icon: "🔬",
-    checkpoints: 4,
+    checkpoints: 5,
     glowColor: "#a78bfa",
     bgColor: "rgba(167,139,250,0.08)",
     borderColor: "rgba(167,139,250,0.25)",
+  },
+  {
+    id: 3,
+    name: "Validation",
+    subtitle: "Stage 3",
+    description:
+      "Put your riskiest assumptions to the test. Run experiments, gather evidence, and make a clear pivot-or-proceed decision.",
+    icon: "✅",
+    checkpoints: 4,
+    glowColor: "#f472b6",
+    bgColor: "rgba(244,114,182,0.08)",
+    borderColor: "rgba(244,114,182,0.25)",
+  },
+  {
+    id: 4,
+    name: "Design",
+    subtitle: "Stage 4",
+    description:
+      "Give your idea a face. Map the user journey, build visual identity, and prototype the experience.",
+    icon: "🎨",
+    checkpoints: 5,
+    glowColor: "#34d399",
+    bgColor: "rgba(52,211,153,0.08)",
+    borderColor: "rgba(52,211,153,0.25)",
+  },
+  {
+    id: 5,
+    name: "Development",
+    subtitle: "Stage 5",
+    description:
+      "Write the code, build the stack, and ship a working product through internal and external testing.",
+    icon: "⚙️",
+    checkpoints: 6,
+    glowColor: "#fb923c",
+    bgColor: "rgba(251,146,60,0.08)",
+    borderColor: "rgba(251,146,60,0.25)",
+  },
+  {
+    id: 6,
+    name: "Launch",
+    subtitle: "Stage 6",
+    description:
+      "Prepare assets, go live, and acquire your first real users through targeted channels.",
+    icon: "🚀",
+    checkpoints: 3,
+    glowColor: "#38bdf8",
+    bgColor: "rgba(56,189,248,0.08)",
+    borderColor: "rgba(56,189,248,0.25)",
+  },
+  {
+    id: 7,
+    name: "Iteration",
+    subtitle: "Stage 7",
+    description:
+      "Listen, prioritise, ship improvements. Measure the impact of every change against real metrics.",
+    icon: "🔄",
+    checkpoints: 4,
+    glowColor: "#facc15",
+    bgColor: "rgba(250,204,21,0.08)",
+    borderColor: "rgba(250,204,21,0.25)",
+  },
+  {
+    id: 8,
+    name: "Scale",
+    subtitle: "Stage 8",
+    description:
+      "Identify growth channels, validate the revenue model, and build the operations to support serious volume.",
+    icon: "📈",
+    checkpoints: 5,
+    glowColor: "#c084fc",
+    bgColor: "rgba(192,132,252,0.08)",
+    borderColor: "rgba(192,132,252,0.25)",
   },
 ];
 
@@ -486,7 +558,7 @@ export default function MapStagesPage() {
         <div className="mt-auto pt-14 flex items-center justify-center gap-4 opacity-30">
           <div className="h-[1px] w-20 bg-gradient-to-r from-transparent to-indigo-500/50" />
           <span className="text-[9px] tracking-[0.3em] uppercase font-black text-white/40">
-            2 Stages · 8 Checkpoints
+            8 Stages · 36 Checkpoints
           </span>
           <div className="h-[1px] w-20 bg-gradient-to-l from-transparent to-indigo-500/50" />
         </div>

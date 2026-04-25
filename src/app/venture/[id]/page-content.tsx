@@ -35,28 +35,18 @@ export default function VenturePageContent() {
     ventureId: ventureId as Id<"ventures">,
   });
 
+  // Fetch the idea that this venture is based on for its title
+  const idea = useQuery(
+    api.ideas.getIdeaById,
+    venture?.ideaId ? { ideaId: venture.ideaId } : "skip",
+  );
+
+  // Show loading state while data is being fetched
   if (!venture || !progress) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-pulse text-muted-foreground">
           Loading venture...
-        </div>
-      </div>
-    );
-  }
-
-  if (!venture) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Skull className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Venture Not Found</h2>
-          <p className="text-muted-foreground mb-4">
-            This venture may have been deleted.
-          </p>
-          <Button onClick={() => router.push("/my-ventures")}>
-            Back to My Ventures
-          </Button>
         </div>
       </div>
     );
@@ -72,7 +62,7 @@ export default function VenturePageContent() {
           </Button>
           <div className="flex-1">
             <h1 className="text-2xl font-bold">
-              Venture: {venture.ideaId ? "Loading..." : "Venture"}
+              {idea?.title ?? venture.status === "active" ? "Active Venture" : "Venture"}
             </h1>
             <div className="flex items-center gap-2 mt-1">
               <Badge

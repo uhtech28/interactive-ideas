@@ -22,6 +22,9 @@ export default function VentureCreatePage() {
   const searchParams = useSearchParams();
   const ideaId = searchParams.get("ideaId");
   const [creating, setCreating] = useState(false);
+  const [selectedGender, setSelectedGender] = useState<
+    "male" | "female" | null
+  >(null);
 
   const ideas = useQuery(api.ideas.getUserIdeas, {});
   const createVenture = useMutation(api.ventures.createVenture);
@@ -29,11 +32,18 @@ export default function VentureCreatePage() {
   const selectedIdea = ideas?.find((i: { _id: string }) => i._id === ideaId);
 
   const handleCreate = async () => {
-    if (!ideaId) return;
+    if (!ideaId || !selectedGender) return;
     setCreating(true);
     try {
       const ventureId = await createVenture({ ideaId: ideaId as Id<"ideas"> });
-      router.push(`/venture/${ventureId}`);
+
+      // Save persona gender selection to localStorage for /map/world
+      if (typeof window !== "undefined") {
+        localStorage.setItem("selectedGender", selectedGender);
+      }
+
+      // Redirect to world map with the new venture
+      router.push(`/map/world`);
     } catch (error) {
       console.error("Failed to create venture:", error);
       setCreating(false);
@@ -175,10 +185,55 @@ export default function VentureCreatePage() {
               </CardContent>
             </Card>
 
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle>Choose Your Persona</CardTitle>
+                <CardDescription>
+                  Select the character that will represent you on your journey
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <button
+                    onClick={() => setSelectedGender("male")}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      selectedGender === "male"
+                        ? "border-blue-500 bg-blue-500/10"
+                        : "border-border hover:border-blue-500/50"
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">👨‍💼</div>
+                      <div className="font-semibold">Male</div>
+                      <div className="text-xs text-muted-foreground">
+                        The Strategic Engineer
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setSelectedGender("female")}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      selectedGender === "female"
+                        ? "border-purple-500 bg-purple-500/10"
+                        : "border-border hover:border-purple-500/50"
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">👩‍💼</div>
+                      <div className="font-semibold">Female</div>
+                      <div className="text-xs text-muted-foreground">
+                        The Visionary Lead
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+
             <Button
               size="lg"
               onClick={handleCreate}
-              disabled={creating}
+              disabled={creating || !selectedGender}
               className="w-full"
             >
               {creating ? (
@@ -189,7 +244,9 @@ export default function VentureCreatePage() {
               ) : (
                 <>
                   <Rocket className="mr-2 h-5 w-5" />
-                  Start This Venture
+                  {selectedGender
+                    ? "Start This Venture"
+                    : "Select Persona First"}
                 </>
               )}
             </Button>

@@ -18,28 +18,39 @@ export function QualityScore({ qualityScore, valuationScore }: QualityScoreProps
   const tier = getQualityTier(qualityScore);
 
   return (
-    <div className="flex items-center gap-3 font-sans">
+    <div className="flex items-center gap-3 font-sans group">
+      {/* Quality Score Badge */}
       <motion.div
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${tier.bg} backdrop-blur-md shadow-[0_2px_10px_rgba(0,0,0,0.2)]`}
-        whileHover={{ scale: 1.05 }}
+        className={`flex items-center gap-2.5 px-4 py-2 rounded-xl border ${tier.bg} backdrop-blur-xl shadow-lg transition-all group-hover:border-emerald-500/50`}
+        whileHover={{ scale: 1.02 }}
       >
-        <TrendingUp className={`w-3.5 h-3.5 ${tier.icon}`} />
-        <div className="flex items-baseline gap-0.5">
-          <span className={`text-[13px] font-black leading-none ${tier.color}`}>{qualityScore}</span>
-          <span className="text-[10px] text-slate-500 font-semibold uppercase">/12</span>
+        <div className="flex flex-col">
+          <span className="text-[9px] text-zinc-500 uppercase tracking-[0.2em] font-black leading-none mb-1">
+            Build Quality
+          </span>
+          <div className="flex items-baseline gap-1">
+            <span className={`text-[17px] font-black leading-none ${tier.color}`}>{qualityScore}</span>
+            <span className="text-[10px] text-zinc-500 font-bold uppercase">/12</span>
+          </div>
         </div>
       </motion.div>
 
+      {/* Valuation Badge */}
       <motion.div
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/40 border border-emerald-500/20 backdrop-blur-md shadow-[0_2px_10px_rgba(0,0,0,0.2)]"
-        whileHover={{ scale: 1.05, borderColor: "rgba(52,211,153,0.4)" }}
+        className="flex items-center gap-3 px-4 py-2 rounded-xl bg-zinc-950/40 border border-emerald-500/20 backdrop-blur-xl shadow-lg transition-all hover:border-emerald-500/50"
+        whileHover={{ scale: 1.02 }}
       >
-        <div className="w-5 h-5 rounded-full bg-emerald-500/10 flex items-center justify-center">
-          <DollarSign className="w-3.5 h-3.5 text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]" />
+        <div className="flex flex-col">
+          <span className="text-[9px] text-zinc-500 uppercase tracking-[0.2em] font-black leading-none mb-1">
+            Market Value
+          </span>
+          <div className="flex items-center gap-1.5">
+            <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-[17px] font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-500 tracking-tight leading-none tabular-nums">
+              {valuationScore.toLocaleString()}
+            </span>
+          </div>
         </div>
-        <span className="text-[14px] font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-emerald-500 tracking-wide drop-shadow-[0_0_8px_rgba(52,211,153,0.2)]">
-          {valuationScore.toLocaleString()}
-        </span>
       </motion.div>
     </div>
   );

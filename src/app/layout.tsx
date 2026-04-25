@@ -30,7 +30,9 @@ const monoFont = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("http://localhost:3000"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+  ),
   title: "InteractiveIdeas - Share & Cultivate Brilliant Ideas",
   description: "Connect with like-minded creators, share your brilliant ideas, get valuable feedback, and collaborate on groundbreaking projects in our innovative community.",
   keywords: "ideas, innovation, collaboration, creativity, community, startup, prototyping",

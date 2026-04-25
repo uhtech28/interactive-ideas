@@ -62,7 +62,7 @@ export interface CheckpointState {
   /** Checkpoint number within the stage (1-based). */
   checkpoint: number;
   /** Derived display status for the Phaser map node. */
-  status: "locked" | "active" | "in_progress" | "completed" | "gold";
+  status: "locked" | "active" | "in_progress" | "partial" | "completed" | "gold";
   /** Whether Task 1 has been submitted and accepted. */
   t1: boolean;
   /** Whether Task 2 has been submitted and accepted. */

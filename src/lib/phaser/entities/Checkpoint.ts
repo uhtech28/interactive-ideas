@@ -370,6 +370,7 @@ export type CheckpointStatus =
   | "locked"
   | "active"
   | "in_progress"
+  | "partial"
   | "completed"
   | "gold";
 
@@ -454,34 +455,83 @@ export class CheckpointNode extends Phaser.GameObjects.Container {
 
     const C = CheckpointNode.C;
 
+    // ── Premium depth shadow (creates 3D effect) ────────────────────────────
+    const shadow = new Phaser.GameObjects.Arc(
+      scene,
+      2,
+      4,
+      46,
+      0,
+      360,
+      false,
+      0x000000,
+      0.4,
+    );
+    shadow.setStrokeStyle(2, 0x000000, 0.2);
+    this.add(shadow);
+
+    // ── Outer premium frame (Sokoban-style border) ──────────────────────────
+    const outerFrame = scene.add.graphics();
+    outerFrame.lineStyle(4, 0x18181b, 1); // Zinc 900
+    outerFrame.strokeCircle(0, 0, 50);
+    outerFrame.lineStyle(2, C.indigoLight, 0.4);
+    outerFrame.strokeCircle(0, 0, 48);
+    this.add(outerFrame);
+
+    // ── Inner decorative ring ───────────────────────────────────────────────
+    const innerRing = scene.add.graphics();
+    
+    // Premium Gradient Island Base
+    innerRing.fillGradientStyle(
+      C.indigoDark, C.indigoDark, C.indigo, C.indigo, 1
+    );
+    innerRing.fillCircle(0, 0, 42);
+    
+    // Shoreline highlight (3D edge)
+    innerRing.lineStyle(2, 0xffffff, 0.1);
+    innerRing.strokeCircle(0, 0, 42);
+    
+    this.add(innerRing);
+
     // ── Outer glow ring (hidden by default, shown for active / gold) ────────
     this.glowRing = new Phaser.GameObjects.Arc(
       scene,
       0,
       0,
-      52,
+      58,
       0,
       360,
       false,
       C.indigo,
       0,
     );
-    this.glowRing.setStrokeStyle(0);
+    this.glowRing.setStrokeStyle(8, C.indigoLight, 0.4);
 
     // ── Pulse ring ──────────────────────────────────────────────────────────
     this.pulseRing = new Phaser.GameObjects.Arc(
       scene,
       0,
       0,
-      46,
+      48,
       0,
       360,
       false,
       C.indigo,
-      0.4,
+      0.3,
     );
-    this.pulseRing.setStrokeStyle(3, C.indigoLight, 0.8);
+    this.pulseRing.setStrokeStyle(3, C.indigoLight, 0.6);
     this.pulseRing.setVisible(false);
+
+    // ── Floating animation ──────────────────────────────────────────────────
+    scene.tweens.add({
+      targets: this,
+      y: config.y - 5,
+      duration: 2000 + Math.random() * 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+      delay: Math.random() * 2000
+    });
 
     // ── Small stage indicator dot ──────────────────────────────────────────
     // Stage 1 → Indigo, Stage 2 → Purple, others → Cyan
@@ -491,13 +541,14 @@ export class CheckpointNode extends Phaser.GameObjects.Container {
       scene,
       0,
       -50,
-      5,
+      6,
       0,
       360,
       false,
       stageDotColor,
-      0.9,
+      1.0,
     );
+    this.stageDot.setStrokeStyle(2, C.white, 0.4);
 
     // ── Main sprite (80×80 texture key: cp_<status>) ────────────────────────
     this.mainSprite = new Phaser.GameObjects.Image(
@@ -547,10 +598,55 @@ export class CheckpointNode extends Phaser.GameObjects.Container {
       this.glowRing,
       this.pulseRing,
       this.mainSprite,
-      this.numberText,
       this.stageDot,
       this.stageLabel,
+      this.numberText,
     ]);
+
+    // ── Interactive hover effects ───────────────────────────────────────────
+    this.setSize(100, 100);
+    this.setInteractive();
+
+    this.on("pointerover", () => {
+      if (this._status !== "locked") {
+        this.scene.tweens.add({
+          targets: this,
+          scaleX: 1.1,
+          scaleY: 1.1,
+          duration: 200,
+          ease: "Back.easeOut",
+        });
+        this.glowRing.setStrokeStyle(8, C.indigoLight, 0.8);
+      }
+    });
+
+    this.on("pointerout", () => {
+      this.scene.tweens.add({
+        targets: this,
+        scaleX: 1.0,
+        scaleY: 1.0,
+        duration: 150,
+        ease: "Quad.easeOut",
+      });
+      if (this._status === "active") {
+        this.glowRing.setStrokeStyle(6, C.indigoLight, 0.5);
+      } else {
+        this.glowRing.setStrokeStyle(0);
+      }
+    });
+
+    this.on("pointerdown", () => {
+      if (this._status !== "locked") {
+        this.scene.tweens.add({
+          targets: this,
+          scaleX: 0.95,
+          scaleY: 0.95,
+          duration: 100,
+          yoyo: true,
+          ease: "Quad.easeOut",
+        });
+      }
+    });
 
     scene.add.existing(this);
     this.applyStatusVisuals();
@@ -671,7 +767,9 @@ export class CheckpointNode extends Phaser.GameObjects.Container {
 
   private applyStatusVisuals(): void {
     this.stopAnimations();
-    this.mainSprite.setTexture(`cp_${this._status}`);
+    this.mainSprite.setTexture(
+      `cp_${this._status === "partial" ? "in_progress" : this._status}`,
+    );
 
     const C = CheckpointNode.C;
 
@@ -701,6 +799,16 @@ export class CheckpointNode extends Phaser.GameObjects.Container {
         this.stageLabel.setStyle({ color: "#fcd34d" });
         this.stageDot.setAlpha(1.0);
         this.glowRing.setFillStyle(C.amber, 0.12);
+        this.glowRing.setAlpha(1);
+        break;
+
+      case "partial":
+        // One or two tasks completed — amber partial glow
+        this.mainSprite.setAlpha(0.96);
+        this.numberText.setStyle({ color: "#ffffff" });
+        this.stageLabel.setStyle({ color: "#fbbf24" });
+        this.stageDot.setAlpha(1.0);
+        this.glowRing.setFillStyle(C.amber, 0.18);
         this.glowRing.setAlpha(1);
         break;
 

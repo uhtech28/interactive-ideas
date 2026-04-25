@@ -1,77 +1,288 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Loader2, Check, Plus, Trash2, ChevronLeft, ChevronRight, LayoutDashboard } from "lucide-react"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import {
+  Loader2,
+  Check,
+  Plus,
+  Trash2,
+  LayoutDashboard,
+  GripVertical,
+} from "lucide-react";
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCorners,
+  DragOverEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface KanbanCard {
-  id: string
-  title: string
-  column: "todo" | "inprogress" | "done"
+  id: string;
+  title: string;
+  column: "todo" | "inprogress" | "done";
 }
 
 interface KanbanToolProps {
-  prompt: string
-  onSubmit: (content: { cards: KanbanCard[]; columns: string[]; timestamp: number }) => void
-  initialContent?: { cards: KanbanCard[]; columns: string[]; timestamp: number }
-  isSubmitting?: boolean
+  prompt: string;
+  onSubmit: (content: {
+    cards: KanbanCard[];
+    columns: string[];
+    timestamp: number;
+  }) => void;
+  initialContent?: {
+    cards: KanbanCard[];
+    columns: string[];
+    timestamp: number;
+  };
+  isSubmitting?: boolean;
 }
 
-export function KanbanTool({ prompt, onSubmit, initialContent, isSubmitting }: KanbanToolProps) {
-  const [cards, setCards] = useState<KanbanCard[]>(initialContent?.cards || [])
-  const [newCardTitle, setNewCardTitle] = useState("")
-  const [activeColumn, setActiveColumn] = useState<"todo" | "inprogress" | "done">("todo")
+// Draggable Card Component
+function DraggableCard({
+  card,
+  onDelete,
+}: {
+  card: KanbanCard;
+  onDelete: (id: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: card.id,
+  });
 
-  const columns: { id: "todo" | "inprogress" | "done"; label: string; color: string }[] = [
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    cursor: isDragging ? "grabbing" : "grab",
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="p-3 border rounded-md bg-background shadow-sm hover:shadow-md transition-shadow"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div
+          className="flex items-start gap-2 flex-1"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 cursor-grab" />
+          <div className="text-sm flex-1">{card.title}</div>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
+          onClick={() => onDelete(card.id)}
+          title="Delete card"
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Droppable Column Component
+function DroppableColumn({
+  column,
+  cards,
+  onDelete,
+}: {
+  column: { id: "todo" | "inprogress" | "done"; label: string; color: string };
+  cards: KanbanCard[];
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className={`p-2 rounded-md ${column.color}`}>
+        <h3 className="text-sm font-semibold text-center">{column.label}</h3>
+        <p className="text-xs text-center text-muted-foreground">
+          {cards.length} {cards.length === 1 ? "card" : "cards"}
+        </p>
+      </div>
+      <SortableContext
+        items={cards.map((c) => c.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="space-y-2 min-h-[200px] p-2 border-2 border-dashed border-muted rounded-lg">
+          {cards.length === 0 ? (
+            <div className="flex items-center justify-center h-[100px] text-xs text-muted-foreground">
+              Drop cards here
+            </div>
+          ) : (
+            cards.map((card) => (
+              <DraggableCard key={card.id} card={card} onDelete={onDelete} />
+            ))
+          )}
+        </div>
+      </SortableContext>
+    </div>
+  );
+}
+
+export function KanbanTool({
+  prompt,
+  onSubmit,
+  initialContent,
+  isSubmitting,
+}: KanbanToolProps) {
+  const [cards, setCards] = useState<KanbanCard[]>(initialContent?.cards || []);
+  const [newCardTitle, setNewCardTitle] = useState("");
+  const [activeColumn, setActiveColumn] = useState<
+    "todo" | "inprogress" | "done"
+  >("todo");
+  const [activeCard, setActiveCard] = useState<KanbanCard | null>(null);
+
+  const columns: {
+    id: "todo" | "inprogress" | "done";
+    label: string;
+    color: string;
+  }[] = [
     { id: "todo", label: "To Do", color: "bg-slate-100 dark:bg-slate-900" },
-    { id: "inprogress", label: "In Progress", color: "bg-blue-100 dark:bg-blue-950" },
+    {
+      id: "inprogress",
+      label: "In Progress",
+      color: "bg-blue-100 dark:bg-blue-950",
+    },
     { id: "done", label: "Done", color: "bg-green-100 dark:bg-green-950" },
-  ]
+  ];
+
+  // Configure sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required before drag starts
+      },
+    }),
+  );
 
   const addCard = () => {
-    if (!newCardTitle.trim()) return
+    if (!newCardTitle.trim()) return;
     const newCard: KanbanCard = {
       id: `card-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       title: newCardTitle.trim(),
       column: activeColumn,
-    }
-    setCards([...cards, newCard])
-    setNewCardTitle("")
-  }
+    };
+    setCards([...cards, newCard]);
+    setNewCardTitle("");
+  };
 
   const deleteCard = (cardId: string) => {
-    setCards(cards.filter((c) => c.id !== cardId))
-  }
-
-  const moveCard = (cardId: string, direction: "left" | "right") => {
-    setCards(
-      cards.map((card) => {
-        if (card.id !== cardId) return card
-
-        const currentIndex = columns.findIndex((col) => col.id === card.column)
-        const newIndex = direction === "left" ? currentIndex - 1 : currentIndex + 1
-
-        if (newIndex < 0 || newIndex >= columns.length) return card
-
-        return { ...card, column: columns[newIndex].id }
-      })
-    )
-  }
+    setCards(cards.filter((c) => c.id !== cardId));
+  };
 
   const getCardsForColumn = (columnId: "todo" | "inprogress" | "done") => {
-    return cards.filter((card) => card.column === columnId)
-  }
+    return cards.filter((card) => card.column === columnId);
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const card = cards.find((c) => c.id === active.id);
+    if (card) {
+      setActiveCard(card);
+    }
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeCard = cards.find((c) => c.id === active.id);
+    if (!activeCard) return;
+
+    // Check if we're over a different column by checking the card's column
+    const overCard = cards.find((c) => c.id === over.id);
+    if (overCard && overCard.column !== activeCard.column) {
+      setCards((prevCards) =>
+        prevCards.map((card) =>
+          card.id === activeCard.id
+            ? { ...card, column: overCard.column }
+            : card,
+        ),
+      );
+    }
+
+    // Check if we're over a column (by checking if over.id matches column id)
+    const overColumn = columns.find((col) => col.id === over.id);
+    if (overColumn && overColumn.id !== activeCard.column) {
+      setCards((prevCards) =>
+        prevCards.map((card) =>
+          card.id === activeCard.id ? { ...card, column: overColumn.id } : card,
+        ),
+      );
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveCard(null);
+
+    if (!over) return;
+
+    const activeCard = cards.find((c) => c.id === active.id);
+    if (!activeCard) return;
+
+    // If dropped on a card, move to that card's column
+    const overCard = cards.find((c) => c.id === over.id);
+    if (overCard) {
+      setCards((prevCards) =>
+        prevCards.map((card) =>
+          card.id === activeCard.id
+            ? { ...card, column: overCard.column }
+            : card,
+        ),
+      );
+    }
+
+    // If dropped on a column container
+    const overColumn = columns.find((col) => col.id === over.id);
+    if (overColumn) {
+      setCards((prevCards) =>
+        prevCards.map((card) =>
+          card.id === activeCard.id ? { ...card, column: overColumn.id } : card,
+        ),
+      );
+    }
+  };
 
   const handleSubmit = () => {
     onSubmit({
       cards,
       columns: columns.map((c) => c.label),
       timestamp: Date.now(),
-    })
-  }
+    });
+  };
 
   return (
     <Card>
@@ -95,7 +306,11 @@ export function KanbanTool({ prompt, onSubmit, initialContent, isSubmitting }: K
             />
             <select
               value={activeColumn}
-              onChange={(e) => setActiveColumn(e.target.value as "todo" | "inprogress" | "done")}
+              onChange={(e) =>
+                setActiveColumn(
+                  e.target.value as "todo" | "inprogress" | "done",
+                )
+              }
               className="px-3 py-2 border rounded-md text-sm bg-background"
             >
               {columns.map((col) => (
@@ -104,72 +319,51 @@ export function KanbanTool({ prompt, onSubmit, initialContent, isSubmitting }: K
                 </option>
               ))}
             </select>
-            <Button onClick={addCard} size="icon" disabled={!newCardTitle.trim()}>
+            <Button
+              onClick={addCard}
+              size="icon"
+              disabled={!newCardTitle.trim()}
+            >
               <Plus className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        {/* Kanban Board */}
-        <div className="grid grid-cols-3 gap-3">
-          {columns.map((column, columnIndex) => (
-            <div key={column.id} className="space-y-2">
-              <div className={`p-2 rounded-md ${column.color}`}>
-                <h3 className="text-sm font-semibold text-center">{column.label}</h3>
-                <p className="text-xs text-center text-muted-foreground">
-                  {getCardsForColumn(column.id).length} {getCardsForColumn(column.id).length === 1 ? 'card' : 'cards'}
-                </p>
+        {/* Kanban Board with Drag and Drop */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="grid grid-cols-3 gap-3">
+            {columns.map((column) => (
+              <DroppableColumn
+                key={column.id}
+                column={column}
+                cards={getCardsForColumn(column.id)}
+                onDelete={deleteCard}
+              />
+            ))}
+          </div>
+
+          {/* Drag Overlay - Shows the card being dragged */}
+          <DragOverlay>
+            {activeCard ? (
+              <div className="p-3 border rounded-md bg-background shadow-lg opacity-90 cursor-grabbing">
+                <div className="flex items-start gap-2">
+                  <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div className="text-sm flex-1">{activeCard.title}</div>
+                </div>
               </div>
-              <div className="space-y-2 min-h-[200px]">
-                {getCardsForColumn(column.id).map((card) => (
-                  <div
-                    key={card.id}
-                    className="p-2 border rounded-md bg-background shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <div className="text-sm mb-2">{card.title}</div>
-                    <div className="flex items-center justify-between gap-1">
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => moveCard(card.id, "left")}
-                          disabled={columnIndex === 0}
-                          title="Move left"
-                        >
-                          <ChevronLeft className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => moveCard(card.id, "right")}
-                          disabled={columnIndex === columns.length - 1}
-                          title="Move right"
-                        >
-                          <ChevronRight className="h-3 w-3" />
-                        </Button>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                        onClick={() => deleteCard(card.id)}
-                        title="Delete card"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
 
         <div className="pt-2 border-t">
           <p className="text-xs text-muted-foreground mb-3">
-            Total cards: {cards.length} | Use arrows to move cards between columns
+            Total cards: {cards.length} | Drag and drop cards between columns
           </p>
           <Button
             onClick={handleSubmit}
@@ -191,5 +385,5 @@ export function KanbanTool({ prompt, onSubmit, initialContent, isSubmitting }: K
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

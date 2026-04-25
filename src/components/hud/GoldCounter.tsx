@@ -67,117 +67,87 @@ export function GoldCounter({ compact = false }: GoldCounterProps) {
       animate={{ scale: 1, opacity: 1 }}
       whileHover={{ scale: 1.02 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className="relative font-sans"
+      className="relative font-sans group"
     >
       {/* Main container with modern glassmorphism */}
       <div
-        className="relative flex items-center gap-3 px-4 py-2.5 bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-full"
-        style={{
-          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.05)",
-        }}
+        className="relative flex items-center gap-3 px-4 py-2 bg-zinc-900/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all group-hover:border-amber-500/30"
       >
-        {/* Coin sprite - modern styling */}
+        {/* Coin / Icon with dramatic glow */}
         <div className="relative">
           <motion.div
             animate={
               isIncreasing
                 ? {
-                  scale: [1, 1.2, 1],
-                  rotate: [0, 360],
+                  scale: [1, 1.25, 1],
+                  rotate: [0, 15, -15, 0],
                 }
                 : {}
             }
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="relative w-8 h-8"
+            transition={{ duration: 0.6, ease: "backOut" }}
+            className="relative w-10 h-10 flex items-center justify-center bg-zinc-950/60 rounded-xl border border-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.15)]"
           >
-            {/* Outer coin border - Indigo gradient */}
-            <div
-              className="absolute inset-0 bg-gradient-to-br from-indigo-400 via-indigo-500 to-indigo-600 rounded-full border-[1.5px] border-indigo-300/50 shadow-lg shadow-indigo-500/20"
-            />
-            {/* Inner coin detail */}
-            <div className="absolute inset-[3px] bg-gradient-to-br from-[#0f1420] to-[#0a0d14] rounded-full flex items-center justify-center border border-indigo-500/30">
-              <span className="text-sm font-black text-indigo-400">V</span>
-            </div>
-            {/* Shine effect */}
-            <div className="absolute top-1 left-1.5 w-2 h-2.5 bg-white/40 rounded-full blur-[2px] rotate-45" />
+            <Coins className="w-5 h-5 text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
+            
+            {/* Shimmer overlay */}
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-amber-500/10 to-transparent pointer-events-none" />
           </motion.div>
 
           {/* Sparkle effect when increasing */}
           <AnimatePresence>
             {isIncreasing && (
-              <>
-                <motion.div
-                  initial={{ scale: 0, opacity: 1 }}
-                  animate={{ scale: 1.5, opacity: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className="absolute inset-0 border-2 border-amber-400 rounded-full"
-                />
-                <Sparkles
-                  className="absolute -top-1 -right-1 w-3 h-3 text-amber-400"
-                  style={{
-                    filter: "drop-shadow(0 0 2px rgba(251, 191, 36, 0.8))",
-                  }}
-                />
-              </>
+              <motion.div
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1.5, opacity: 1 }}
+                exit={{ scale: 2, opacity: 0 }}
+                transition={{ duration: 0.8 }}
+                className="absolute inset-0 pointer-events-none"
+              >
+                <Sparkles className="absolute -top-1 -right-1 w-4 h-4 text-amber-300" />
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Gold amount with animated counter */}
-        <div className="flex flex-col pr-2">
-          <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
-            Points
+        {/* Gold amount with high-fidelity typography */}
+        <div className="flex flex-col pr-1">
+          <span className="text-[9px] text-zinc-500 uppercase tracking-[0.25em] font-black leading-none mb-1">
+            Gold Coins
           </span>
-          <motion.div
-            key={gold}
-            initial={{ scale: 1.1, y: -2 }}
-            animate={{ scale: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 500, damping: 25 }}
-            className="text-[17px] font-black text-white leading-none tracking-wide"
-            style={{
-              textShadow: "0 2px 10px rgba(99, 102, 241, 0.3)",
-            }}
-          >
-            {gold.toLocaleString()}
-          </motion.div>
+          <div className="flex items-baseline gap-1">
+            <motion.span
+              key={gold}
+              initial={{ scale: 1.2, color: "#fbbf24" }}
+              animate={{ scale: 1, color: "#ffffff" }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              className="text-[18px] font-black text-white leading-none tracking-tight tabular-nums"
+            >
+              {gold.toLocaleString()}
+            </motion.span>
+          </div>
         </div>
+        
+        {/* Subtle radial background glow for the whole card */}
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent pointer-events-none rounded-2xl" />
       </div>
 
       {/* Floating gain indicator */}
       <AnimatePresence>
         {isIncreasing && gainAmount > 0 && (
           <motion.div
-            initial={{ y: 0, opacity: 1, scale: 0.8 }}
-            animate={{ y: -30, opacity: 0, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1, ease: "easeOut" }}
-            className="absolute -top-8 left-1/2 -translate-x-1/2 pointer-events-none"
+            initial={{ y: 10, opacity: 0, scale: 0.5 }}
+            animate={{ y: -45, opacity: 1, scale: 1 }}
+            exit={{ y: -60, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="absolute top-0 right-0 pointer-events-none"
           >
-            <div
-              className="px-3 py-1 bg-indigo-500/90 border border-indigo-400/50 backdrop-blur-md rounded-full whitespace-nowrap shadow-[0_4px_15px_rgba(99,102,241,0.5)]"
-            >
-              <span className="text-xs font-black text-white tracking-wide">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500 rounded-full shadow-[0_4px_15px_rgba(245,158,11,0.5)] border border-amber-400/50">
+              <Sparkles className="w-3 h-3 text-white animate-pulse" />
+              <span className="text-[11px] font-black text-white">
                 +{gainAmount.toLocaleString()}
               </span>
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Glow effect when active */}
-      <AnimatePresence>
-        {isIncreasing && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.6, 0] }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1, repeat: 2 }}
-            className="absolute inset-0 bg-indigo-500/10 rounded-full pointer-events-none"
-            style={{
-              boxShadow: "0 0 30px rgba(99, 102, 241, 0.4)",
-            }}
-          />
         )}
       </AnimatePresence>
     </motion.div>

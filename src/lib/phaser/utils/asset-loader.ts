@@ -600,6 +600,8 @@
 //     // Shadow on the cheek sides
 //     B(gfx, SKIN_SH, 9, 8, 2, 6); // left cheek shadow
 //     B(gfx, SKIN_SH, 21, 8, 2, 6); // right cheek shadow
+//     // Premium shading: Add a jawline shadow
+//     B(gfx, SKIN_SH, 11, 14, 10, 1);
 //     // Ears (1 px outside face, sits at hair-bottom level)
 //     B(gfx, SKIN_SH, 8, 7, 1, 4); // left ear
 //     B(gfx, SKIN_SH, 23, 7, 1, 4); // right ear
@@ -622,6 +624,9 @@
 //     B(gfx, SHIRT, 7, 16, 18, 10); // main shirt body  x 7..24, y 16..25
 //     B(gfx, SHIRT_SH, 7, 16, 3, 10); // left depth shadow
 //     B(gfx, SHIRT_SH, 22, 16, 3, 10); // right depth shadow
+//     // Premium accessory: Founder's Cross-body Satchel Strap
+//     gfx.lineStyle(2, BELT, 0.6);
+//     gfx.strokeLineShape(new Phaser.Geom.Line(7, 15, 24, 25));
 //     // Arms (extend 2 px beyond shirt body at mid-height)
 //     B(gfx, SHIRT_SH, 5, 17, 2, 9); // left arm
 //     B(gfx, SHIRT_SH, 25, 17, 2, 9); // right arm
@@ -749,6 +754,9 @@
 //     P(gfx, SKIN, 16, 18);
 //     P(gfx, SKIN, 14, 19);
 //     P(gfx, SKIN, 17, 19);
+//     // Premium accessory: Visionary's Glowing Pendant
+//     P(gfx, 0x06b6d4, 15, 20); // Cyan glow
+//     P(gfx, 0xffffff, 16, 20); // Sparkle
 
 //     // ── Belt (rows 28–30) ───────────────────────────────────────────────────
 //     B(gfx, BELT, 7, 28, 18, 3);
@@ -1304,22 +1312,14 @@ export class AssetLoader {
 
     scene.load.spritesheet(
       "persona_male_idle_sheet",
-      "/assets/persona/male_idle.png",
+      "/assets/personas/male_founder.png",
       { frameWidth: 32, frameHeight: 48 },
     );
-    scene.load.spritesheet(
-      "persona_male_walk_sheet",
-      "/assets/persona/male_walk.png",
-      { frameWidth: 32, frameHeight: 48 },
-    );
+    // Use procedural fallback for walk if file is missing, 
+    // or map to founder for now to avoid the 404.
     scene.load.spritesheet(
       "persona_female_idle_sheet",
-      "/assets/persona/female_idle.png",
-      { frameWidth: 32, frameHeight: 48 },
-    );
-    scene.load.spritesheet(
-      "persona_female_walk_sheet",
-      "/assets/persona/female_walk.png",
+      "/assets/personas/female_founder.png",
       { frameWidth: 32, frameHeight: 48 },
     );
   }
@@ -1338,7 +1338,9 @@ export class AssetLoader {
     ];
 
     for (const sheet of sheets) {
-      if (scene.textures.exists(sheet.key)) continue;
+      // Robust check for existing textures or pending loads to avoid "key already in use" errors
+      const isPending = (scene.load.list as any)?.some?.((f: any) => f.key === sheet.key);
+      if (scene.textures.exists(sheet.key) || isPending) continue;
 
       const width = FRAME_WIDTH * sheet.frames;
       const gfx = scene.add.graphics();

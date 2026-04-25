@@ -352,52 +352,7 @@ export const saveEvaluationResult = internalMutation({
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PUBLIC ACTION — evaluateTaskSubmission
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Evaluate the quality of a task submission using AI.
- *
- * Free tier:    Llama 3 via Replicate (REPLICATE_API_KEY)
- * Pro tier:     GPT-4o via OpenAI    (OPENAI_API_KEY)
- * No keys set:  Mock scorer (deterministic, length-based)
- *
- * Called after evidence is submitted — does NOT block checkpoint advancement.
- * The score updates the `qualityScores` and `aiEvaluations` tables and feeds
- * the Valuation Score shown in the HUD.
- */
-export const evaluateTaskSubmission = action({
-  args: {
-    taskId:            v.id("ventureTasks"),
-    checkpointId:      v.id("ventureCheckpoints"),
-    ventureId:         v.id("ventures"),
-    stageNumber:       v.number(),
-    content:           v.string(),
-    checkpointOutcome: v.string(),
-    userTier:          v.union(v.literal("free"), v.literal("pro")),
-  },
-  handler: async (ctx, args): Promise<EvaluationResult> => {
-    const { content, checkpointOutcome, userTier } = args;
-
-    let scored: ScoringDimensions & { feedback: string; modelUsed: string };
-
-    // ── Choose scorer based on tier + available API keys ─────────────────────
-    const openAIKey  = process.env.OPENAI_API_KEY;
-    const replicateKey = process.env.REPLICATE_API_KEY;
-
-    try {
-      if (userTier === "pro" && openAIKey) {
-        scored = await scoreWithOpenAI(content, checkpointOutcome, openAIKey);
-      } else if (userTier === "free" && replicateKey) {
-        scored = await scoreWithReplicate(content, checkpointOutcome, replicateKey);
-      } else {
-        // No API keys configured — use deterministic mock scorer
-        scored = mockScore(content);
-      }
-    } catch (err) {
-      console.error("[aiScoring] Scoring failed, falling back to mock:", err);
-      scored = mockScore(content);
-    }
+x    }
 
     // ── Build result ──────────────────────────────────────────────────────────
     const totalScore    = scored.completeness + scored.specificity + scored.evidence + scored.originality;

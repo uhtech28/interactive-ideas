@@ -122,6 +122,12 @@ export class MiniBoss extends Phaser.GameObjects.Container {
       case "Pathwarden Wraith":
         this.drawPathwardenWraith();
         break;
+      case "Unfinished Golem":
+        this.drawUnfinishedGolem();
+        break;
+      case "Collapse Specter":
+        this.drawCollapseSpecter();
+        break;
       default:
         // Generic boss visual for other types
         this.drawGenericBoss();
@@ -481,56 +487,93 @@ export class MiniBoss extends Phaser.GameObjects.Container {
   }
 
   /**
-   * Draws a generic boss silhouette for boss types that don't have custom visuals yet
-   * Used for stages 3-8 until specific art is implemented
+   * Draw "Unfinished Golem" - a blocky stone figure with glowing cracks.
+   */
+  private drawUnfinishedGolem(): void {
+    const g = this.bossGraphics;
+    const offsetX = -45;
+    const offsetY = -70;
+
+    g.fillStyle(0x52525b, 1); // Dark stone
+    
+    // Head (blocky)
+    g.fillRect(offsetX + 30, offsetY + 0, 30, 25);
+    
+    // Torso (massive)
+    g.fillRect(offsetX + 10, offsetY + 30, 70, 50);
+    
+    // Arms (asymmetrical)
+    g.fillRect(offsetX + 0, offsetY + 35, 15, 60);
+    g.fillRect(offsetX + 75, offsetY + 35, 15, 40);
+
+    // Glowing core
+    const core = new Phaser.GameObjects.Arc(this.scene, offsetX + 45, offsetY + 50, 8, 0, 360, false, 0xef4444, 1);
+    this.add(core);
+    this.scene.tweens.add({
+      targets: core,
+      scale: 1.5,
+      alpha: 0.5,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1
+    });
+  }
+
+  /**
+   * Draw "Collapse Specter" - a drifting phantom with trailing energy.
+   */
+  private drawCollapseSpecter(): void {
+    const g = this.bossGraphics;
+    const offsetX = -40;
+    const offsetY = -60;
+
+    g.fillStyle(0x312e81, 0.6); // Deep indigo translucent
+    
+    // Phantom head
+    g.fillCircle(offsetX + 40, offsetY + 20, 18);
+    
+    // Tattered cloak
+    g.beginPath();
+    g.moveTo(offsetX + 40, offsetY + 0);
+    g.lineTo(offsetX + 10, offsetY + 100);
+    g.lineTo(offsetX + 70, offsetY + 100);
+    g.closePath();
+    g.fillPath();
+
+    // Floating hands
+    g.fillCircle(offsetX + 5, offsetY + 50, 10);
+    g.fillCircle(offsetX + 75, offsetY + 50, 10);
+
+    this.scene.tweens.add({
+      targets: this,
+      y: this.y + 10,
+      duration: 3000,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut"
+    });
+  }
+
+  /**
+   * Draws an upgraded generic boss with high-fidelity details.
    */
   private drawGenericBoss(): void {
     const g = this.bossGraphics;
     const offsetX = -50;
     const offsetY = -60;
 
-    // Draw a generic imposing figure silhouette
-    g.fillStyle(0x1f2937, 1.0); // Dark gray
+    // Silhouette
+    g.fillStyle(0x18181b, 1.0); // Zinc 900
+    g.fillRect(offsetX + 15, offsetY + 10, 70, 100);
+    g.fillStyle(0x27272a, 1.0); // Zinc 800
+    g.fillRect(offsetX + 25, offsetY + 0, 50, 20);
 
-    // Head
-    g.fillCircle(offsetX + 50, offsetY + 20, 15);
+    // Internal Red Rune (Glow)
+    g.fillStyle(0xdc2626, 0.4);
+    g.fillRect(offsetX + 48, offsetY + 30, 4, 40);
 
-    // Body (trapezoid shape)
-    g.beginPath();
-    g.moveTo(offsetX + 35, offsetY + 35);
-    g.lineTo(offsetX + 65, offsetY + 35);
-    g.lineTo(offsetX + 75, offsetY + 85);
-    g.lineTo(offsetX + 25, offsetY + 85);
-    g.closePath();
-    g.fillPath();
-
-    // Arms
-    g.fillRect(offsetX + 15, offsetY + 40, 10, 35);
-    g.fillRect(offsetX + 75, offsetY + 40, 10, 35);
-
-    // Add glowing effect
-    const glow = new Phaser.GameObjects.Arc(
-      this.scene,
-      offsetX + 50,
-      offsetY + 50,
-      40,
-      0,
-      360,
-      false,
-      0x000000,
-      0,
-    );
-    glow.setStrokeStyle(2, 0x6366f1, 0.5);
-    this.add(glow);
-
-    this.scene.tweens.add({
-      targets: glow,
-      alpha: { from: 0.3, to: 0.7 },
-      duration: 1500,
-      ease: "Sine.easeInOut",
-      yoyo: true,
-      repeat: -1,
-    });
+    this.eyeLeft = new Phaser.GameObjects.Arc(this.scene, offsetX + 40, offsetY + 15, 4, 0, 360, false, 0xff0000, 1);
+    this.eyeRight = new Phaser.GameObjects.Arc(this.scene, offsetX + 60, offsetY + 15, 4, 0, 360, false, 0xff0000, 1);
   }
 
   /**

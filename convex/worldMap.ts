@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal, api } from "./_generated/api";
 import {
   VENTURE_STAGES,
   POINT_VALUES,
@@ -154,10 +155,17 @@ export const getWorldMapData = query({
       .withIndex("by_venture", (q) => q.eq("ventureId", args.ventureId))
       .collect();
 
-    // ── Tasks (one batch — keyed by checkpointId) ────────────────────────────
-    // We need task _ids so the map page can call markTaskComplete without
-    // a separate lookup.
-    const allTasks = await ctx.db.query("ventureTasks").collect();
+    // ── Tasks (per-checkpoint using index) ─────────────────────────────
+    // Fetched via the by_checkpoint index to avoid a full ventureTasks scan.
+    const tasksPerCheckpoint = await Promise.all(
+      checkpoints.map((cp) =>
+        ctx.db
+          .query("ventureTasks")
+          .withIndex("by_checkpoint", (q) => q.eq("checkpointId", cp._id))
+          .collect(),
+      ),
+    );
+    const allTasks = tasksPerCheckpoint.flat();
     const tasksByCheckpoint = new Map<string, typeof allTasks>();
     for (const task of allTasks) {
       const key = task.checkpointId as string;
@@ -329,7 +337,7 @@ export const markTaskComplete = mutation({
           amount: POINT_VALUES.gold_checkpoint_bonus,
           type: "gold_checkpoint",
           description: "Gold checkpoint bonus — all 3 tasks complete",
-          relatedId: venture._id,
+          relatedId: checkpoint._id,
           createdAt: now,
         })
         .catch(() => {
@@ -355,7 +363,7 @@ export const markTaskComplete = mutation({
         senderId: user._id,
         type: "gold_checkpoint",
         message: `🏆 ${ventureName} - ${stageName}: ${checkpointName} - Gold Checkpoint! All 3 tasks completed. +${POINT_VALUES.gold_checkpoint_bonus} points`,
-        relatedId: venture.ideaId,
+        relatedId: venture._id,
         isRead: false,
         createdAt: now,
       });
@@ -403,6 +411,26 @@ export const markTaskComplete = mutation({
         }
       }
     }
+
+    // ── Trigger AI quality scoring (async, non-blocking) ──────────────────────
+    const checkpointDef = CHECKPOINT_DEFINITIONS.find(
+      (d) =>
+        d.stage === checkpoint.stage &&
+        d.checkpoint === checkpoint.checkpoint,
+    );
+    await ctx.scheduler.runAfter(
+      0,
+      api.aiScoring.evaluateTaskSubmission,
+      {
+        taskId: task._id,
+        checkpointId: args.checkpointId,
+        ventureId: checkpoint.ventureId,
+        stageNumber: checkpoint.stage,
+        content: `Self-report: World-map task ${args.taskLevel.toUpperCase()} marked complete. Stage ${checkpoint.stage}, Checkpoint ${checkpoint.checkpoint}.`,
+        checkpointOutcome: checkpointDef?.outcome ?? "",
+        userTier: "free",
+      },
+    );
 
     return {
       success: true,
@@ -609,7 +637,7 @@ export const submitTaskContent = mutation({
         senderId: user._id,
         type: "gold_checkpoint",
         message: `🏆 ${ventureName} - ${stageName}: ${checkpointName} - Gold Checkpoint! All 3 tasks completed. +${POINT_VALUES.gold_checkpoint_bonus} points`,
-        relatedId: venture.ideaId,
+        relatedId: venture._id,
         isRead: false,
         createdAt: now,
       });
@@ -657,6 +685,32 @@ export const submitTaskContent = mutation({
           });
         }
       }
+    }
+
+    // ── Trigger AI quality scoring (async, non-blocking) ──────────────────────
+    const checkpointDefForScore = CHECKPOINT_DEFINITIONS.find(
+      (d) =>
+        d.stage === checkpoint.stage &&
+        d.checkpoint === checkpoint.checkpoint,
+    );
+    const contentForScore =
+      typeof args.content === "string"
+        ? args.content
+        : JSON.stringify(args.content ?? "");
+    if (contentForScore.trim().split(/\s+/).length >= 10) {
+      await ctx.scheduler.runAfter(
+        0,
+        api.aiScoring.evaluateTaskSubmission,
+        {
+          taskId: task._id,
+          checkpointId: args.checkpointId,
+          ventureId: checkpoint.ventureId,
+          stageNumber: checkpoint.stage,
+          content: contentForScore,
+          checkpointOutcome: checkpointDefForScore?.outcome ?? "",
+          userTier: "free",
+        },
+      );
     }
 
     return {

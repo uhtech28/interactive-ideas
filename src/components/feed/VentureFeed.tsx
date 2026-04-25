@@ -61,23 +61,23 @@ export function VentureFeed({
 }: VentureFeedProps) {
   // Determine which query to use based on props
   const ventureFeedData = useQuery(
-    ventureId ? api.socialFeed.getVentureFeed : undefined,
-    ventureId ? { ventureId, limit } : undefined
+    api.socialFeed.getVentureFeed,
+    ventureId ? { ventureId, limit } : "skip"
   );
 
   const ideaFeedData = useQuery(
-    ideaId ? api.socialFeed.getIdeaFeed : undefined,
-    ideaId ? { ideaId, limit } : undefined
+    api.socialFeed.getIdeaFeed,
+    ideaId ? { ideaId, limit } : "skip"
   );
 
   const userFeedData = useQuery(
-    userFeed ? api.socialFeed.getUserVentureFeed : undefined,
-    userFeed ? { limit } : undefined
+    api.socialFeed.getUserVentureFeed,
+    userFeed ? { limit } : "skip"
   );
 
   const communityFeedData = useQuery(
-    communityFeed ? api.socialFeed.getCommunityVentureFeed : undefined,
-    communityFeed ? { limit } : undefined
+    api.socialFeed.getCommunityVentureFeed,
+    communityFeed ? { limit } : "skip"
   );
 
   // Get the active feed
@@ -110,7 +110,7 @@ export function VentureFeed({
 
   return (
     <div className={`space-y-${compact ? "3" : "4"}`}>
-      {feed.map((item) => (
+      {(feed as FeedItem[]).map((item) => (
         <FeedCard key={item._id} item={item as FeedItem} compact={compact} />
       ))}
     </div>
