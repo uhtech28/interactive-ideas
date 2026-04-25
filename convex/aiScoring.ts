@@ -352,7 +352,37 @@ export const saveEvaluationResult = internalMutation({
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-x    }
+export const evaluateTaskSubmission = action({
+  args: {
+    taskId:       v.id("ventureTasks"),
+    checkpointId: v.id("ventureCheckpoints"),
+    ventureId:    v.id("ventures"),
+    stageNumber:  v.number(),
+    content:      v.string(),
+    checkpointOutcome: v.string(),
+    userTier:     v.union(v.literal("free"), v.literal("pro")),
+  },
+  handler: async (ctx, args) => {
+    const { content, checkpointOutcome, userTier } = args;
+
+    // ── Get API keys from env ────────────────────────────────────────────────
+    const REPLICATE_API_KEY = process.env.REPLICATE_API_KEY;
+    const OPENAI_API_KEY    = process.env.OPENAI_API_KEY;
+
+    let scored;
+    
+    try {
+      if (userTier === "pro" && OPENAI_API_KEY) {
+        scored = await scoreWithOpenAI(content, checkpointOutcome, OPENAI_API_KEY);
+      } else if (REPLICATE_API_KEY) {
+        scored = await scoreWithReplicate(content, checkpointOutcome, REPLICATE_API_KEY);
+      } else {
+        scored = mockScore(content);
+      }
+    } catch (e) {
+      console.error("AI Scoring failed, falling back to mock:", e);
+      scored = mockScore(content);
+    }
 
     // ── Build result ──────────────────────────────────────────────────────────
     const totalScore    = scored.completeness + scored.specificity + scored.evidence + scored.originality;
