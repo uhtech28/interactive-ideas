@@ -130,7 +130,7 @@ export default function CheckpointPageContent() {
       await advanceCheckpoint({ checkpointId: checkpoint._id });
       // If the user came from the world map, send them back there after advancing.
       if (fromMap) {
-        router.push("/map/world");
+        router.push(`/map/world?ventureId=${ventureId}`);
         return;
       }
       const nextCp = venture.checkpoints?.find(
@@ -215,7 +215,7 @@ export default function CheckpointPageContent() {
             size="icon"
             onClick={() =>
               fromMap
-                ? router.push("/map/world")
+                ? router.push(`/map/world?ventureId=${ventureId}`)
                 : router.push(`/venture/${ventureId}`)
             }
           >
@@ -328,7 +328,7 @@ export default function CheckpointPageContent() {
                 size="sm"
                 variant="outline"
                 className="gap-2"
-                onClick={() => router.push("/map/world")}
+                onClick={() => router.push(`/map/world?ventureId=${ventureId}`)}
               >
                 <ArrowLeft className="h-4 w-4" />
                 Return to Map
@@ -342,7 +342,7 @@ export default function CheckpointPageContent() {
             {fromMap ? (
               <Button
                 size="lg"
-                onClick={() => router.push("/map/world")}
+                onClick={() => router.push(`/map/world?ventureId=${ventureId}`)}
                 className="gap-2"
               >
                 <ArrowLeft className="h-5 w-5" />

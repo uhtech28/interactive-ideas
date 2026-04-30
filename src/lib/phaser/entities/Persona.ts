@@ -135,7 +135,8 @@ export class Persona extends Phaser.GameObjects.Container {
    * Resume idle animation (sprite-based animation)
    */
   playIdle(): void {
-    if (this.currentAnimation === "idle" && this.sprite.anims.isPlaying) return;
+    const animState = this.sprite.anims;
+    if (this.currentAnimation === "idle" && animState?.isPlaying) return;
 
     this.currentAnimation = "idle";
     this.isWalking = false;
@@ -149,7 +150,7 @@ export class Persona extends Phaser.GameObjects.Container {
     // Play idle sprite animation
     const idleAnimKey =
       this.gender === "male" ? "persona_male_idle" : "persona_female_idle";
-    this.sprite.play(idleAnimKey, true);
+    this.playSpriteAnimation(idleAnimKey);
 
     // Start subtle shadow pulse for idle
     this.startIdleShadowPulse();
@@ -178,7 +179,7 @@ export class Persona extends Phaser.GameObjects.Container {
     // Play walk sprite animation
     const walkAnimKey =
       this.gender === "male" ? "persona_male_walk" : "persona_female_walk";
-    this.sprite.play(walkAnimKey, true);
+    this.playSpriteAnimation(walkAnimKey);
 
     // Move the container
     this.walkTween = this.scene.tweens.add({
@@ -216,5 +217,20 @@ export class Persona extends Phaser.GameObjects.Container {
       yoyo: true,
       repeat: -1,
     });
+  }
+
+  private playSpriteAnimation(animationKey: string): void {
+    if (!this.sprite.active) return;
+
+    const animState = this.sprite.anims;
+    if (!animState) return;
+
+    const animationExists =
+      this.scene.anims.exists(animationKey) ||
+      animState.animationManager?.exists(animationKey);
+
+    if (!animationExists) return;
+
+    this.sprite.play(animationKey, true);
   }
 }

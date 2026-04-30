@@ -77,7 +77,7 @@ export default function VenturePageContent() {
           </div>
           {/* Open World Map CTA */}
           <div className="flex items-center gap-2 mt-4 md:mt-0">
-            <Link href="/map">
+            <Link href={`/map/world?ventureId=${ventureId}`}>
               <Button
                 size="lg"
                 className="gap-2 bg-gradient-to-r from-amber-500/20 to-yellow-500/10 border border-amber-500/40 text-amber-400 hover:from-amber-500/30 hover:to-yellow-500/20 hover:text-amber-300 font-semibold tracking-wide shadow-lg shadow-amber-900/20"
@@ -112,7 +112,7 @@ export default function VenturePageContent() {
               </p>
             </div>
           </div>
-          <Link href="/map">
+          <Link href={`/map/world?ventureId=${ventureId}`}>
             <Button
               size="sm"
               className="gap-2 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs tracking-widest uppercase"

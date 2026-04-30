@@ -10,7 +10,6 @@ import {
   Files, 
   ChevronLeft,
   Search,
-  Tool,
   Scroll,
   Target,
   Lock
@@ -41,6 +40,7 @@ import { WriteTool } from "@/components/tools/write-tool";
 import { MapTool } from "@/components/tools/map-tool";
 import { JournalTool } from "@/components/tools/journal-tool";
 import { SurveyTool } from "@/components/tools/survey-tool";
+import { audioManager } from "@/lib/audio/audioManager";
 
 type TabType = "tools" | "calendar" | "kanban" | "week-prd" | "all-prd" | "write" | "map" | "journal" | "survey";
 
@@ -135,7 +135,11 @@ export function ToolsPanel({ isOpen, onClose, activeTab, onTabChange, activeVent
               </div>
             </div>
             <button
-              onClick={onClose}
+              onClick={() => {
+                audioManager.playUI("click");
+                onClose();
+              }}
+              onMouseEnter={() => audioManager.playUI("hover")}
               className="w-8 h-8 rounded-full flex items-center justify-center text-[14px] transition-all duration-200 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -147,7 +151,11 @@ export function ToolsPanel({ isOpen, onClose, activeTab, onTabChange, activeVent
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => onTabChange(tab.id)}
+                onClick={() => {
+                  audioManager.playUI("click");
+                  onTabChange(tab.id);
+                }}
+                onMouseEnter={() => audioManager.playUI("hover")}
                 className={cn(
                   "flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl transition-all duration-300",
                   activeTab === tab.id 

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -325,11 +325,18 @@ function StageCard({
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function MapStagesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
+  const [preferredVentureId, setPreferredVentureId] = useState<string | null>(null);
+  const ensureVentureStructure = useMutation(api.ventures.ensureVentureStructure);
+  const [ensuredVentureId, setEnsuredVentureId] = useState<string | null>(null);
 
   // ── Real-time Convex queries ─────────────────────────────────────────────
   const ventures = useQuery(api.worldMap.getVenturesByUser);
-  const activeVenture = ventures?.[0] ?? null;
+  const activeVenture =
+    ventures?.find((venture) => venture._id === preferredVentureId) ??
+    ventures?.[0] ??
+    null;
 
   const worldMapData = useQuery(
     api.worldMap.getWorldMapData,
@@ -339,6 +346,29 @@ export default function MapStagesPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const queryVentureId = searchParams.get("ventureId");
+    const storedVentureId = localStorage.getItem("activeVentureId");
+    setPreferredVentureId(queryVentureId || storedVentureId);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!activeVenture || typeof window === "undefined") return;
+    localStorage.setItem("activeVentureId", activeVenture._id);
+  }, [activeVenture]);
+
+  useEffect(() => {
+    if (!activeVenture?._id) return;
+    if (ensuredVentureId === activeVenture._id) return;
+
+    setEnsuredVentureId(activeVenture._id);
+    ensureVentureStructure({ ventureId: activeVenture._id }).catch((error) => {
+      console.error("[MapStagesPage] Failed to ensure venture structure:", error);
+      setEnsuredVentureId(null);
+    });
+  }, [activeVenture?._id, ensuredVentureId, ensureVentureStructure]);
 
   // Derived values from live DB
   const currentStage = activeVenture?.currentStage ?? 1;
@@ -358,7 +388,10 @@ export default function MapStagesPage() {
     if (typeof window !== "undefined") {
       localStorage.setItem("selectedStage", stageId.toString());
     }
-    router.push("/map/world");
+    const ventureId = activeVenture?._id;
+    router.push(
+      ventureId ? `/map/world?ventureId=${ventureId}` : "/map/world",
+    );
   };
 
   const handleBack = () => {
@@ -513,8 +546,6 @@ export default function MapStagesPage() {
             {STAGES.map((stage, index) => {
               const completed = completedByStage(stage.id);
               const isActive = stage.id === currentStage;
-              const isLocked = stage.id > currentStage && completed === 0 && stage.id > 1;
-
               return (
                 <StageCard
                   key={stage.id}

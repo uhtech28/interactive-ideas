@@ -1,10 +1,11 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { internal, api } from "./_generated/api";
+import { mutation, query, type MutationCtx } from "./_generated/server";
+import { api } from "./_generated/api";
 import {
   VENTURE_STAGES,
   POINT_VALUES,
   CHECKPOINT_DEFINITIONS,
+  LEVEL_DEFINITIONS,
 } from "./ventureConstants";
 import { Id } from "./_generated/dataModel";
 
@@ -43,6 +44,7 @@ export interface BrightnessResult {
 const PER_STAGE_CONTRIBUTION = 60 / 7; // ≈ 8.5714…% per completed stage
 const MAX_ACCUMULATED = 60;
 const MAX_STAGE_LAYER = 40;
+type WorldMapDbCtx = MutationCtx["db"];
 
 /**
  * Derive brightness inputs from raw ventureCheckpoints rows and the venture's
@@ -119,6 +121,230 @@ function computeBrightness(
     stageLayer: Math.round(stageLayer * 100) / 100,
     worldBrightness: Math.round(worldBrightness * 100) / 100,
   };
+}
+
+function deriveLevelFromTitlePoints(titlePoints: number) {
+  return LEVEL_DEFINITIONS.reduce((currentLevel, def) => {
+    return titlePoints >= def.titlePoints ? def.level : currentLevel;
+  }, 1);
+}
+
+async function awardPointsAndSyncLevel(
+  ctx: { db: WorldMapDbCtx },
+  args: {
+    userId: Id<"users">;
+    amount: number;
+    type: string;
+    description: string;
+    relatedId: string;
+    now: number;
+  },
+) {
+  if (args.amount <= 0) return;
+
+  let wallet = await ctx.db
+    .query("wallets")
+    .withIndex("by_user", (q) => q.eq("userId", args.userId))
+    .first();
+
+  if (!wallet) {
+    const walletId = await ctx.db.insert("wallets", {
+      userId: args.userId,
+      balance: 0,
+      updatedAt: args.now,
+    });
+    wallet = await ctx.db.get(walletId);
+  }
+
+  if (wallet) {
+    await ctx.db.insert("transactions", {
+      walletId: wallet._id,
+      amount: args.amount,
+      type: args.type,
+      description: args.description,
+      relatedId: args.relatedId,
+      createdAt: args.now,
+    });
+
+    await ctx.db.patch(wallet._id, {
+      balance: wallet.balance + args.amount,
+      updatedAt: args.now,
+    });
+  }
+
+  const userLevel = await ctx.db
+    .query("userLevels")
+    .withIndex("by_user", (q) => q.eq("userId", args.userId))
+    .first();
+  if (!userLevel) return;
+
+  const titlePoints = userLevel.titlePoints + args.amount;
+  const totalPoints = userLevel.totalPoints + args.amount;
+  const targetLevel = deriveLevelFromTitlePoints(titlePoints);
+
+  await ctx.db.patch(userLevel._id, {
+    currentLevel: targetLevel,
+    titlePoints,
+    totalPoints,
+    updatedAt: args.now,
+  });
+
+  if (targetLevel <= userLevel.currentLevel || !wallet) return;
+
+  for (let level = userLevel.currentLevel + 1; level <= targetLevel; level++) {
+    const levelDef = LEVEL_DEFINITIONS.find((def) => def.level === level);
+    if (!levelDef) continue;
+
+    await ctx.db.insert("transactions", {
+      walletId: wallet._id,
+      amount: level * 5,
+      type: "level_up",
+      description: `Reached level ${level}: ${levelDef.title}`,
+      createdAt: args.now,
+    });
+  }
+}
+
+async function tryAdvanceWorldMapStage(
+  ctx: { db: WorldMapDbCtx },
+  venture: {
+    _id: Id<"ventures">;
+    userId: Id<"users">;
+    currentStage: number;
+    ideaId: Id<"ideas">;
+  },
+  currentStage: number,
+  now: number,
+) {
+  const stageCheckpoints = await ctx.db
+    .query("ventureCheckpoints")
+    .withIndex("by_venture_stage", (q) =>
+      q.eq("ventureId", venture._id).eq("stage", currentStage),
+    )
+    .collect();
+
+  const allComplete = stageCheckpoints.every((cp) => cp.status === "completed");
+  if (!allComplete) return;
+
+  await awardPointsAndSyncLevel(ctx, {
+    userId: venture.userId,
+    amount: POINT_VALUES.stage_complete_bonus,
+    type: `stage_${currentStage}_complete`,
+    description: `Stage ${currentStage} completed`,
+    relatedId: venture._id,
+    now,
+  });
+
+  const idea = await ctx.db.get(venture.ideaId);
+  const stageName =
+    VENTURE_STAGES[currentStage - 1]?.name || `Stage ${currentStage}`;
+  const ventureName = idea?.title || "Your Venture";
+
+  await ctx.db.insert("notifications", {
+    recipientId: venture.userId,
+    senderId: venture.userId,
+    type: "venture_stage_complete",
+    message: `🎉 ${ventureName} - Stage ${currentStage}: ${stageName} Complete! +${POINT_VALUES.stage_complete_bonus} points`,
+    relatedId: venture._id,
+    isRead: false,
+    createdAt: now,
+  });
+
+  if (currentStage < 8) {
+    const nextStage = currentStage + 1;
+    const firstCheckpointOfNextStage = await ctx.db
+      .query("ventureCheckpoints")
+      .withIndex("by_venture_stage", (q) =>
+        q.eq("ventureId", venture._id).eq("stage", nextStage),
+      )
+      .order("asc")
+      .first();
+
+    if (firstCheckpointOfNextStage) {
+      await ctx.db.patch(venture._id, {
+        currentStage: nextStage,
+        currentCheckpoint: firstCheckpointOfNextStage.checkpoint,
+        updatedAt: now,
+      });
+    }
+
+    return;
+  }
+
+  await ctx.db.patch(venture._id, {
+    status: "completed",
+    updatedAt: now,
+  });
+}
+
+async function syncCheckpointCompletion(
+  ctx: { db: WorldMapDbCtx },
+  venture: {
+    _id: Id<"ventures">;
+    userId: Id<"users">;
+    currentStage: number;
+    currentCheckpoint: number;
+    ideaId: Id<"ideas">;
+  },
+  checkpoint: {
+    _id: Id<"ventureCheckpoints">;
+    ventureId: Id<"ventures">;
+    stage: number;
+    checkpoint: number;
+    t1Completed: boolean;
+    t2Completed: boolean;
+    t3Completed: boolean;
+  },
+  now: number,
+) {
+  const completedCount = [
+    checkpoint.t1Completed,
+    checkpoint.t2Completed,
+    checkpoint.t3Completed,
+  ].filter(Boolean).length;
+
+  if (completedCount < 3) {
+    await ctx.db.patch(checkpoint._id, {
+      status: "in_progress",
+    });
+    return;
+  }
+
+  await ctx.db.patch(checkpoint._id, {
+    status: "completed",
+    completedAt: now,
+  });
+
+  const nextCheckpoint = await ctx.db
+    .query("ventureCheckpoints")
+    .withIndex("by_venture_stage", (q) =>
+      q.eq("ventureId", venture._id).eq("stage", checkpoint.stage),
+    )
+    .filter((q) => q.gt(q.field("checkpoint"), checkpoint.checkpoint))
+    .order("asc")
+    .first();
+
+  if (nextCheckpoint) {
+    // Anti-regression guard: only advance the pointer, never move it backward.
+    const wouldRegress =
+      nextCheckpoint.stage < venture.currentStage ||
+      (nextCheckpoint.stage === venture.currentStage &&
+        nextCheckpoint.checkpoint < venture.currentCheckpoint);
+
+    if (!wouldRegress) {
+      await ctx.db.patch(venture._id, {
+        currentCheckpoint: nextCheckpoint.checkpoint,
+        updatedAt: now,
+      });
+    }
+    return;
+  }
+
+  // Only advance the stage if the submission comes from the current or an
+  // earlier stage (not from a future checkpoint being edited retroactively).
+  if (checkpoint.stage >= venture.currentStage) {
+    await tryAdvanceWorldMapStage(ctx, venture, checkpoint.stage, now);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -320,29 +546,18 @@ export const markTaskComplete = mutation({
 
     const cpPatch: Record<string, unknown> = {
       [flagField]: true,
-      status: "in_progress",
     };
 
     if (allThreeDone && !checkpoint.goldBonusEarned) {
       cpPatch.goldBonusEarned = true;
-      // Award gold bonus points via wallet/level pipeline
-      await ctx.db
-        .insert("transactions", {
-          walletId: (
-            await ctx.db
-              .query("wallets")
-              .withIndex("by_user", (q) => q.eq("userId", user._id))
-              .first()
-          )?._id as Id<"wallets">,
-          amount: POINT_VALUES.gold_checkpoint_bonus,
-          type: "gold_checkpoint",
-          description: "Gold checkpoint bonus — all 3 tasks complete",
-          relatedId: checkpoint._id,
-          createdAt: now,
-        })
-        .catch(() => {
-          /* wallet may not exist yet — non-fatal */
-        });
+      await awardPointsAndSyncLevel(ctx, {
+        userId: user._id,
+        amount: POINT_VALUES.gold_checkpoint_bonus,
+        type: "gold_checkpoint",
+        description: "Gold checkpoint bonus — all 3 tasks complete",
+        relatedId: checkpoint._id,
+        now,
+      });
 
       // Create social feed notification for gold checkpoint
       const idea = await ctx.db.get(venture.ideaId);
@@ -370,6 +585,10 @@ export const markTaskComplete = mutation({
     }
 
     await ctx.db.patch(args.checkpointId, cpPatch);
+    const patchedCheckpoint = await ctx.db.get(args.checkpointId);
+    if (patchedCheckpoint) {
+      await syncCheckpointCompletion(ctx, venture, patchedCheckpoint, now);
+    }
 
     // ── Award task points ─────────────────────────────────────────────────────
     const pointKey =
@@ -377,39 +596,14 @@ export const markTaskComplete = mutation({
     const pts = POINT_VALUES[pointKey] as number | undefined;
 
     if (pts) {
-      const wallet = await ctx.db
-        .query("wallets")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .first();
-
-      if (wallet) {
-        await ctx.db.insert("transactions", {
-          walletId: wallet._id,
-          amount: pts,
-          type: `${args.taskLevel}_task_complete`,
-          description: `Task ${args.taskLevel.toUpperCase()} completed`,
-          relatedId: venture._id,
-          createdAt: now,
-        });
-        await ctx.db.patch(wallet._id, {
-          balance: wallet.balance + pts,
-          updatedAt: now,
-        });
-
-        // Propagate to userLevels
-        const userLevel = await ctx.db
-          .query("userLevels")
-          .withIndex("by_user", (q) => q.eq("userId", user._id))
-          .first();
-
-        if (userLevel) {
-          await ctx.db.patch(userLevel._id, {
-            totalPoints: userLevel.totalPoints + pts,
-            titlePoints: userLevel.titlePoints + pts,
-            updatedAt: now,
-          });
-        }
-      }
+      await awardPointsAndSyncLevel(ctx, {
+        userId: user._id,
+        amount: pts,
+        type: `${args.taskLevel}_task_complete`,
+        description: `Task ${args.taskLevel.toUpperCase()} completed`,
+        relatedId: venture._id,
+        now,
+      });
     }
 
     // ── Trigger AI quality scoring (async, non-blocking) ──────────────────────
@@ -462,7 +656,12 @@ export const getVenturesByUser = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
-    return ventures;
+    return ventures.sort((a, b) => {
+      if (a.status !== b.status) {
+        return a.status === "active" ? -1 : 1;
+      }
+      return (b.updatedAt ?? 0) - (a.updatedAt ?? 0);
+    });
   },
 });
 
@@ -654,7 +853,6 @@ export const submitTaskContent = mutation({
 
     const cpPatch: Record<string, unknown> = {
       [flagField]: true,
-      status: "in_progress",
     };
 
     // ── Check for gold checkpoint ─────────────────────────────────────────────
@@ -662,26 +860,14 @@ export const submitTaskContent = mutation({
       cpPatch.goldBonusEarned = true;
 
       // Award gold bonus
-      const wallet = await ctx.db
-        .query("wallets")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .first();
-
-      if (wallet) {
-        await ctx.db.insert("transactions", {
-          walletId: wallet._id,
-          amount: POINT_VALUES.gold_checkpoint_bonus,
-          type: "gold_checkpoint",
-          description: "Gold checkpoint bonus — all 3 tasks complete",
-          relatedId: venture._id,
-          createdAt: now,
-        });
-
-        await ctx.db.patch(wallet._id, {
-          balance: wallet.balance + POINT_VALUES.gold_checkpoint_bonus,
-          updatedAt: now,
-        });
-      }
+      await awardPointsAndSyncLevel(ctx, {
+        userId: user._id,
+        amount: POINT_VALUES.gold_checkpoint_bonus,
+        type: "gold_checkpoint",
+        description: "Gold checkpoint bonus — all 3 tasks complete",
+        relatedId: venture._id,
+        now,
+      });
 
       // Create notification
       const idea = await ctx.db.get(venture.ideaId);
@@ -709,6 +895,10 @@ export const submitTaskContent = mutation({
     }
 
     await ctx.db.patch(args.checkpointId, cpPatch);
+    const patchedCheckpoint = await ctx.db.get(args.checkpointId);
+    if (patchedCheckpoint) {
+      await syncCheckpointCompletion(ctx, venture, patchedCheckpoint, now);
+    }
 
     // ── Award task points ─────────────────────────────────────────────────────
     const pointKey =
@@ -716,40 +906,14 @@ export const submitTaskContent = mutation({
     const pts = POINT_VALUES[pointKey] as number | undefined;
 
     if (pts) {
-      const wallet = await ctx.db
-        .query("wallets")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .first();
-
-      if (wallet) {
-        await ctx.db.insert("transactions", {
-          walletId: wallet._id,
-          amount: pts,
-          type: `${args.taskLevel}_task_complete`,
-          description: `Task ${args.taskLevel.toUpperCase()} completed`,
-          relatedId: venture._id,
-          createdAt: now,
-        });
-
-        await ctx.db.patch(wallet._id, {
-          balance: wallet.balance + pts,
-          updatedAt: now,
-        });
-
-        // Update user level
-        const userLevel = await ctx.db
-          .query("userLevels")
-          .withIndex("by_user", (q) => q.eq("userId", user._id))
-          .first();
-
-        if (userLevel) {
-          await ctx.db.patch(userLevel._id, {
-            totalPoints: userLevel.totalPoints + pts,
-            titlePoints: userLevel.titlePoints + pts,
-            updatedAt: now,
-          });
-        }
-      }
+      await awardPointsAndSyncLevel(ctx, {
+        userId: user._id,
+        amount: pts,
+        type: `${args.taskLevel}_task_complete`,
+        description: `Task ${args.taskLevel.toUpperCase()} completed`,
+        relatedId: venture._id,
+        now,
+      });
     }
 
     // ── Trigger AI quality scoring (async, non-blocking) ──────────────────────

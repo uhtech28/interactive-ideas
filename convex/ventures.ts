@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
-import { internal, api } from "./_generated/api";
+import { api } from "./_generated/api";
 import {
   CHECKPOINT_DEFINITIONS,
   BOSS_DEFINITIONS,
@@ -147,6 +147,161 @@ export const createVenture = mutation({
     );
 
     return ventureId;
+  },
+});
+
+/**
+ * Backfill missing checkpoint/task rows for older ventures and re-sync the
+ * current active stage/checkpoint from persisted completion state.
+ */
+export const ensureVentureStructure = mutation({
+  args: {
+    ventureId: v.id("ventures"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    const venture = await ctx.db.get(args.ventureId);
+    if (!venture) throw new Error("Venture not found");
+
+    const user = await getUserByClerkId(ctx, identity.subject);
+    if (venture.userId !== user._id) {
+      throw new Error("Not your venture");
+    }
+
+    const existingCheckpoints = await ctx.db
+      .query("ventureCheckpoints")
+      .withIndex("by_venture", (q) => q.eq("ventureId", venture._id))
+      .collect();
+
+    const checkpointByKey = new Map(
+      existingCheckpoints.map((checkpoint) => [
+        `${checkpoint.stage}-${checkpoint.checkpoint}`,
+        checkpoint,
+      ]),
+    );
+
+    let insertedCheckpoints = 0;
+    let insertedTasks = 0;
+
+    for (const cpDef of CHECKPOINT_DEFINITIONS) {
+      const key = `${cpDef.stage}-${cpDef.checkpoint}`;
+      let checkpoint = checkpointByKey.get(key);
+
+      if (!checkpoint) {
+        const checkpointId = await ctx.db.insert("ventureCheckpoints", {
+          ventureId: venture._id,
+          stage: cpDef.stage,
+          checkpoint: cpDef.checkpoint,
+          status: "not_started",
+          t1Completed: false,
+          t2Completed: false,
+          t3Completed: false,
+          goldBonusEarned: false,
+        });
+
+        const insertedCheckpoint = await ctx.db.get(checkpointId);
+        if (insertedCheckpoint) {
+          checkpoint = insertedCheckpoint;
+          checkpointByKey.set(key, insertedCheckpoint);
+          insertedCheckpoints++;
+        }
+      }
+
+      if (!checkpoint) continue;
+
+      const existingTasks = await ctx.db
+        .query("ventureTasks")
+        .withIndex("by_checkpoint", (q) => q.eq("checkpointId", checkpoint._id))
+        .collect();
+
+      const existingTaskLevels = new Set(existingTasks.map((task) => task.taskLevel));
+
+      for (const taskLevel of ["t1", "t2", "t3"] as const) {
+        if (existingTaskLevels.has(taskLevel)) continue;
+
+        await ctx.db.insert("ventureTasks", {
+          checkpointId: checkpoint._id,
+          taskLevel,
+          toolType: cpDef[taskLevel].tool,
+          status: "not_started",
+        });
+        insertedTasks++;
+      }
+    }
+
+    const refreshedCheckpoints = await ctx.db
+      .query("ventureCheckpoints")
+      .withIndex("by_venture", (q) => q.eq("ventureId", venture._id))
+      .collect();
+
+    const now = Date.now();
+
+    // ── Auto-heal: checkpoints where all 3 tasks are done should be "completed" ─
+    // This fixes the case where markTaskComplete set all flags but status wasn't
+    // explicitly patched to "completed" (e.g. the Gold Checkpoint flow).
+    for (const cp of refreshedCheckpoints) {
+      if (
+        cp.t1Completed &&
+        cp.t2Completed &&
+        cp.t3Completed &&
+        cp.status !== "completed"
+      ) {
+        await ctx.db.patch(cp._id, {
+          status: "completed",
+          completedAt: cp.completedAt ?? now,
+        });
+        cp.status = "completed"; // mutate local copy for downstream logic
+      }
+    }
+
+    const orderedCheckpoints = refreshedCheckpoints.sort((a, b) => {
+      if (a.stage !== b.stage) return a.stage - b.stage;
+      return a.checkpoint - b.checkpoint;
+    });
+
+    // Find the first checkpoint that still needs work.
+    const nextCheckpoint =
+      orderedCheckpoints.find((checkpoint) => checkpoint.status !== "completed") ??
+      null;
+
+    if (nextCheckpoint) {
+      // ── ANTI-REGRESSION GUARD ─────────────────────────────────────────────
+      // Only advance the venture pointer — never move it backward.
+      // "backward" means nextCheckpoint is earlier than the current DB position.
+      const currentIsAhead =
+        nextCheckpoint.stage < venture.currentStage ||
+        (nextCheckpoint.stage === venture.currentStage &&
+          nextCheckpoint.checkpoint < venture.currentCheckpoint);
+
+      if (!currentIsAhead) {
+        // Safe to update — only moves forward or stays on the same CP.
+        if (
+          venture.currentStage !== nextCheckpoint.stage ||
+          venture.currentCheckpoint !== nextCheckpoint.checkpoint
+        ) {
+          await ctx.db.patch(venture._id, {
+            currentStage: nextCheckpoint.stage,
+            currentCheckpoint: nextCheckpoint.checkpoint,
+            updatedAt: now,
+          });
+        }
+      }
+      // If currentIsAhead: the DB pointer is already past this checkpoint.
+      // Leave the venture pointer where it is — do NOT regress it.
+    } else if (venture.status !== "completed") {
+      await ctx.db.patch(venture._id, {
+        status: "completed",
+        updatedAt: now,
+      });
+    }
+
+    return {
+      success: true,
+      insertedCheckpoints,
+      insertedTasks,
+    };
   },
 });
 
@@ -305,7 +460,6 @@ export const submitEvidence = mutation({
       | "t3Completed";
     await ctx.db.patch(checkpoint._id, {
       [flagField]: true,
-      status: "in_progress",
     });
 
     // Re-read checkpoint to check if all three are now complete
@@ -351,6 +505,17 @@ export const submitEvidence = mutation({
         "gold_checkpoint",
         `🏆 ${ventureName} - ${stageName}: ${checkpointName} - Gold Checkpoint! All 3 tasks completed. +${POINT_VALUES.gold_checkpoint_bonus} points`,
         venture._id,
+      );
+    }
+
+    // Keep checkpoint + venture progression in sync when a full checkpoint is done.
+    const refreshedCheckpoint = await ctx.db.get(checkpoint._id);
+    if (refreshedCheckpoint) {
+      await syncCheckpointCompletionAfterSubmission(
+        ctx,
+        venture,
+        refreshedCheckpoint,
+        now,
       );
     }
 
@@ -924,6 +1089,80 @@ async function tryAdvanceStage(
         });
       }
     }
+  }
+}
+
+async function syncCheckpointCompletionAfterSubmission(
+  ctx: { db: MutationDbCtx },
+  venture: {
+    _id: Id<"ventures">;
+    userId: Id<"users">;
+    currentStage: number;
+    currentCheckpoint: number;
+    ideaId: Id<"ideas">;
+  },
+  checkpoint: {
+    _id: Id<"ventureCheckpoints">;
+    ventureId: Id<"ventures">;
+    stage: number;
+    checkpoint: number;
+    status: string;
+    t1Completed: boolean;
+    t2Completed: boolean;
+    t3Completed: boolean;
+  },
+  now: number,
+) {
+  const completedCount = [
+    checkpoint.t1Completed,
+    checkpoint.t2Completed,
+    checkpoint.t3Completed,
+  ].filter(Boolean).length;
+
+  if (completedCount < 3) {
+    if (checkpoint.status !== "in_progress") {
+      await ctx.db.patch(checkpoint._id, {
+        status: "in_progress",
+      });
+    }
+    return;
+  }
+
+  await ctx.db.patch(checkpoint._id, {
+    status: "completed",
+    completedAt: now,
+  });
+
+  const nextCheckpoint = await ctx.db
+    .query("ventureCheckpoints")
+    .withIndex("by_venture_stage", (q) =>
+      q.eq("ventureId", venture._id).eq("stage", checkpoint.stage),
+    )
+    .filter((q) => q.gt(q.field("checkpoint"), checkpoint.checkpoint))
+    .order("asc")
+    .first();
+
+  if (nextCheckpoint) {
+    // Anti-regression guard: only advance the pointer, never move it backward.
+    const wouldRegress =
+      nextCheckpoint.stage < venture.currentStage ||
+      (nextCheckpoint.stage === venture.currentStage &&
+        nextCheckpoint.checkpoint < venture.currentCheckpoint);
+
+    if (!wouldRegress) {
+      await ctx.db.patch(venture._id, {
+        currentCheckpoint: nextCheckpoint.checkpoint,
+        updatedAt: now,
+      });
+    }
+    return;
+  }
+
+  // No next checkpoint in this stage — try to advance the stage.
+  // Only attempt if the submission is from the current or an earlier stage
+  // (not from a future stage's checkpoint being edited retroactively).
+  if (checkpoint.stage >= venture.currentStage) {
+    await tryAdvanceStage(ctx, venture, checkpoint.stage);
   }
 }
 

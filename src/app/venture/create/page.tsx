@@ -40,10 +40,11 @@ export default function VentureCreatePage() {
       // Save persona gender selection to localStorage for /map/world
       if (typeof window !== "undefined") {
         localStorage.setItem("selectedGender", selectedGender);
+        localStorage.setItem("activeVentureId", ventureId);
       }
 
       // Redirect to world map with the new venture
-      router.push(`/map/world`);
+      router.push(`/map/world?ventureId=${ventureId}`);
     } catch (error) {
       console.error("Failed to create venture:", error);
       setCreating(false);

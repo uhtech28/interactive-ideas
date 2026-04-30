@@ -25,7 +25,7 @@ import { LevelUpSequence } from "@/components/animations/LevelUpSequence";
 import { BadgeAwardSequence } from "@/components/animations/BadgeAwardSequence";
 import { FirstCheckpointPulse } from "@/components/map/FirstCheckpointPulse";
 import { GoldCheckpointPopup } from "@/components/notifications/GoldCheckpointPopup";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { TaskSubmissionModal } from "@/components/map/TaskSubmissionModal";
 import { LeftSidebar } from "@/components/map/LeftSidebar";
 import { ToolsPanel } from "@/components/map/ToolsPanel";
@@ -52,6 +52,8 @@ interface Task {
   tool: string;
   difficulty: "easy" | "medium" | "stretch";
   done: boolean;
+  _convexCheckpointId?: Id<"ventureCheckpoints">;
+  _taskLevel?: "t1" | "t2" | "t3";
 }
 
 interface CheckpointDetail {
@@ -758,13 +760,18 @@ interface BadgePayload {
 
 export default function MapPage() {
   const { containerRef, phaserReady } = useMapGame();
-  const router = useRouter();
+  const searchParams = useSearchParams();
 
   // ── Read gender + stage from localStorage (set by /map and /map/stages) ──
   const [selectedGender, setSelectedGender] = useState<"male" | "female">(
     "male",
   );
   const [selectedStageId, setSelectedStageId] = useState<number | null>(null);
+  const [preferredVentureId, setPreferredVentureId] = useState<string | null>(null);
+  const previousActiveRef = useRef<{ stage: number; checkpoint: number }>({
+    stage: 1,
+    checkpoint: 1,
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -775,7 +782,10 @@ export default function MapPage() {
     if (g === "male" || g === "female") setSelectedGender(g);
     const s = localStorage.getItem("selectedStage");
     if (s) setSelectedStageId(parseInt(s, 10));
-  }, []);
+    const queryVentureId = searchParams.get("ventureId");
+    const storedVentureId = localStorage.getItem("activeVentureId");
+    setPreferredVentureId(queryVentureId || storedVentureId);
+  }, [searchParams]);
 
   // ── Audio unlock on first interaction ─────────────────────────────────────
   // audioManager already attaches window listeners for click/keydown/touchstart
@@ -803,7 +813,10 @@ export default function MapPage() {
 
   // ── Convex queries ─────────────────────────────────────────────────────────
   const ventures = useQuery(api.worldMap.getVenturesByUser);
-  const activeVenture = ventures?.[0] ?? null;
+  const activeVenture =
+    ventures?.find((venture) => venture._id === preferredVentureId) ??
+    ventures?.[0] ??
+    null;
 
   // Subscribe to notifications for gold checkpoint awards
   const notifications = useQuery(api.notifications.getNotifications, {
@@ -850,8 +863,8 @@ export default function MapPage() {
   );
 
   // ── Convex mutations ───────────────────────────────────────────────────────
-  const markTaskComplete = useMutation(api.worldMap.markTaskComplete);
   const advanceCheckpoint = useMutation(api.ventures.advanceCheckpoint);
+  const ensureVentureStructure = useMutation(api.ventures.ensureVentureStructure);
   const seedFlags = useMutation(api.aiScoring.seedFeatureFlags);
   const savePersonaGender = useMutation(api.worldMap.savePersonaGender);
 
@@ -888,10 +901,10 @@ export default function MapPage() {
 
   // Task submission state (now using Jotai atom for global access)
   const [submittingTask, setSubmittingTask] = useAtom(submittingTaskAtom);
-  const [activeTask] = useAtom(activeTaskAtom);
 
   // Track previous level to detect level-up events
   const prevLevelRef = useRef<number | null>(null);
+  const structureEnsuredForRef = useRef<string | null>(null);
 
   // ── Debug: Track badge queue state ────────────────────────────────────────
   useEffect(() => {
@@ -911,9 +924,27 @@ export default function MapPage() {
   );
   const brightness = worldMapData?.brightness;
   const ideaTitle = worldMapData?.ideaTitle ?? "Your Venture";
+  type WorldMapCheckpoint = (typeof checkpoints)[number];
+  type WorldMapTask = WorldMapCheckpoint["tasks"][number];
 
   const activeStage = venture?.currentStage ?? 1;
   const activeCP = venture?.currentCheckpoint ?? 1;
+
+  useEffect(() => {
+    if (!activeVenture || typeof window === "undefined") return;
+    localStorage.setItem("activeVentureId", activeVenture._id);
+  }, [activeVenture]);
+
+  useEffect(() => {
+    if (!activeVenture?._id) return;
+    if (structureEnsuredForRef.current === activeVenture._id) return;
+
+    structureEnsuredForRef.current = activeVenture._id;
+    ensureVentureStructure({ ventureId: activeVenture._id }).catch((error) => {
+      console.error("[MapPage] Failed to ensure venture structure:", error);
+      structureEnsuredForRef.current = null;
+    });
+  }, [activeVenture?._id, ensureVentureStructure]);
 
   // ── Detect gold checkpoint notifications ──────────────────────────────────
   useEffect(() => {
@@ -922,30 +953,147 @@ export default function MapPage() {
     // Find unread gold checkpoint notifications for this venture
     const goldNotifications = notifications?.filter(
       (n) =>
-        n.type === "venture_checkpoint_gold" &&
+        n.type === "gold_checkpoint" &&
         !n.isRead &&
         n.relatedId === venture._id,
     );
 
     if (goldNotifications.length > 0) {
-      // Show the most recent one
-      const stageData = STAGES[activeStage - 1];
+      // Use the most recent notification
+      const latestNotif = goldNotifications[0];
+
+      // Try to find the actual checkpoint that earned gold by looking in our
+      // in-memory checkpoints for the most recently gold-completed one.
+      const goldCp = [...checkpoints]
+        .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0))
+        .find((cp) => cp.t1Completed && cp.t2Completed && cp.t3Completed);
+
+      const targetStage = goldCp?.stage ?? activeStage;
+      const targetCP = goldCp?.checkpoint ?? activeCP;
+      const stageData = STAGES[targetStage - 1];
 
       setGoldCheckpointNotification({
         ventureName: ideaTitle,
-        stageName: stageData?.name ?? `Stage ${activeStage}`,
-        checkpoint: activeCP,
+        stageName: stageData?.name ?? `Stage ${targetStage}`,
+        checkpoint: targetCP,
       });
 
-      console.log("[MapPage] 🏆 Gold checkpoint notification displayed");
+      console.log(
+        `[MapPage] 🏆 Gold checkpoint notification displayed for Stage ${targetStage} CP ${targetCP}`,
+        latestNotif.message,
+      );
     }
-  }, [notifications, venture, activeStage, activeCP, ideaTitle]);
+  }, [notifications, venture, checkpoints, activeStage, activeCP, ideaTitle]);
 
   const completedCount = checkpoints.filter(
     (cp) =>
       cp.status === "completed" ||
       (cp.t1Completed && cp.t2Completed && cp.t3Completed),
   ).length;
+
+  const buildCheckpointDetail = useCallback(
+    (cp: WorldMapCheckpoint): CheckpointDetail => {
+      const stageData = STAGES[cp.stage - 1];
+      return {
+        id: cp._id,
+        stage: cp.stage,
+        stageIdx: cp.stage,
+        stageName: stageData?.name ?? `Stage ${cp.stage}`,
+        biome: stageData?.biome ?? "Unknown Biome",
+        stageGlow: stageData?.glow ?? "rgba(255,255,255,0.5)",
+        checkpointIndex: cp.checkpoint,
+        title: cp.checkpointName || `Checkpoint ${cp.checkpoint}`,
+        outcome: cp.outcome || "Complete tasks to advance your venture.",
+        status: deriveCheckpointStatus(cp, activeStage, activeCP),
+        tasks: (cp.tasks || []).map((t: WorldMapTask, i: number) => ({
+          label: t.taskLevel ? t.taskLevel.toUpperCase() : `TASK ${i + 1}`,
+          description: t.prompt || "No description provided.",
+          tool: t.toolType || "Unknown Tool",
+          difficulty:
+            t.taskLevel === "t1"
+              ? "easy"
+              : t.taskLevel === "t2"
+                ? "medium"
+                : "stretch",
+          done: t.status === "completed",
+          _convexCheckpointId: cp._id,
+          _taskLevel: t.taskLevel,
+        })),
+      };
+    },
+    [activeStage, activeCP],
+  );
+
+  useEffect(() => {
+    if (!selectedDetail) return;
+
+    const latestSelected = checkpoints.find((cp) => cp._id === selectedDetail.id);
+    if (!latestSelected) {
+      setSelectedDetail(null);
+      return;
+    }
+
+    const refreshedDetail = buildCheckpointDetail(latestSelected);
+    const taskStatesChanged = refreshedDetail.tasks.some(
+      (task, index) => task.done !== selectedDetail.tasks[index]?.done,
+    );
+
+    if (
+      refreshedDetail.status !== selectedDetail.status ||
+      refreshedDetail.title !== selectedDetail.title ||
+      refreshedDetail.outcome !== selectedDetail.outcome ||
+      taskStatesChanged
+    ) {
+      setSelectedDetail(refreshedDetail);
+    }
+  }, [selectedDetail, checkpoints, buildCheckpointDetail]);
+
+  useEffect(() => {
+    const previousActive = previousActiveRef.current;
+    const activeChanged =
+      previousActive.stage !== activeStage ||
+      previousActive.checkpoint !== activeCP;
+
+    if (activeChanged) {
+      const stageChanged = previousActive.stage !== activeStage;
+
+      if (selectedDetail) {
+        const wasFollowingPreviousActive =
+          selectedDetail.stage === previousActive.stage &&
+          selectedDetail.checkpointIndex === previousActive.checkpoint;
+
+        if (wasFollowingPreviousActive) {
+          // Panel was open on the old active checkpoint — auto-advance it to
+          // the new active checkpoint (same-stage or cross-stage).
+          const nextActiveCheckpoint = checkpoints.find(
+            (cp) => cp.stage === activeStage && cp.checkpoint === activeCP,
+          );
+          if (nextActiveCheckpoint) {
+            setSelectedDetail(buildCheckpointDetail(nextActiveCheckpoint));
+          }
+        }
+      } else if (stageChanged) {
+        // Panel was closed (e.g. we closed it on stage boundary) —
+        // auto-open the new active checkpoint so the user sees Level 4 content.
+        const newActiveCheckpoint = checkpoints.find(
+          (cp) => cp.stage === activeStage && cp.checkpoint === activeCP,
+        );
+        if (newActiveCheckpoint) {
+          const detail = buildCheckpointDetail(newActiveCheckpoint);
+          setSelectedDetail(detail);
+          eventBridge.dispatchToPhaser({
+            type: "SCROLL_TO_CHECKPOINT",
+            checkpointId: newActiveCheckpoint._id,
+          });
+          console.log(
+            `[MapPage] 🚀 Stage transition detected: ${previousActive.stage} → ${activeStage}. Auto-opening CP ${activeCP}.`,
+          );
+        }
+      }
+    }
+
+    previousActiveRef.current = { stage: activeStage, checkpoint: activeCP };
+  }, [activeStage, activeCP, checkpoints, selectedDetail, buildCheckpointDetail]);
 
   // ── Persist gender to DB whenever venture + gender are known ─────────────
   useEffect(() => {
@@ -1178,7 +1326,7 @@ export default function MapPage() {
     if (currentCPData) {
       setCurrentQuestAtom({
         checkpointName: currentCPData.checkpointName,
-        tasks: currentCPData.tasks.map((t: any) => ({
+        tasks: currentCPData.tasks.map((t: WorldMapTask) => ({
           label: t.taskLevel.toUpperCase(),
           description: t.prompt,
           tool: t.toolType,
@@ -1189,7 +1337,9 @@ export default function MapPage() {
       });
 
       // Find first uncompleted task
-      const nextTask = currentCPData.tasks.find((t: any) => t.status !== "completed");
+      const nextTask = currentCPData.tasks.find(
+        (t: WorldMapTask) => t.status !== "completed",
+      );
       if (nextTask) {
         setActiveTaskAtom({
           id: nextTask._id,
@@ -1308,7 +1458,8 @@ export default function MapPage() {
   useEffect(() => {
     // Expose eventBridge for console debugging
     if (typeof window !== "undefined") {
-      (window as any).debugEventBridge = eventBridge;
+      (window as Window & { debugEventBridge?: typeof eventBridge }).debugEventBridge =
+        eventBridge;
     }
 
     const handleClick = (e: {
@@ -1340,28 +1491,9 @@ export default function MapPage() {
           return;
         }
 
-        const stageData = STAGES[cp.stage - 1];
-
         const detail: CheckpointDetail = {
-          id: cp._id,
-          stage: cp.stage,
-          stageIdx: cp.stage,
-          stageName: stageData?.name ?? `Stage ${cp.stage}`,
-          biome: stageData?.biome ?? "Unknown Biome",
-          stageGlow: stageData?.glow ?? "rgba(255,255,255,0.5)",
-          checkpointIndex: cp.checkpoint,
-          title: cp.checkpointName || `Checkpoint ${cp.checkpoint}`,
-          outcome: cp.outcome || "Complete tasks to advance your venture.",
+          ...buildCheckpointDetail(cp),
           status,
-          tasks: (cp.tasks || []).map((t: any, i: number) => ({
-            label: t.taskLevel ? t.taskLevel.toUpperCase() : `TASK ${i + 1}`,
-            description: t.prompt || "No description provided.",
-            tool: t.toolType || "Unknown Tool",
-            difficulty: t.taskLevel === "t1" ? "easy" : t.taskLevel === "t2" ? "medium" : "stretch",
-            done: t.status === "completed",
-            _convexCheckpointId: cp._id,
-            _taskLevel: t.taskLevel,
-          })),
         };
 
         console.log("[React] Opening CheckpointPanel with detail:", detail);
@@ -1371,24 +1503,25 @@ export default function MapPage() {
 
     eventBridge.onReact("CHECKPOINT_CLICKED", handleClick);
     return () => eventBridge.off("CHECKPOINT_CLICKED", handleClick);
-  }, [checkpoints, activeStage, activeCP, activeVenture, router, showFirstCheckpointPulse, activeTask, setSubmittingTask]);
+  }, [
+    checkpoints,
+    activeStage,
+    activeCP,
+    activeVenture,
+    showFirstCheckpointPulse,
+    buildCheckpointDetail,
+  ]);
 
   // ── Task toggle → Convex mutation ─────────────────────────────────────────
   const handleTaskToggle = useCallback(
     async (taskIdx: number) => {
       if (!selectedDetail) return;
-      type TaskWithIds = Task & {
-        _convexCheckpointId?: string;
-        _taskLevel?: string;
-      };
-      const task = selectedDetail.tasks[taskIdx] as TaskWithIds;
+      const task = selectedDetail.tasks[taskIdx];
       if (!task || task.done) return; // tasks can only be marked done, not undone
 
-      const checkpointId = task._convexCheckpointId as
-        | Id<"ventureCheckpoints">
-        | undefined;
+      const checkpointId = task._convexCheckpointId;
       const taskLevelRaw = task._taskLevel;
-      const taskLevel = typeof taskLevelRaw === "string" ? (taskLevelRaw.toLowerCase() as "t1" | "t2" | "t3") : undefined;
+      const taskLevel = taskLevelRaw;
 
       if (!checkpointId || !taskLevel) {
         console.error("[React] Missing checkpointId or taskLevel", { checkpointId, taskLevelRaw });
@@ -1399,7 +1532,7 @@ export default function MapPage() {
 
       // Instead of immediately marking complete, open the submission modal
       setSubmittingTask({
-        id: `${checkpointId}_${taskLevel}` as any,
+        id: `${checkpointId}_${taskLevel}`,
         checkpointId,
         taskLevel,
         title: task.label,
@@ -1408,7 +1541,7 @@ export default function MapPage() {
         points: taskLevel === "t1" ? 10 : taskLevel === "t2" ? 20 : 30,
       });
     },
-    [selectedDetail],
+    [selectedDetail, setSubmittingTask],
   );
 
   // ── Advance checkpoint → Convex mutation ──────────────────────────────────
@@ -1425,9 +1558,23 @@ export default function MapPage() {
     if (doneTasks < 2) return;
 
     const isGold = doneTasks >= 3;
+
+    // Determine if this is the last checkpoint in the stage (stage boundary)
+    const isLastInStage = !checkpoints.find(
+      (c) => c.stage === cp.stage && c.checkpoint === cp.checkpoint + 1,
+    );
+
+    // Find next checkpoint client-side for UI hint only (not used for state)
+    const nextCpSameStage = checkpoints.find(
+      (c) => c.stage === cp.stage && c.checkpoint === cp.checkpoint + 1,
+    );
+    const nextCpNextStage = checkpoints.find(
+      (c) => c.stage === cp.stage + 1 && c.checkpoint === 1,
+    );
+    const nextCp = nextCpSameStage ?? nextCpNextStage ?? null;
+
     const animVariant = isGold ? "gold" : "standard";
     setFlashTrigger((n) => n + 1);
-    setSelectedDetail(null);
 
     // Dispatch checkpoint animation to Phaser
     eventBridge.dispatchToPhaser({
@@ -1450,24 +1597,31 @@ export default function MapPage() {
       await advanceCheckpoint({
         checkpointId: cp._id as Id<"ventureCheckpoints">,
       });
-      // Convex will update venture.currentStage / currentCheckpoint in real-time,
-      // which re-triggers the Phaser sync useEffect above.
 
-      // Pan camera to the next active checkpoint after data re-arrives
-      // (we use a small delay so the Convex subscription has time to fire)
-      setTimeout(() => {
-        const nextCp = checkpoints.find(
-          (c) =>
-            (c.stage === activeStage && c.checkpoint === activeCP + 1) ||
-            (c.stage === activeStage + 1 && c.checkpoint === 1),
-        );
-        if (nextCp) {
+      if (isLastInStage) {
+        // Stage boundary — close the panel. Convex will update venture.currentStage
+        // and the useEffect at line ~1038 will auto-open the new active checkpoint.
+        setSelectedDetail(null);
+        if (nextCpNextStage) {
+          // Scroll Phaser camera to the first checkpoint of the new stage
           eventBridge.dispatchToPhaser({
             type: "SCROLL_TO_CHECKPOINT",
-            checkpointId: nextCp._id,
+            checkpointId: nextCpNextStage._id,
           });
         }
-      }, 400);
+      } else if (nextCp) {
+        // Same-stage advance — open the next checkpoint panel immediately.
+        // Build the detail now: Convex hasn't updated yet, but the next checkpoint
+        // is still in the same stage so activeStage/activeCP will be correct
+        // once Convex propagates. We optimistically show it.
+        setSelectedDetail(buildCheckpointDetail(nextCp));
+        eventBridge.dispatchToPhaser({
+          type: "SCROLL_TO_CHECKPOINT",
+          checkpointId: nextCp._id,
+        });
+      } else {
+        setSelectedDetail(null);
+      }
     } catch (err) {
       console.error("advanceCheckpoint failed:", err);
     }
@@ -1475,9 +1629,8 @@ export default function MapPage() {
     selectedDetail,
     venture,
     checkpoints,
-    activeStage,
-    activeCP,
     advanceCheckpoint,
+    buildCheckpointDetail,
   ]);
 
   // ── Destroy audio on unmount ──────────────────────────────────────────────

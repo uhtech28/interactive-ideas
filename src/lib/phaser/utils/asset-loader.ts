@@ -1332,6 +1332,7 @@ export class AssetLoader {
 
     // --- Fan-tasy Tileset Assets ---
     const fanTasyPath = "/assets/fan-tasy";
+    const sproutPath = "/assets/sprout";
     
     // Core Tilesets
     scene.load.image("Tileset_Ground", `${fanTasyPath}/Tileset_Ground.png`);
@@ -1355,6 +1356,42 @@ export class AssetLoader {
       { frameWidth: 16, frameHeight: 16 },
     );
     scene.load.image("Tileset_Shadow", `${fanTasyPath}/Tileset_Shadow.png`);
+
+    // --- Sprout Lands forest biome sheets ---
+    scene.load.spritesheet("sprout_grass_sheet", `${sproutPath}/grass.png`, {
+      frameWidth: 16,
+      frameHeight: 16,
+    });
+    scene.load.spritesheet("sprout_water_sheet", `${sproutPath}/water.png`, {
+      frameWidth: 16,
+      frameHeight: 16,
+    });
+    scene.load.spritesheet("sprout_hills_sheet", `${sproutPath}/hills.png`, {
+      frameWidth: 16,
+      frameHeight: 16,
+    });
+    scene.load.spritesheet(
+      "sprout_forest_decor_sheet",
+      `${sproutPath}/forest-decor.png`,
+      { frameWidth: 16, frameHeight: 16 },
+    );
+    scene.load.spritesheet("sprout_plants_sheet", `${sproutPath}/plants.png`, {
+      frameWidth: 16,
+      frameHeight: 16,
+    });
+    scene.load.spritesheet("sprout_paths_sheet", `${sproutPath}/paths.png`, {
+      frameWidth: 16,
+      frameHeight: 16,
+    });
+    scene.load.spritesheet(
+      "sprout_bridge_sheet",
+      `${sproutPath}/wood-bridge.png`,
+      { frameWidth: 16, frameHeight: 16 },
+    );
+    scene.load.spritesheet("sprout_fences_sheet", `${sproutPath}/fences.png`, {
+      frameWidth: 16,
+      frameHeight: 16,
+    });
 
     // Atlases
     scene.load.image("Buildings", `${fanTasyPath}/Buildings.png`);

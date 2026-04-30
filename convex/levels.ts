@@ -4,6 +4,12 @@ import { LEVEL_DEFINITIONS } from "./ventureConstants";
 import type { MutationCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
+function deriveLevelFromTitlePoints(titlePoints: number) {
+  return LEVEL_DEFINITIONS.reduce((currentLevel, def) => {
+    return titlePoints >= def.titlePoints ? def.level : currentLevel;
+  }, 1);
+}
+
 /**
  * Initialize user level tracking record.
  * Called when a user completes onboarding or on first point award.
@@ -124,23 +130,22 @@ async function checkLevelUp(
   if (!userLevel) return;
 
   const currentLevel = userLevel.currentLevel;
-  if (currentLevel >= 50) return;
-
-  const nextLevelDef = LEVEL_DEFINITIONS.find(
-    (l) => l.level === currentLevel + 1,
+  const targetLevel = Math.min(
+    50,
+    deriveLevelFromTitlePoints(userLevel.titlePoints),
   );
-  if (!nextLevelDef) return;
+  if (targetLevel <= currentLevel) return;
 
-  // Check if user meets the titlePoints threshold
-  if (userLevel.titlePoints >= nextLevelDef.titlePoints) {
-    // Level up
-    await ctx.db.patch(userLevelId as Id<"userLevels">, {
-      currentLevel: currentLevel + 1,
-      updatedAt: Date.now(),
-    });
+  await ctx.db.patch(userLevelId as Id<"userLevels">, {
+    currentLevel: targetLevel,
+    updatedAt: Date.now(),
+  });
 
-    // Award level-up points
-    const levelUpPoints = (currentLevel + 1) * 5;
+  for (let level = currentLevel + 1; level <= targetLevel; level++) {
+    const levelDef = LEVEL_DEFINITIONS.find((l) => l.level === level);
+    if (!levelDef) continue;
+
+    const levelUpPoints = level * 5;
     let wl = await ctx.db
       .query("wallets")
       .withIndex("by_user", (q) => q.eq("userId", userLevel.userId))
@@ -158,7 +163,7 @@ async function checkLevelUp(
         walletId: wl._id,
         amount: levelUpPoints,
         type: "level_up",
-        description: `Reached level ${currentLevel + 1}: ${nextLevelDef.title}`,
+        description: `Reached level ${level}: ${levelDef.title}`,
         createdAt: Date.now(),
       });
     }
@@ -178,15 +183,16 @@ export const getUserLevelProgress = query({
 
     if (!userLevel) return null;
 
+    const currentLevel = deriveLevelFromTitlePoints(userLevel.titlePoints);
     const currentDef = LEVEL_DEFINITIONS.find(
-      (l) => l.level === userLevel.currentLevel,
+      (l) => l.level === currentLevel,
     );
     const nextDef = LEVEL_DEFINITIONS.find(
-      (l) => l.level === userLevel.currentLevel + 1,
+      (l) => l.level === currentLevel + 1,
     );
 
     return {
-      level: userLevel.currentLevel,
+      level: currentLevel,
       title: currentDef?.title ?? "Unknown",
       phase: currentDef?.phase ?? "tutorial",
       titlePoints: userLevel.titlePoints,

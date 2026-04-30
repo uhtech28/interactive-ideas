@@ -19,7 +19,7 @@ interface TaskSubmissionModalProps {
   isOpen: boolean;
   onClose: () => void;
   task: {
-    id: Id<"ventureTasks">;
+    id: string;
     checkpointId: Id<"ventureCheckpoints">;
     taskLevel: "t1" | "t2" | "t3";
     title: string;
