@@ -280,7 +280,7 @@ export class WorldMapScene extends Phaser.Scene {
     // Apply initial brightness (0%)
     this.updateBrightnessFilter(100);
 
-    // Camera setup
+    // Camera setup with responsive zoom
     this.cameras.main.roundPixels = true;
     this.applyResponsiveCamera(true);
     this.resizeHandler = () => {
@@ -288,19 +288,66 @@ export class WorldMapScene extends Phaser.Scene {
     };
     this.scale.on("resize", this.resizeHandler);
 
-    // Enable camera drag
-    this.input.on("pointerdown", () => {
+    // Detect mobile/touch device
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const isMobile = this.scale.width < 768;
+
+    // Enable camera drag with mobile optimization
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       audioManager.unlock();
+      
+      // Store initial camera position for drag
+      this.registry.set('dragStartX', this.cameras.main.scrollX);
+      this.registry.set('dragStartY', this.cameras.main.scrollY);
+      this.registry.set('pointerStartX', pointer.x);
+      this.registry.set('pointerStartY', pointer.y);
     });
 
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
       if (pointer.isDown) {
-        this.cameras.main.scrollX -=
-          (pointer.x - pointer.prevPosition.x) / this.cameras.main.zoom;
-        this.cameras.main.scrollY -=
-          (pointer.y - pointer.prevPosition.y) / this.cameras.main.zoom;
+        const dragStartX = this.registry.get('dragStartX') || this.cameras.main.scrollX;
+        const dragStartY = this.registry.get('dragStartY') || this.cameras.main.scrollY;
+        const pointerStartX = this.registry.get('pointerStartX') || pointer.x;
+        const pointerStartY = this.registry.get('pointerStartY') || pointer.y;
+        
+        // Smooth drag with momentum on mobile
+        const dragSensitivity = isMobile ? 1.2 : 1.0;
+        const deltaX = (pointerStartX - pointer.x) / this.cameras.main.zoom * dragSensitivity;
+        const deltaY = (pointerStartY - pointer.y) / this.cameras.main.zoom * dragSensitivity;
+        
+        this.cameras.main.scrollX = dragStartX + deltaX;
+        this.cameras.main.scrollY = dragStartY + deltaY;
       }
     });
+
+    // Add pinch-to-zoom for mobile
+    if (isTouchDevice) {
+      let initialDistance = 0;
+      let initialZoom = 1;
+
+      this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+        if (this.input.pointer2.isDown) {
+          const dx = this.input.pointer1.x - this.input.pointer2.x;
+          const dy = this.input.pointer1.y - this.input.pointer2.y;
+          initialDistance = Math.sqrt(dx * dx + dy * dy);
+          initialZoom = this.cameras.main.zoom;
+        }
+      });
+
+      this.input.on('pointermove', () => {
+        if (this.input.pointer1.isDown && this.input.pointer2.isDown) {
+          const dx = this.input.pointer1.x - this.input.pointer2.x;
+          const dy = this.input.pointer1.y - this.input.pointer2.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          if (initialDistance > 0) {
+            const scale = distance / initialDistance;
+            const newZoom = Phaser.Math.Clamp(initialZoom * scale, 0.3, 1.5);
+            this.cameras.main.setZoom(newZoom);
+          }
+        }
+      });
+    }
 
     // Signal React that Phaser is ready
     eventBridge.dispatchToReact({ type: "PHASER_READY" });
@@ -321,21 +368,63 @@ export class WorldMapScene extends Phaser.Scene {
   private applyResponsiveCamera(initial: boolean): void {
     const width = this.scale.width;
     const height = this.scale.height;
-    const shortest = Math.min(width, height);
+    const aspectRatio = width / height;
+    const isPortrait = height > width;
+    const isMobile = width < 768;
+    const isTablet = width >= 768 && width < 1024;
+    const isSmallMobile = width < 480;
 
     let zoom = 1;
-    if (width < 640) {
-      zoom = 0.52;
-    } else if (width < 900) {
-      zoom = 0.66;
-    } else if (width < 1280) {
-      zoom = 0.8;
-    } else {
-      zoom = 0.9;
+
+    // Mobile portrait (phones)
+    if (isSmallMobile && isPortrait) {
+      zoom = 0.38;
+    } else if (isMobile && isPortrait) {
+      zoom = 0.48;
+    }
+    // Mobile landscape
+    else if (isMobile && !isPortrait) {
+      zoom = 0.58;
+    }
+    // Tablet portrait
+    else if (isTablet && isPortrait) {
+      zoom = 0.62;
+    }
+    // Tablet landscape
+    else if (isTablet && !isPortrait) {
+      zoom = 0.72;
+    }
+    // Desktop small
+    else if (width < 1280) {
+      zoom = 0.78;
+    }
+    // Desktop medium
+    else if (width < 1600) {
+      zoom = 0.88;
+    }
+    // Desktop large
+    else if (width < 1920) {
+      zoom = 0.95;
+    }
+    // Desktop XL
+    else {
+      zoom = 1.0;
     }
 
-    if (shortest < 500) {
+    // Additional adjustment for very short screens
+    if (height < 600) {
+      zoom *= 0.88;
+    } else if (height < 500) {
+      zoom *= 0.82;
+    }
+
+    // Adjust for extreme aspect ratios
+    if (aspectRatio < 0.6) {
+      // Very tall screens
       zoom *= 0.92;
+    } else if (aspectRatio > 2.2) {
+      // Very wide screens
+      zoom *= 1.08;
     }
 
     this.cameras.main.setZoom(zoom);
@@ -343,6 +432,11 @@ export class WorldMapScene extends Phaser.Scene {
     if (initial) {
       this.cameras.main.centerOn(this.BIOME_WIDTH / 2, this.MAP_HEIGHT / 2);
     }
+
+    // Store zoom for UI scaling
+    this.registry.set('cameraZoom', zoom);
+    this.registry.set('isMobile', isMobile);
+    this.registry.set('isTablet', isTablet);
   }
 
   /**
@@ -721,34 +815,76 @@ export class WorldMapScene extends Phaser.Scene {
       }
     });
 
-    for (let col = 2; col < cols - 2; col += 2) {
+    // Top tree line - evenly spaced, avoiding checkpoints
+    for (let i = 0; i < 10; i += 1) {
+      const col = 4 + i * 3.6;
+      if (col > 18 && col < 22) continue; // Skip checkpoint area
       addForestProp(
         "sprout_forest_decor_sheet",
-        treeFrames[(col + biome.id) % treeFrames.length],
-        panelX + col * tileSize + tileSize / 2,
-        panelOffsetY + 150 + (col % 3) * 8,
-        1.52 + (col % 2) * 0.08,
+        treeFrames[i % treeFrames.length],
+        panelX + col * tileSize,
+        panelOffsetY + 2.8 * tileSize,
+        1.48 + (i % 2) * 0.06,
         treeDepth,
-        0.95,
+        0.96,
       );
+    }
+
+    // Bottom tree line - evenly spaced, avoiding checkpoints
+    for (let i = 0; i < 10; i += 1) {
+      const col = 4 + i * 3.6;
+      if (col > 18 && col < 22) continue; // Skip checkpoint area
       addForestProp(
         "sprout_forest_decor_sheet",
-        treeFrames[(col + biome.id + 2) % treeFrames.length],
-        panelX + col * tileSize + tileSize / 2,
-        panelOffsetY + rows * tileSize - 12 - (col % 3) * 10,
-        1.56 + (col % 2) * 0.08,
+        treeFrames[(i + 2) % treeFrames.length],
+        panelX + col * tileSize,
+        panelOffsetY + (rows - 2.8) * tileSize,
+        1.52 + (i % 2) * 0.06,
+        treeDepth,
+        0.96,
+      );
+    }
+
+    // Left side trees - vertical arrangement
+    for (let i = 0; i < 5; i += 1) {
+      const row = 8 + i * 5;
+      if (row > bridgeRow - 3 && row < bridgeRow + 3) continue; // Skip bridge area
+      addForestProp(
+        "sprout_forest_decor_sheet",
+        treeFrames[i % treeFrames.length],
+        panelX + 2.5 * tileSize,
+        panelOffsetY + row * tileSize,
+        1.54 + (i % 2) * 0.08,
         treeDepth,
         0.95,
       );
     }
 
+    // Right side trees - vertical arrangement
+    for (let i = 0; i < 5; i += 1) {
+      const row = 8 + i * 5;
+      if (row > bridgeRow - 3 && row < bridgeRow + 3) continue; // Skip bridge area
+      addForestProp(
+        "sprout_forest_decor_sheet",
+        treeFrames[(i + 1) % treeFrames.length],
+        panelX + (cols - 2.5) * tileSize,
+        panelOffsetY + row * tileSize,
+        1.56 + (i % 2) * 0.08,
+        treeDepth,
+        0.95,
+      );
+    }
+
+    // Feature trees in clearings - carefully placed
     [
-      [7.5, 13.5, 1.84, treeFrames[0]],
-      [10.5, 17.2, 1.72, treeFrames[1]],
-      [30.5, 14.3, 1.86, treeFrames[2]],
-      [29, 23.5, 1.78, treeFrames[3]],
-      [13.8, 28.5, 1.74, treeFrames[1]],
-      [32.4, 29.6, 1.68, treeFrames[0]],
+      [8.5, 11.5, 1.72, treeFrames[0]],
+      [11.5, 13.2, 1.68, treeFrames[1]],
+      [30.5, 11.8, 1.74, treeFrames[2]],
+      [33.2, 13.5, 1.70, treeFrames[3]],
+      [9.2, 28.5, 1.66, treeFrames[1]],
+      [12.5, 30.2, 1.72, treeFrames[0]],
+      [29.8, 28.8, 1.68, treeFrames[2]],
+      [32.5, 30.5, 1.70, treeFrames[3]],
     ].forEach(([x, y, spriteScale, frame], index) => {
       addForestProp(
         "sprout_forest_decor_sheet",
@@ -756,19 +892,20 @@ export class WorldMapScene extends Phaser.Scene {
         panelX + (x as number) * tileSize,
         panelOffsetY + (y as number) * tileSize,
         spriteScale as number,
-        treeDepth + (index % 2),
+        treeDepth - 1,
       );
     });
 
+    // Shrubs and bushes - organized placement around clearings
     [
-      [10, 10, 1.18, shrubFrames[0]],
-      [13, 12, 1.14, shrubFrames[2]],
-      [17, bridgeRow + 4, 1.12, shrubFrames[4]],
-      [24, bridgeRow - 3, 1.12, shrubFrames[1]],
-      [31, 27, 1.16, shrubFrames[5]],
-      [27, 30, 1.12, shrubFrames[3]],
-      [8, 30, 1.08, groundFrames[2]],
-      [29, 8, 1.1, groundFrames[7]],
+      [7.5, 10.2, 1.12, shrubFrames[0]],
+      [13.5, 10.5, 1.10, shrubFrames[2]],
+      [15.5, bridgeRow + 5, 1.08, shrubFrames[4]],
+      [25.5, bridgeRow - 4, 1.10, shrubFrames[1]],
+      [31.5, 27.5, 1.12, shrubFrames[5]],
+      [28.5, 31.2, 1.08, shrubFrames[3]],
+      [6.5, 29.5, 1.06, shrubFrames[2]],
+      [34.5, 10.8, 1.10, shrubFrames[4]],
     ].forEach(([x, y, spriteScale, frame], index) => {
       addForestProp(
         "sprout_forest_decor_sheet",
@@ -776,21 +913,51 @@ export class WorldMapScene extends Phaser.Scene {
         panelX + (x as number) * tileSize,
         panelOffsetY + (y as number) * tileSize,
         spriteScale as number,
-        detailDepth + (index % 2),
+        detailDepth,
       );
     });
 
-    for (let row = 5; row < rows - 5; row += 3) {
-      for (let col = 4; col < cols - 4; col += 4) {
+    // Rocks - strategic placement
+    [
+      [6.2, 15.5, 1.08, groundFrames[2]],
+      [14.8, 9.2, 1.06, groundFrames[7]],
+      [26.5, 32.5, 1.10, groundFrames[5]],
+      [35.2, 16.8, 1.08, groundFrames[3]],
+    ].forEach(([x, y, spriteScale, frame]) => {
+      addForestProp(
+        "sprout_forest_decor_sheet",
+        frame as number,
+        panelX + (x as number) * tileSize,
+        panelOffsetY + (y as number) * tileSize,
+        spriteScale as number,
+        detailDepth,
+      );
+    });
+
+    // Plants and flowers - organized in clearings, avoiding paths and river
+    for (let row = 7; row < rows - 7; row += 2) {
+      for (let col = 5; col < cols - 5; col += 3) {
         const distToRiver = Math.abs(col - riverCenterAtRow(row));
-        const inOpenLane =
-          inEllipse(col, row, 10.5, 11.5, 7.3, 5.8) ||
-          inEllipse(col, row, 20, bridgeRow + 0.5, 8.2, 6.2) ||
-          inEllipse(col, row, 29, 29, 7.8, 5.6);
+        
+        // Define clear zones
+        const inUpperClearing = inEllipse(col, row, 10.5, 11.5, 5.5, 4.2);
+        const inBridgeClearing = inEllipse(col, row, 20, bridgeRow + 0.5, 6.5, 5.0);
+        const inLowerClearing = inEllipse(col, row, 29, 29, 6.0, 4.5);
+        const inClearing = inUpperClearing || inBridgeClearing || inLowerClearing;
+        
+        // Skip river, banks, and paths
+        if (distToRiver < 3.5) continue;
+        if (Math.abs(row - upperPathRow) < 2) continue;
+        if (Math.abs(row - bridgeRow) < 2) continue;
+        if (Math.abs(row - lowerPathRow) < 2) continue;
+        
+        // Only place in clearings
+        if (!inClearing) continue;
+        
+        // Varied placement pattern
+        if ((col + row + biome.id) % 3 !== 0) continue;
 
-        if (distToRiver < 2.4 || inOpenLane) continue;
-        if ((col + row + biome.id) % 2 !== 0) continue;
-
+        // Add plants
         addFrameSprite(
           "sprout_plants_sheet",
           plantFrames[(col + row + biome.id) % plantFrames.length],
@@ -798,22 +965,43 @@ export class WorldMapScene extends Phaser.Scene {
           row,
           6,
           0xffffff,
-          0.95,
+          0.94,
         );
 
-        if ((col + row + biomeIndex) % 3 === 0) {
+        // Add flowers less frequently
+        if ((col + row + biomeIndex) % 5 === 0) {
           addFrameSprite(
             "sprout_forest_decor_sheet",
             flowerFrames[(col + row) % flowerFrames.length],
-            col + 0.25,
-            row + 0.08,
+            col + 0.3,
+            row + 0.1,
             7,
             0xffffff,
-            0.9,
+            0.88,
           );
         }
       }
     }
+
+    // Flower clusters in specific clearings - organized groups
+    [
+      // Upper clearing cluster
+      [9.5, 11.2], [10.2, 11.8], [11.0, 11.5], [10.5, 12.5],
+      // Bridge clearing cluster
+      [19.5, bridgeRow + 2.5], [20.5, bridgeRow + 2.8], [21.2, bridgeRow + 2.2],
+      // Lower clearing cluster
+      [28.5, 28.8], [29.5, 29.2], [30.2, 28.5], [29.8, 30.0],
+    ].forEach(([x, y], index) => {
+      addFrameSprite(
+        "sprout_forest_decor_sheet",
+        flowerFrames[index % flowerFrames.length],
+        x,
+        y,
+        7,
+        0xffffff,
+        0.90,
+      );
+    });
   }
 
   private renderMapObjects(
@@ -1887,10 +2075,14 @@ export class WorldMapScene extends Phaser.Scene {
 
       if (stageComplete) {
         // Slay the boss when stage is complete
-        miniBoss.slay();
+        if (miniBoss && miniBoss.active) {
+          miniBoss.slay();
+        }
       } else {
         // Weaken the boss based on progress
-        miniBoss.weaken(completed, total);
+        if (miniBoss && miniBoss.active) {
+          miniBoss.weaken(completed, total);
+        }
       }
     }
   }

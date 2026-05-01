@@ -190,6 +190,8 @@ const ANIMATION_TO_SFX: Record<string, CheckpointSFXId> = {
   "Ward Placement_gold": "ward_placement_gold",
 };
 
+const PHASE_ONE_STAGE_LIMIT = 2;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // HOOK — Phaser game lifecycle
 // ─────────────────────────────────────────────────────────────────────────────
@@ -480,6 +482,19 @@ function CheckpointPanel({
                 : ""}
           </p>
 
+          <div className="rounded-xl border border-amber-500/15 bg-amber-500/5 px-4 py-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">
+              Gold Checkpoint
+            </p>
+            <p className="mt-1 text-[12px] leading-relaxed text-slate-300">
+              {isGold
+                ? "All 3 tasks are complete. This checkpoint will advance as gold."
+                : doneTasks === 2
+                  ? "Advance is unlocked now, but completing task 3 upgrades this checkpoint to gold."
+                  : "Gold status requires all 3 tasks. Standard advance unlocks after any 2 tasks."}
+            </p>
+          </div>
+
           {/* Crossing animation label */}
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/5 bg-white/[0.02] mt-auto">
             <span className="text-[10px] tracking-[0.15em] font-semibold uppercase text-slate-500">
@@ -674,6 +689,69 @@ function CrossingFlash({ trigger }: { trigger: number }) {
         />
       )}
     </AnimatePresence>
+  );
+}
+
+function PhaseLaunchBanner({
+  onOpenRoadmap,
+}: {
+  onOpenRoadmap: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="absolute left-4 right-4 top-20 z-40 mx-auto max-w-3xl sm:left-20 sm:right-20"
+    >
+      <div className="rounded-2xl border border-cyan-400/20 bg-slate-950/75 p-4 shadow-2xl backdrop-blur-xl">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">
+              Phase 1 Launch Scope
+            </p>
+            <p className="mt-1 text-sm font-semibold text-white">
+              Stages 1-2 are fully themed now. Stages 3-8 are live and playable, with additional biome polish rolling out in phases.
+            </p>
+          </div>
+          <button
+            onClick={onOpenRoadmap}
+            className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-cyan-200 transition hover:bg-cyan-400/15"
+          >
+            View Roadmap
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function StageResetNotice({
+  baseBrightness,
+  stage,
+}: {
+  baseBrightness: number;
+  stage: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 8 }}
+      className="absolute bottom-28 left-1/2 z-40 w-[min(92vw,520px)] -translate-x-1/2"
+    >
+      <div className="rounded-2xl border border-indigo-400/20 bg-slate-950/85 p-4 text-center shadow-2xl backdrop-blur-xl">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">
+          New Stage Unlocked
+        </p>
+        <p className="mt-1 text-sm text-white">
+          Stage {stage} begins with your permanent base brightness at{" "}
+          <span className="font-black text-indigo-300">
+            {baseBrightness.toFixed(2)}%
+          </span>
+          . The extra stage glow builds back up as you complete this stage’s tasks.
+        </p>
+      </div>
+    </motion.div>
   );
 }
 
@@ -873,9 +951,10 @@ export default function MapPage() {
     null,
   );
   const [isToolsPanelOpen, setIsToolsPanelOpen] = useState(false);
-  const [activeToolsTab, setActiveToolsTab] = useState<"tools" | "calendar" | "kanban" | "week-prd" | "all-prd" | "write" | "map" | "journal" | "survey">("tools");
+  const [activeToolsTab, setActiveToolsTab] = useState<"tools" | "calendar" | "kanban" | "week-prd" | "all-prd" | "roadmap" | "write" | "map" | "journal" | "survey">("tools");
   const [flashTrigger, setFlashTrigger] = useState(0);
   const [showLevelUp, setShowLevelUp] = useState(false);
+  const [showStageResetNotice, setShowStageResetNotice] = useState(false);
   // fps tracked by useMapGame but only used in debug — keep for future use
   const [levelUpData, setLevelUpData] = useState<{
     oldLevel: number;
@@ -904,6 +983,7 @@ export default function MapPage() {
 
   // Track previous level to detect level-up events
   const prevLevelRef = useRef<number | null>(null);
+  const prevStageRef = useRef<number>(1);
   const structureEnsuredForRef = useRef<string | null>(null);
 
   // ── Debug: Track badge queue state ────────────────────────────────────────
@@ -929,6 +1009,22 @@ export default function MapPage() {
 
   const activeStage = venture?.currentStage ?? 1;
   const activeCP = venture?.currentCheckpoint ?? 1;
+
+  useEffect(() => {
+    if (!venture) return;
+
+    const previousStage = prevStageRef.current;
+    if (activeStage > previousStage) {
+      setShowStageResetNotice(true);
+      const timeout = window.setTimeout(() => {
+        setShowStageResetNotice(false);
+      }, 5000);
+      prevStageRef.current = activeStage;
+      return () => window.clearTimeout(timeout);
+    }
+
+    prevStageRef.current = activeStage;
+  }, [activeStage, venture]);
 
   useEffect(() => {
     if (!activeVenture || typeof window === "undefined") return;
@@ -977,6 +1073,9 @@ export default function MapPage() {
         stageName: stageData?.name ?? `Stage ${targetStage}`,
         checkpoint: targetCP,
       });
+
+      // 🔊 Play gold coin SFX for the milestone reward
+      audioManager.playGoldGain();
 
       console.log(
         `[MapPage] 🏆 Gold checkpoint notification displayed for Stage ${targetStage} CP ${targetCP}`,
@@ -1249,10 +1348,13 @@ export default function MapPage() {
     prevVentureBadgeCountRef.current = count;
   }, [ventureMyBadges]);
 
-  // ── Play biome ambience whenever active stage changes ─────────────────────
+  // ── Play biome ambience + stage music whenever active stage changes ─────────
   useEffect(() => {
     if (!phaserReady) return;
+    // Layer 1: Atmospheric ambience loop (always on)
     audioManager.playAmbienceForStage(activeStage);
+    // Layer 2: Stage thematic music (crossfades in)
+    audioManager.playStageMusic(activeStage);
   }, [activeStage, phaserReady]);
 
   // ── Detect level-up → trigger LevelUpSequence + fanfare ──────────────────
@@ -1488,6 +1590,7 @@ export default function MapPage() {
         const status = deriveCheckpointStatus(cp, activeStage, activeCP);
         if (status === "locked") {
           console.log("[React] Checkpoint is locked, ignoring click.");
+          audioManager.playUI("error"); // locked feedback
           return;
         }
 
@@ -1497,6 +1600,7 @@ export default function MapPage() {
         };
 
         console.log("[React] Opening CheckpointPanel with detail:", detail);
+        audioManager.playUI("click"); // panel open feedback
         setSelectedDetail(detail);
       }
     };
@@ -1529,6 +1633,7 @@ export default function MapPage() {
       }
 
       console.log("[React] Opening TaskSubmissionModal for:", { checkpointId, taskLevel });
+      audioManager.playUI("click"); // task open feedback
 
       // Instead of immediately marking complete, open the submission modal
       setSubmittingTask({
@@ -1689,11 +1794,18 @@ export default function MapPage() {
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
       `}</style>
 
-      {/* Phaser canvas */}
+      {/* Phaser canvas - Fully responsive */}
       <div
         ref={containerRef}
-        className="absolute inset-0 z-0 [image-rendering:pixelated]"
-        style={{ touchAction: "none" }}
+        className="absolute inset-0 z-0 [image-rendering:pixelated] overflow-hidden"
+        style={{ 
+          touchAction: "none",
+          WebkitTouchCallout: "none",
+          WebkitUserSelect: "none",
+          userSelect: "none",
+          width: "100%",
+          height: "100%",
+        }}
       />
 
       {/* Loading screen */}
@@ -1764,6 +1876,25 @@ export default function MapPage() {
 
       {phaserReady && activeVenture && (
         <>
+          {activeStage <= PHASE_ONE_STAGE_LIMIT && (
+            <PhaseLaunchBanner
+              onOpenRoadmap={() => {
+                setActiveToolsTab("roadmap");
+                setIsToolsPanelOpen(true);
+                setSelectedDetail(null);
+              }}
+            />
+          )}
+
+          <AnimatePresence>
+            {showStageResetNotice && brightness && (
+              <StageResetNotice
+                baseBrightness={brightness.accumulatedBase}
+                stage={activeStage}
+              />
+            )}
+          </AnimatePresence>
+
           {/* Primary HUD — reads from Jotai atoms populated by Convex data */}
           <HUD />
 
@@ -1774,6 +1905,8 @@ export default function MapPage() {
           <AudioToggle
             muted={audioSettings.muted}
             onToggle={() => {
+              // Play click before muting so it's audible when unmuting
+              if (audioSettings.muted) audioManager.playUI("click");
               setAudioSettings((prev) => ({ ...prev, muted: !prev.muted }));
               audioManager.setMuted(!audioSettings.muted);
             }}

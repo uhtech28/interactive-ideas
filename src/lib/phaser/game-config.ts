@@ -26,9 +26,30 @@ import { WorldMapScene } from "./scenes/WorldMapScene";
 export function createGameConfig(
   parent: HTMLElement,
 ): Phaser.Types.Core.GameConfig {
-  const isCompactViewport = parent.clientWidth < 768;
-  const baseWidth = isCompactViewport ? 960 : 1280;
-  const baseHeight = isCompactViewport ? 540 : 720;
+  // Detect device type and screen size
+  const width = parent.clientWidth || window.innerWidth;
+  const height = parent.clientHeight || window.innerHeight;
+  const isMobile = width < 768;
+  const isTablet = width >= 768 && width < 1024;
+  const isSmallMobile = width < 480;
+
+  // Adaptive base dimensions
+  let baseWidth: number;
+  let baseHeight: number;
+
+  if (isSmallMobile) {
+    baseWidth = 640;
+    baseHeight = 360;
+  } else if (isMobile) {
+    baseWidth = 960;
+    baseHeight = 540;
+  } else if (isTablet) {
+    baseWidth = 1280;
+    baseHeight = 720;
+  } else {
+    baseWidth = 1920;
+    baseHeight = 1080;
+  }
 
   return {
     type: Phaser.AUTO,
@@ -37,11 +58,19 @@ export function createGameConfig(
     height: baseHeight,
     backgroundColor: "#0A0D12",
     scale: {
-      mode: Phaser.Scale.FIT,
+      mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH,
       width: baseWidth,
       height: baseHeight,
-      resizeInterval: 200,
+      min: {
+        width: 320,
+        height: 180,
+      },
+      max: {
+        width: 3840,
+        height: 2160,
+      },
+      resizeInterval: 100,
     },
     physics: {
       default: "arcade",
@@ -59,6 +88,10 @@ export function createGameConfig(
     },
     fps: {
       target: 60,
+      forceSetTimeOut: isMobile, // Better performance on mobile
+    },
+    audio: {
+      disableWebAudio: false,
     },
   };
 }

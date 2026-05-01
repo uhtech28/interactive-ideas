@@ -117,6 +117,7 @@ const AUDIO_PATHS = {
     badge_rare:                    ["/audio/sfx/badge_rare.mp3", "/audio/sfx/badge_rare.ogg"],
     badge_epic:                    ["/audio/sfx/badge_epic.mp3", "/audio/sfx/badge_epic.ogg"],
     badge_legendary:               ["/audio/sfx/badge_legendary.mp3", "/audio/sfx/badge_legendary.ogg"],
+    gold_gain:                     ["/audio/sfx/gold_gain.mp3"],
   } as Record<string, string[]>,
 
   ui: {
@@ -393,6 +394,16 @@ class AudioManager {
   /** Play the badge award SFX for the given rarity tier */
   playBadgeSFX(rarity: BadgeRarity): void {
     this.playSFX(`badge_${rarity}`);
+  }
+
+  /** Play the gold coin gain SFX (Gold Checkpoint popup, wallet increase) */
+  playGoldGain(): void {
+    this.playSFX("gold_gain");
+  }
+
+  /** Play stage music track (stage_1 … stage_8) */
+  playStageMusic(stage: number): void {
+    this.playMusic(`stage_${stage}`);
   }
 
   // ── UI SFX ────────────────────────────────────────────────────────────────

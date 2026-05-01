@@ -12,9 +12,9 @@ import {
   Search,
   Scroll,
   Target,
-  Lock
+  Lock,
+  Map
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useAtom } from "jotai";
@@ -42,7 +42,7 @@ import { JournalTool } from "@/components/tools/journal-tool";
 import { SurveyTool } from "@/components/tools/survey-tool";
 import { audioManager } from "@/lib/audio/audioManager";
 
-type TabType = "tools" | "calendar" | "kanban" | "week-prd" | "all-prd" | "write" | "map" | "journal" | "survey";
+type TabType = "tools" | "calendar" | "kanban" | "week-prd" | "all-prd" | "roadmap" | "write" | "map" | "journal" | "survey";
 
 interface ToolsPanelProps {
   isOpen: boolean;
@@ -88,7 +88,7 @@ export function ToolsPanel({ isOpen, onClose, activeTab, onTabChange, activeVent
     activeVentureId ? { ventureId: activeVentureId, toolType: "survey" } : "skip"
   );
 
-  const handleToolSubmit = async (toolType: string, data: any) => {
+  const handleToolSubmit = async (toolType: string, data: unknown) => {
     if (!activeVentureId) return;
     await saveToolData({
       ventureId: activeVentureId,
@@ -103,6 +103,7 @@ export function ToolsPanel({ isOpen, onClose, activeTab, onTabChange, activeVent
     { id: "kanban", label: "Kanban", icon: LayoutDashboard },
     { id: "week-prd", label: "Week PRD", icon: FileText },
     { id: "all-prd", label: "All PRD", icon: Files },
+    { id: "roadmap", label: "Roadmap", icon: Map },
   ] as const;
 
   return (
@@ -259,6 +260,7 @@ export function ToolsPanel({ isOpen, onClose, activeTab, onTabChange, activeVent
                   />
                 )}
                 {activeTab === "all-prd" && <PRDList currentStage={stageInfo.stage} />}
+                {activeTab === "roadmap" && <RoadmapPanel />}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -403,3 +405,101 @@ function PRDList({ currentStage }: { currentStage: number }) {
   );
 }
 
+function RoadmapPanel() {
+  const phases = [
+    {
+      name: "Phase 1",
+      timeline: "Now",
+      status: "Live MVP",
+      items: [
+        "Stages 1-2 fully themed and playable",
+        "All 11 venture tools active",
+        "AI scoring, XP, badges, and submissions live",
+      ],
+    },
+    {
+      name: "Phase 2",
+      timeline: "Month 2",
+      status: "Next",
+      items: [
+        "Stages 3-4 biome rollout",
+        "Reusable checkpoint ceremony upgrades",
+        "Priority audio and final persona art",
+      ],
+    },
+    {
+      name: "Phase 3",
+      timeline: "Month 3",
+      status: "Planned",
+      items: [
+        "Stages 5-6 biome rollout",
+        "Expanded checkpoint animation coverage",
+        "Boss encounter polish",
+      ],
+    },
+    {
+      name: "Phase 4",
+      timeline: "Month 4",
+      status: "Planned",
+      items: [
+        "Stages 7-8 biome rollout",
+        "Full endgame content pass",
+        "Complete audio pack and final polish",
+      ],
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">
+              Phased Rollout
+            </p>
+            <h3 className="mt-1 text-lg font-black text-white">
+              Venture Quest World Roadmap
+            </h3>
+          </div>
+          <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-cyan-300">
+            Phase 1
+          </span>
+        </div>
+        <p className="mt-3 text-sm leading-relaxed text-slate-300">
+          The shipped map is a deliberate Phase 1 release. Core progression is fully live across all stages; world theming and cinematic polish are expanding in phases.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {phases.map((phase) => (
+          <div
+            key={phase.name}
+            className="rounded-2xl border border-white/5 bg-white/[0.03] p-4"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-black uppercase tracking-wider text-white">
+                  {phase.name}
+                </h4>
+                <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-slate-500">
+                  {phase.timeline}
+                </p>
+              </div>
+              <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-300">
+                {phase.status}
+              </span>
+            </div>
+            <div className="mt-4 space-y-2">
+              {phase.items.map((item) => (
+                <div key={item} className="flex items-start gap-3 text-sm text-slate-300">
+                  <div className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

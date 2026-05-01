@@ -204,6 +204,13 @@ export class MiniBoss extends Phaser.GameObjects.Container {
    * Called when the player completes the stage.
    */
   slay(): void {
+    // Safety check - ensure scene and tweens exist
+    if (!this.scene || !this.scene.tweens) {
+      console.warn('[MiniBoss] Cannot slay - scene or tweens not available');
+      this.destroy();
+      return;
+    }
+
     // Stop any ongoing tweens
     this.scene.tweens.killTweensOf([
       this,

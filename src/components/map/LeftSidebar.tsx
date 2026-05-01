@@ -8,6 +8,7 @@ import {
   LayoutDashboard, 
   FileText, 
   Files,
+  Map,
   Settings,
   HelpCircle
 } from "lucide-react";
@@ -18,9 +19,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { audioManager } from "@/lib/audio/audioManager";
 
 interface LeftSidebarProps {
-  onOpenPanel: (tab: "tools" | "calendar" | "kanban" | "week-prd" | "all-prd") => void;
+  onOpenPanel: (tab: "tools" | "calendar" | "kanban" | "week-prd" | "all-prd" | "roadmap") => void;
   className?: string;
 }
 
@@ -31,6 +33,7 @@ export function LeftSidebar({ onOpenPanel, className }: LeftSidebarProps) {
     { id: "kanban", icon: LayoutDashboard, label: "Kanban Board", color: "text-emerald-400" },
     { id: "week-prd", icon: FileText, label: "Week PRD", color: "text-rose-400" },
     { id: "all-prd", icon: Files, label: "All PRDs", color: "text-sky-400" },
+    { id: "roadmap", icon: Map, label: "Launch Roadmap", color: "text-cyan-400" },
   ] as const;
 
   return (
@@ -56,7 +59,11 @@ export function LeftSidebar({ onOpenPanel, className }: LeftSidebarProps) {
             <Tooltip key={item.id}>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => onOpenPanel(item.id)}
+                  onClick={() => {
+                    audioManager.playUI("click");
+                    onOpenPanel(item.id);
+                  }}
+                  onMouseEnter={() => audioManager.playUI("hover")}
                   className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 hover:bg-white/10 hover:scale-110 active:scale-95 group relative"
                 >
                   <item.icon className={cn("w-5 h-5 transition-colors", item.color)} />
