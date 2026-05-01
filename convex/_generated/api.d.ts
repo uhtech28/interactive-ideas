@@ -1,0 +1,93 @@
+/* eslint-disable */
+/**
+ * Generated `api` utility.
+ *
+ * THIS CODE IS AUTOMATICALLY GENERATED.
+ *
+ * To regenerate, run `npx convex dev`.
+ * @module
+ */
+
+import type * as agent from "../agent.js";
+import type * as agent_actions from "../agent_actions.js";
+import type * as badges from "../badges.js";
+import type * as chat from "../chat.js";
+import type * as communities from "../communities.js";
+import type * as contributionRequests from "../contributionRequests.js";
+import type * as crons from "../crons.js";
+import type * as debug from "../debug.js";
+import type * as flares from "../flares.js";
+import type * as gamification from "../gamification.js";
+import type * as ideas from "../ideas.js";
+import type * as invitations from "../invitations.js";
+import type * as leaderboard from "../leaderboard.js";
+import type * as levels from "../levels.js";
+import type * as meetings from "../meetings.js";
+import type * as mentorship from "../mentorship.js";
+import type * as notifications from "../notifications.js";
+import type * as search from "../search.js";
+import type * as skillBadges from "../skillBadges.js";
+import type * as todos from "../todos.js";
+import type * as users from "../users.js";
+import type * as ventureConstants from "../ventureConstants.js";
+import type * as ventures from "../ventures.js";
+
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
+
+declare const fullApi: ApiFromModules<{
+  agent: typeof agent;
+  agent_actions: typeof agent_actions;
+  badges: typeof badges;
+  chat: typeof chat;
+  communities: typeof communities;
+  contributionRequests: typeof contributionRequests;
+  crons: typeof crons;
+  debug: typeof debug;
+  flares: typeof flares;
+  gamification: typeof gamification;
+  ideas: typeof ideas;
+  invitations: typeof invitations;
+  leaderboard: typeof leaderboard;
+  levels: typeof levels;
+  meetings: typeof meetings;
+  mentorship: typeof mentorship;
+  notifications: typeof notifications;
+  search: typeof search;
+  skillBadges: typeof skillBadges;
+  todos: typeof todos;
+  users: typeof users;
+  ventureConstants: typeof ventureConstants;
+  ventures: typeof ventures;
+}>;
+
+/**
+ * A utility for referencing Convex functions in your app's public API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = api.myModule.myFunction;
+ * ```
+ */
+export declare const api: FilterApi<
+  typeof fullApi,
+  FunctionReference<any, "public">
+>;
+
+/**
+ * A utility for referencing Convex functions in your app's internal API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = internal.myModule.myFunction;
+ * ```
+ */
+export declare const internal: FilterApi<
+  typeof fullApi,
+  FunctionReference<any, "internal">
+>;
+
+export declare const components: {};
