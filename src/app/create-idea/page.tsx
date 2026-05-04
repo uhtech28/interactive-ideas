@@ -203,67 +203,59 @@ export default function CreateIdeaPage() {
         <Card className="shadow-sm border-border/50">
           <CardContent className="p-5 sm:p-6">
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Title */}
-              <div className="space-y-1.5">
-                <Label htmlFor="title" className="text-sm font-medium">
-                  Title <span className="text-destructive">*</span>
-                </Label>
+              {/* Title — placeholder doubles as label to save vertical space */}
+              <div className="space-y-1">
+                <Label htmlFor="title" className="sr-only">Title (required)</Label>
                 <Input
                   id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value.slice(0, 100))}
-                  placeholder="What are you building?"
+                  placeholder="Title * — what are you building?"
                   className="h-11"
                   autoFocus
                 />
                 <div className="text-right text-xs text-muted-foreground">{titleCount}/100</div>
               </div>
 
-              {/* Description */}
-              <div className="space-y-1.5">
-                <Label htmlFor="description" className="text-sm font-medium">
-                  Description <span className="text-destructive">*</span>
-                </Label>
+              {/* Description — placeholder doubles as label */}
+              <div className="space-y-1">
+                <Label htmlFor="description" className="sr-only">Description (required)</Label>
                 <Textarea
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value.slice(0, 1200))}
-                  placeholder="Describe the problem, the spark, and why now."
+                  placeholder="Description * — describe the problem, the spark, and why now."
                   rows={6}
                   className="resize-y"
                 />
                 <div className="text-right text-xs text-muted-foreground">{descCount}/1200</div>
               </div>
 
-              {/* Industries */}
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">
-                  Industries <span className="text-xs text-muted-foreground font-normal">(optional)</span>
-                </Label>
+              {/* Industries — placeholder doubles as label (optional) */}
+              <div>
+                <Label className="sr-only">Industries (optional)</Label>
                 <IndustriesMultiSelect
                   selectedIndustries={industries}
                   onChange={setIndustries}
-                  placeholder="Pick industries that fit"
+                  placeholder="Industries (optional)"
                   maxSelection={5}
                 />
               </div>
 
-              {/* Skills */}
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">
-                  Skills <span className="text-xs text-muted-foreground font-normal">(optional)</span>
-                </Label>
+              {/* Skills — placeholder doubles as label (optional) */}
+              <div>
+                <Label className="sr-only">Skills (optional)</Label>
                 <SkillsMultiSelect
                   selectedSkills={skills}
                   onChange={setSkills}
-                  placeholder="Pick skills the idea needs"
+                  placeholder="Skills (optional)"
                   maxSelection={6}
                 />
               </div>
 
-              {/* Visibility */}
+              {/* Visibility — label inlined into the option cards */}
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Visibility</Label>
+                <Label className="sr-only">Visibility</Label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -321,11 +313,9 @@ export default function CreateIdeaPage() {
                 </div>
               </div>
 
-              {/* Image upload */}
+              {/* Image upload — label inlined into the upload tile below */}
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium">
-                  Image <span className="text-xs text-muted-foreground font-normal">(optional)</span>
-                </Label>
+                <Label className="sr-only">Image (optional)</Label>
 
                 <input
                   ref={fileInputRef}

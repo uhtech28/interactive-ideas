@@ -13,6 +13,7 @@ export interface IndustryOption {
   label: string;
 }
 
+// Group industries for better organization
 const groupIndustries = (industries: IndustryOption[]) => {
   const groups: { [key: string]: IndustryOption[] } = {};
 
@@ -130,28 +131,26 @@ export function IndustriesMultiSelect({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between"
+            className="w-full justify-between min-w-0"
           >
-            {displayValue}
+            <span className="truncate text-left flex-1 min-w-0">{displayValue}</span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-[var(--radix-popover-trigger-width)] p-0 flex flex-col h-[340px] overflow-hidden"
+          className="w-[var(--radix-popover-trigger-width)] p-0 flex flex-col h-[min(60dvh,420px)] overflow-hidden"
           align="start"
           side="bottom"
           sideOffset={4}
-          avoidCollisions={false}
+          collisionPadding={16}
+          avoidCollisions
         >
-          <Command className="flex h-full flex-col">
-            <div className="shrink-0 border-b border-white/10">
-              <CommandInput
-                placeholder="Search industries..."
-                value={searchValue}
-                onValueChange={setSearchValue}
-                className="border-0"
-              />
-            </div>
+          <Command>
+            <CommandInput
+              placeholder="Search industries..."
+              value={searchValue}
+              onValueChange={setSearchValue}
+            />
             <CommandList className="flex-1 overflow-y-auto max-h-none">
               <CommandEmpty>No industries found.</CommandEmpty>
               {filteredIndustries.map(group => (
@@ -179,15 +178,13 @@ export function IndustriesMultiSelect({
                             readOnly
                           />
                           {item.label}
-                          {selectedIndustries.includes(item.value) && (
-                            <Check className="ml-auto h-4 w-4 opacity-50" />
-                          )}
                         </>
                       )}
                     </CommandItem>
                   ))}
                 </CommandGroup>
               ))}
+              {/* Mobile view with collapsed groups */}
               <div className="md:hidden">
                 <CommandGroup>
                   <div className="px-1 py-2 text-sm font-semibold text-muted-foreground">All Industries</div>
@@ -215,9 +212,6 @@ export function IndustriesMultiSelect({
                               readOnly
                             />
                             {item.label}
-                            {selectedIndustries.includes(item.value) && (
-                              <Check className="ml-auto h-4 w-4 opacity-50" />
-                            )}
                           </>
                         )}
                       </CommandItem>
@@ -230,7 +224,7 @@ export function IndustriesMultiSelect({
         </PopoverContent>
       </Popover>
 
-      {/* Selected Industries Badges — purple to match the color coding on idea cards. */}
+      {/* Selected Industries Badges */}
       {selectedIndustries.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {selectedIndustries.map((industry) => {
@@ -238,8 +232,8 @@ export function IndustriesMultiSelect({
             return (
               <Badge
                 key={industry}
-                variant="outline"
-                className="pl-2.5 pr-1 py-1 flex items-center gap-1 max-w-full rounded-full border-purple-400/35 bg-purple-500/15 text-purple-200 hover:bg-purple-500/20"
+                variant="secondary"
+                className="pl-2 pr-1 py-1 flex items-center gap-1 max-w-full"
               >
                 <span className="truncate">{industry}</span>
                 {!isMandatory && (
@@ -253,10 +247,10 @@ export function IndustriesMultiSelect({
                     onMouseDown={(e) => {
                       e.stopPropagation();
                     }}
-                    className="ml-1 shrink-0 hover:bg-purple-500/30 rounded-full p-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/40 cursor-pointer"
+                    className="ml-1 shrink-0 hover:bg-destructive/20 rounded-full p-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40 cursor-pointer"
                     aria-label={`Remove ${industry}`}
                   >
-                    <X className="h-3.5 w-3.5 text-purple-200/80 hover:text-white pointer-events-none" />
+                    <X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive pointer-events-none" />
                   </button>
                 )}
               </Badge>

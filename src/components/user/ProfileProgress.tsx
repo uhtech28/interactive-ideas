@@ -4,61 +4,63 @@ import React, { useEffect, useRef } from "react";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { Trophy, Sparkles, Flame } from "lucide-react";
+import { Trophy, Flame } from "lucide-react";
 
-// Full 50-level table — mirrors convex/ventureConstants.ts so the UI can resolve
-// titles locally even before the backend redeploys with the new query shape.
-const LEVEL_TABLE: Array<{ level: number; title: string; titlePoints: number }> = [
-  { level: 1, title: "Newcomer", titlePoints: 0 },
-  { level: 2, title: "Explorer", titlePoints: 0 },
-  { level: 3, title: "Thinker", titlePoints: 0 },
-  { level: 4, title: "Connector", titlePoints: 50 },
-  { level: 5, title: "Contributor", titlePoints: 150 },
-  { level: 6, title: "Initiator", titlePoints: 300 },
-  { level: 7, title: "Spark", titlePoints: 500 },
-  { level: 8, title: "Kindler", titlePoints: 800 },
-  { level: 9, title: "Surveyor", titlePoints: 1200 },
-  { level: 10, title: "Pathfinder", titlePoints: 1700 },
-  { level: 11, title: "Builder", titlePoints: 2300 },
-  { level: 12, title: "Artisan", titlePoints: 3000 },
-  { level: 13, title: "Cultivator", titlePoints: 3800 },
-  { level: 14, title: "Shaper", titlePoints: 4400 },
-  { level: 15, title: "Strategist", titlePoints: 5000 },
-  { level: 16, title: "Pioneer", titlePoints: 6000 },
-  { level: 17, title: "Catalyst", titlePoints: 7200 },
-  { level: 18, title: "Luminary", titlePoints: 8600 },
-  { level: 19, title: "Vanguard", titlePoints: 10200 },
-  { level: 20, title: "Architect", titlePoints: 12000 },
-  { level: 21, title: "Trailblazer", titlePoints: 14000 },
-  { level: 22, title: "Visionary", titlePoints: 16200 },
-  { level: 23, title: "Navigator", titlePoints: 18600 },
-  { level: 24, title: "Forger", titlePoints: 21200 },
-  { level: 25, title: "Innovator", titlePoints: 24000 },
-  { level: 26, title: "Magnate", titlePoints: 27000 },
-  { level: 27, title: "Curator", titlePoints: 30200 },
-  { level: 28, title: "Orchestrator", titlePoints: 33600 },
-  { level: 29, title: "Sage", titlePoints: 37200 },
-  { level: 30, title: "Maven", titlePoints: 41000 },
-  { level: 31, title: "Pillar", titlePoints: 45000 },
-  { level: 32, title: "Champion", titlePoints: 49200 },
-  { level: 33, title: "Exemplar", titlePoints: 53600 },
-  { level: 34, title: "Harbinger", titlePoints: 58200 },
-  { level: 35, title: "Virtuoso", titlePoints: 63000 },
-  { level: 36, title: "Elder", titlePoints: 68000 },
-  { level: 37, title: "Sovereign", titlePoints: 73200 },
-  { level: 38, title: "Luminary", titlePoints: 78600 },
-  { level: 39, title: "Legend", titlePoints: 84200 },
-  { level: 40, title: "Mentor", titlePoints: 90000 },
-  { level: 41, title: "Guide", titlePoints: 96000 },
-  { level: 42, title: "Steward", titlePoints: 102200 },
-  { level: 43, title: "Luminary", titlePoints: 108600 },
-  { level: 44, title: "Pillar", titlePoints: 115200 },
-  { level: 45, title: "Oracle", titlePoints: 122000 },
-  { level: 46, title: "Paragon", titlePoints: 129000 },
-  { level: 47, title: "Titan", titlePoints: 136200 },
-  { level: 48, title: "Legend", titlePoints: 143600 },
-  { level: 49, title: "Icon", titlePoints: 151200 },
-  { level: 50, title: "Visionary", titlePoints: 159000 },
+// Mirrors convex/ventureConstants.ts and the official "level_table_with_flare"
+// spec — single source of truth for level → title / threshold / phase. Lv 1-3
+// are purely task-gated (titlePoints = 0); Lv 4 onward needs accumulating pts.
+type Phase = "Tutorial" | "Early" | "Mid" | "Senior" | "Mentor";
+const LEVEL_TABLE: Array<{ level: number; title: string; pts: number; phase: Phase }> = [
+  { level:  1, title: "Newcomer",     pts:      0, phase: "Tutorial" },
+  { level:  2, title: "Explorer",     pts:      0, phase: "Tutorial" },
+  { level:  3, title: "Thinker",      pts:      0, phase: "Tutorial" },
+  { level:  4, title: "Connector",    pts:     50, phase: "Tutorial" },
+  { level:  5, title: "Contributor",  pts:    150, phase: "Tutorial" },
+  { level:  6, title: "Initiator",    pts:    300, phase: "Tutorial" },
+  { level:  7, title: "Spark",        pts:    500, phase: "Early" },
+  { level:  8, title: "Kindler",      pts:    800, phase: "Early" },
+  { level:  9, title: "Surveyor",     pts:   1200, phase: "Early" },
+  { level: 10, title: "Pathfinder",   pts:   1700, phase: "Early" },
+  { level: 11, title: "Builder",      pts:   2300, phase: "Early" },
+  { level: 12, title: "Artisan",      pts:   3000, phase: "Early" },
+  { level: 13, title: "Cultivator",   pts:   3800, phase: "Early" },
+  { level: 14, title: "Shaper",       pts:   4400, phase: "Early" },
+  { level: 15, title: "Strategist",   pts:   5000, phase: "Early" },
+  { level: 16, title: "Pioneer",      pts:   6000, phase: "Mid" },
+  { level: 17, title: "Catalyst",     pts:   7200, phase: "Mid" },
+  { level: 18, title: "Luminary",     pts:   8600, phase: "Mid" },
+  { level: 19, title: "Vanguard",     pts:  10200, phase: "Mid" },
+  { level: 20, title: "Architect",    pts:  12000, phase: "Mid" },
+  { level: 21, title: "Trailblazer",  pts:  14000, phase: "Mid" },
+  { level: 22, title: "Visionary",    pts:  16200, phase: "Mid" },
+  { level: 23, title: "Navigator",    pts:  18600, phase: "Mid" },
+  { level: 24, title: "Forger",       pts:  21200, phase: "Mid" },
+  { level: 25, title: "Innovator",    pts:  24000, phase: "Mid" },
+  { level: 26, title: "Magnate",      pts:  27000, phase: "Mid" },
+  { level: 27, title: "Curator",      pts:  30200, phase: "Mid" },
+  { level: 28, title: "Orchestrator", pts:  33600, phase: "Mid" },
+  { level: 29, title: "Sage",         pts:  37200, phase: "Senior" },
+  { level: 30, title: "Maven",        pts:  41000, phase: "Senior" },
+  { level: 31, title: "Pillar",       pts:  45000, phase: "Senior" },
+  { level: 32, title: "Champion",     pts:  49200, phase: "Senior" },
+  { level: 33, title: "Exemplar",     pts:  53600, phase: "Senior" },
+  { level: 34, title: "Harbinger",    pts:  58200, phase: "Senior" },
+  { level: 35, title: "Virtuoso",     pts:  63000, phase: "Senior" },
+  { level: 36, title: "Elder",        pts:  68000, phase: "Senior" },
+  { level: 37, title: "Sovereign",    pts:  73200, phase: "Senior" },
+  { level: 38, title: "Luminary",     pts:  78600, phase: "Senior" },
+  { level: 39, title: "Legend",       pts:  84200, phase: "Senior" },
+  { level: 40, title: "Mentor",       pts:  90000, phase: "Mentor" },
+  { level: 41, title: "Guide",        pts:  96000, phase: "Mentor" },
+  { level: 42, title: "Steward",      pts: 102200, phase: "Mentor" },
+  { level: 43, title: "Luminary",     pts: 108600, phase: "Mentor" },
+  { level: 44, title: "Pillar",       pts: 115200, phase: "Mentor" },
+  { level: 45, title: "Oracle",       pts: 122000, phase: "Mentor" },
+  { level: 46, title: "Paragon",      pts: 129000, phase: "Mentor" },
+  { level: 47, title: "Titan",        pts: 136200, phase: "Mentor" },
+  { level: 48, title: "Legend",       pts: 143600, phase: "Mentor" },
+  { level: 49, title: "Icon",         pts: 151200, phase: "Mentor" },
+  { level: 50, title: "Visionary",    pts: 159000, phase: "Mentor" },
 ];
 
 const titleFor = (lv: number) =>
@@ -71,7 +73,7 @@ function nextStreakMilestone(current: number) {
   for (const m of STREAK_MILESTONES) {
     if (current < m) return m;
   }
-  return current;
+  return current; // already past 365 — fully filled
 }
 
 interface BarProps {
@@ -80,7 +82,9 @@ interface BarProps {
   detail: string;
   value: number;
   max: number;
+  /** Tailwind classes for the fill gradient. */
   fillClass: string;
+  /** Tailwind classes for the soft glow halo behind the icon. */
   iconBgClass: string;
 }
 
@@ -115,61 +119,61 @@ export const ProfileProgress: React.FC<ProfileProgressProps> = ({ userId }) => {
   const { isAuthenticated } = useConvexAuth();
   const levelProgress = useQuery(api.levels.getUserLevelProgress, { userId });
   const streak = useQuery(api.gamification.getUserStreak, { userId });
-  // Real sparks received — sum of sparkCount across all of this user's ideas.
-  const profileIdeas = useQuery(api.ideas.getProfileIdeas, { userId, limit: 100 });
-  const sparksReceived = (profileIdeas ?? []).reduce(
-    (sum, idea: any) => sum + (idea.sparkCount || 0),
-    0
-  );
 
   // Silently tick the *viewer's* streak once auth is ready. Idempotent on the
-  // server — only counts the day if not already counted.
+  // server — only counts the day if not already counted. Retries on auth ready
+  // because Clerk-Convex handshake may complete after first render.
   const updateStreak = useMutation(api.gamification.updateStreak);
   const hasTickedRef = useRef(false);
   useEffect(() => {
     if (!isAuthenticated || hasTickedRef.current) return;
     hasTickedRef.current = true;
     updateStreak().catch(() => {
+      // Allow retry on next mount if auth wasn't actually ready.
       hasTickedRef.current = false;
     });
   }, [isAuthenticated, updateStreak]);
 
+  // Resolve level + title locally so the label is correct even if the backend
+  // hasn't been redeployed with the new query shape yet.
   const level = levelProgress?.level ?? 1;
   const localTitle = titleFor(level);
   const title = levelProgress?.title && levelProgress.title !== "Unknown"
     ? levelProgress.title
     : localTitle;
 
-  const nextLevel = Math.min(50, level + 1);
-
   const points = levelProgress?.titlePoints ?? 0;
-  const totalPoints = levelProgress?.totalPoints ?? 0;
 
-  const nextPointsGate = (() => {
-    for (let lv = nextLevel; lv <= 50; lv++) {
+  // Smart bar target: walk forward to the FIRST level threshold strictly
+  // greater than current points. This keeps the bar meaningful even when a
+  // task-gate (Lv 1–6) holds the user at a level whose points threshold is
+  // already met. (74 pts at Lv 3 → bar targets Lv 5 at 150 pts.)
+  const targetLevel = (() => {
+    for (let lv = level + 1; lv <= 50; lv++) {
       const def = LEVEL_TABLE.find((l) => l.level === lv);
-      if (def && def.titlePoints > 0) return def.titlePoints;
+      if (def && def.pts > points) return def;
     }
-    return 50;
+    return null;
   })();
 
   const currentStreak = streak?.currentStreak ?? 0;
-  const longestStreak = streak?.longestStreak ?? 0;
   const streakGoal = nextStreakMilestone(currentStreak);
 
+  // Streak label — just show day count. Distinguish loading / first day / active.
   let streakDetail: string;
   if (streak === undefined) {
     streakDetail = "Loading…";
   } else if (currentStreak > 0) {
-    streakDetail = `${currentStreak} / ${streakGoal} days  ·  best ${longestStreak}`;
+    streakDetail = `${currentStreak} ${currentStreak === 1 ? "day" : "days"}`;
   } else {
     streakDetail = isAuthenticated ? "Starts on your first sign-in today" : "Sign in to start";
   }
 
-  const isMaxLevel = level >= 50;
-  const xpDetail = isMaxLevel
-    ? `${totalPoints.toLocaleString()} XP  ·  Apex`
-    : `${points.toLocaleString()} / ${nextPointsGate.toLocaleString()} XP  ·  ${totalPoints.toLocaleString()} total`;
+  // XP-style label so the bar reads like a game progression bar.
+  const isApex = targetLevel === null || level >= 50;
+  const xpDetail = isApex
+    ? `Apex`
+    : `${points.toLocaleString()} / ${targetLevel!.pts.toLocaleString()} XP`;
 
   return (
     <div className="pt-3 space-y-4">
@@ -180,32 +184,9 @@ export const ProfileProgress: React.FC<ProfileProgressProps> = ({ userId }) => {
         label={`Lv ${level} — ${title}`}
         detail={xpDetail}
         value={points}
-        max={nextPointsGate}
+        max={targetLevel?.pts ?? Math.max(points, 1)}
         fillClass="bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-300 shadow-[0_0_8px_rgba(251,191,36,0.45)]"
       />
-
-      {/* Sparks earned — REAL sparks received on this user's ideas. */}
-      {(() => {
-        const milestones = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
-        const goal = milestones.find((m) => sparksReceived < m) ?? sparksReceived;
-        const detail =
-          profileIdeas === undefined
-            ? "Loading…"
-            : sparksReceived > 0
-              ? `${sparksReceived.toLocaleString()} / ${goal.toLocaleString()}  ·  next milestone`
-              : "Post an idea — sparks from others will fill this bar";
-        return (
-          <ProgressBar
-            icon={<Sparkles className="w-3.5 h-3.5 text-violet-300" />}
-            iconBgClass="bg-violet-500/15 ring-1 ring-violet-500/30"
-            label="Sparks Earned"
-            detail={detail}
-            value={sparksReceived}
-            max={goal || 10}
-            fillClass="bg-gradient-to-r from-violet-500 via-fuchsia-500 to-indigo-500 shadow-[0_0_8px_rgba(139,92,246,0.45)]"
-          />
-        );
-      })()}
 
       <ProgressBar
         icon={<Flame className="w-3.5 h-3.5 text-orange-300" />}

@@ -165,23 +165,32 @@ export function IdeaCardSkeleton() {
   );
 }
 
-function StoryAction({ icon: Icon, label, count, active = false, onClick }: { icon: React.ComponentType<{ className?: string }>; label: string; count?: number; active?: boolean; onClick?: () => void; }) {
+function StoryAction({ icon: Icon, label, count, active = false, onClick, animateOnClick = false, iconOnly = false }: { icon: React.ComponentType<{ className?: string }>; label: string; count?: number; active?: boolean; onClick?: () => void; animateOnClick?: boolean; iconOnly?: boolean }) {
+  const [pulse, setPulse] = useState(false);
+  const handleClick = () => {
+    if (animateOnClick) {
+      setPulse(true);
+      window.setTimeout(() => setPulse(false), 500);
+    }
+    onClick?.();
+  };
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={handleClick}
       aria-label={label}
+      title={label}
       className={cn(
         transitionBase,
-        "flex flex-1 items-center justify-center gap-2 rounded-[10px] px-3 py-2.5 text-sm",
+        "flex flex-1 min-w-0 items-center justify-center gap-1.5 rounded-[10px] px-2 py-2 text-xs sm:text-sm",
         active
           ? "bg-[#6366F1]/14 text-[#C7D2FE]"
           : "text-[#9CA3AF] hover:bg-[#6366F1]/10 hover:text-[#C7D2FE]"
       )}
     >
-      <Icon className="h-4 w-4" />
-      <span>{label}</span>
-      {typeof count === "number" && <span className="text-xs">{count}</span>}
+      <Icon className={cn("h-4 w-4 shrink-0", pulse && "animate-[ping_0.45s_ease-out]")} />
+      {!iconOnly && <span className="truncate">{label}</span>}
+      {typeof count === "number" && <span className="text-xs tabular-nums">{count}</span>}
     </button>
   );
 }
@@ -206,9 +215,10 @@ function ContributorsAction({
   return (
     <StoryAction
       icon={Users}
-      label="Contributors"
+      label="Contribute"
       count={count}
       onClick={onClick}
+      iconOnly
     />
   );
 }
@@ -241,8 +251,14 @@ export function IdeaStoryCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const skillTags = useMemo(() => parseTags(idea.category).slice(0, 3), [idea.category]);
-  const industryTags = useMemo(() => parseTags(idea.industries || "").slice(0, 3), [idea.industries]);
+  const [industriesExpanded, setIndustriesExpanded] = useState(false);
+  const [skillsExpanded, setSkillsExpanded] = useState(false);
+  const skillTags = useMemo(() => parseTags(idea.category), [idea.category]);
+  const industryTags = useMemo(() => parseTags(idea.industries || ""), [idea.industries]);
+  const visibleIndustries = industriesExpanded ? industryTags : industryTags.slice(0, 2);
+  const visibleSkills = skillsExpanded ? skillTags : skillTags.slice(0, 2);
+  const hiddenIndustries = Math.max(0, industryTags.length - visibleIndustries.length);
+  const hiddenSkills = Math.max(0, skillTags.length - visibleSkills.length);
   const bannerImage = getBannerImage(idea);
   const description = idea.description || "No description yet.";
   const shouldClamp = description.length > 220;
@@ -280,13 +296,10 @@ export function IdeaStoryCard({
             <AvatarFallback className="bg-[#1B2440] text-white">{getInitials(getDisplayName(idea.author))}</AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="truncate text-sm font-semibold text-[#F9FAFB] group-hover:text-[#C7D2FE]">{getDisplayName(idea.author)}</p>
-              <span className="rounded-full border border-white/8 bg-white/[0.04] px-2.5 py-1 text-[10px] text-[#D1D5DB]">
-                {getRoleBadge(idea.author)}
-              </span>
-            </div>
-            <p className="mt-1 text-xs text-[#6B7280]">Posted {formatRelativeTime(idea.createdAt)}</p>
+            <p className="truncate text-sm font-semibold text-[#F9FAFB] group-hover:text-[#C7D2FE]">{getDisplayName(idea.author)}</p>
+            {idea.author?.username && (
+              <p className="mt-0.5 text-xs text-[#6B7280] truncate">@{idea.author.username}</p>
+            )}
           </div>
         </Link>
         {ownerAction && (
@@ -328,68 +341,122 @@ export function IdeaStoryCard({
         </button>
       )}
 
-      <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-[#9CA3AF]">
-        {industryTags.map((tag) => (
-          <button
-            key={`ind-${tag}`}
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onSelectTag?.(tag);
-            }}
-            className={cn(
-              codeFontClass,
-              transitionBase,
-              "rounded-full border border-purple-400/30 bg-purple-500/15 text-purple-200 px-3 py-1.5",
-              onSelectTag && "hover:bg-purple-500/25 hover:border-purple-400/50 active:scale-95"
+      <div className="mt-5 flex flex-col gap-2 text-xs text-[#9CA3AF]">
+        {/* Industries — own row */}
+        {industryTags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {visibleIndustries.map((tag) => (
+              <button
+                key={`ind-${tag}`}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  event.preventDefault();
+                  onSelectTag?.(tag);
+                }}
+                onPointerDown={(event) => event.stopPropagation()}
+                disabled={!onSelectTag}
+                aria-label={`Filter by industry ${tag}`}
+                className={cn(
+                  codeFontClass,
+                  transitionBase,
+                  "cursor-pointer rounded-full px-3 py-1.5 border whitespace-nowrap max-w-full truncate",
+                  "border-purple-400/30 bg-purple-500/15 text-purple-200",
+                  onSelectTag && "hover:bg-purple-500/30 hover:border-purple-400/60 active:scale-95",
+                  !onSelectTag && "cursor-default opacity-90"
+                )}
+                title={`Industry: ${tag} — click to filter`}
+              >
+                {tag}
+              </button>
+            ))}
+            {hiddenIndustries > 0 && !industriesExpanded && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setIndustriesExpanded(true);
+                }}
+                className={cn(transitionBase, "rounded-full border border-white/10 bg-white/[0.04] text-[#D1D5DB] px-3 py-1.5 hover:bg-white/[0.08] hover:text-white")}
+              >
+                +{hiddenIndustries} more
+              </button>
             )}
-            title={`Industry: ${tag}`}
-          >
-            {tag}
-          </button>
-        ))}
-        {skillTags.map((tag) => (
-          <button
-            key={`skl-${tag}`}
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onSelectTag?.(tag);
-            }}
-            className={cn(
-              codeFontClass,
-              transitionBase,
-              "rounded-full border border-blue-400/30 bg-blue-500/15 text-blue-200 px-3 py-1.5",
-              onSelectTag && "hover:bg-blue-500/25 hover:border-blue-400/50 active:scale-95"
+            {industriesExpanded && industryTags.length > 2 && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setIndustriesExpanded(false);
+                }}
+                className={cn(transitionBase, "rounded-full border border-white/10 bg-white/[0.04] text-[#D1D5DB] px-3 py-1.5 hover:bg-white/[0.08] hover:text-white")}
+              >
+                Show less
+              </button>
             )}
-            title={`Skill: ${tag}`}
-          >
-            {tag}
-          </button>
-        ))}
-        <span className="h-1 w-1 rounded-full bg-[#4B5563]" />
-        <span>{getReadTime(description)}</span>
-        <span className="h-1 w-1 rounded-full bg-[#4B5563]" />
-        <span>{getIdeaStage(idea)}</span>
-        <IdeaVentureBadge ideaId={idea._id} />
+          </div>
+        )}
+
+        {/* Skills — own row */}
+        {skillTags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {visibleSkills.map((tag) => (
+              <button
+                key={`skl-${tag}`}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  event.preventDefault();
+                  onSelectTag?.(tag);
+                }}
+                onPointerDown={(event) => event.stopPropagation()}
+                disabled={!onSelectTag}
+                aria-label={`Filter by skill ${tag}`}
+                className={cn(
+                  codeFontClass,
+                  transitionBase,
+                  "cursor-pointer rounded-full px-3 py-1.5 border whitespace-nowrap max-w-full truncate",
+                  "border-blue-400/30 bg-blue-500/15 text-blue-200",
+                  onSelectTag && "hover:bg-blue-500/30 hover:border-blue-400/60 active:scale-95",
+                  !onSelectTag && "cursor-default opacity-90"
+                )}
+                title={`Skill: ${tag} — click to filter`}
+              >
+                {tag}
+              </button>
+            ))}
+            {hiddenSkills > 0 && !skillsExpanded && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setSkillsExpanded(true);
+                }}
+                className={cn(transitionBase, "rounded-full border border-white/10 bg-white/[0.04] text-[#D1D5DB] px-3 py-1.5 hover:bg-white/[0.08] hover:text-white")}
+              >
+                +{hiddenSkills} more
+              </button>
+            )}
+            {skillsExpanded && skillTags.length > 2 && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setSkillsExpanded(false);
+                }}
+                className={cn(transitionBase, "rounded-full border border-white/10 bg-white/[0.04] text-[#D1D5DB] px-3 py-1.5 hover:bg-white/[0.08] hover:text-white")}
+              >
+                Show less
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {onContribute && (
-        <div className="mt-4 flex items-center justify-between rounded-[14px] border border-white/8 bg-white/[0.02] px-4 py-3">
-          <div>
-            <p className="text-sm font-medium text-[#F9FAFB]">Open for collaboration</p>
-            <p className="text-xs text-[#9CA3AF]">Invite builders to shape this idea into a real project.</p>
-          </div>
-          <Button type="button" onClick={() => onContribute(idea._id)} className="rounded-[10px] bg-[#6366F1] text-white hover:bg-[#8B5CF6]">
-            Collaborate
-          </Button>
-        </div>
-      )}
-
       <div className="mt-5 border-t border-white/8 pt-3">
-        <div className="flex flex-wrap items-center gap-1">
-          <StoryAction icon={Sparkles} label="Spark" count={idea.sparkCount || 0} onClick={() => onSpark(idea._id)} />
-          <StoryAction icon={MessageCircle} label="Comment" count={idea.commentCount || 0} onClick={() => onComment(idea._id)} />
+        <div className="flex flex-nowrap items-center gap-1">
+          <StoryAction icon={Sparkles} label="Spark" count={idea.sparkCount || 0} onClick={() => onSpark(idea._id)} animateOnClick />
+          <StoryAction icon={MessageCircle} label="Comment" count={idea.commentCount || 0} onClick={() => onComment(idea._id)} iconOnly />
           <ContributorsAction
             ideaId={idea._id}
             onClick={() => {

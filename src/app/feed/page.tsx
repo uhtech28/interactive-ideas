@@ -83,7 +83,14 @@ export default function FeedPage() {
       />
 
       <Dialog open={!!activeCommentIdea} onOpenChange={(open) => !open && setActiveCommentIdea(null)}>
-        <DialogContent className="grid h-[min(85vh,720px)] max-w-[640px] grid-rows-[auto_1fr] gap-0 overflow-hidden rounded-2xl border-white/10 bg-[#0A0D12] p-0 text-white shadow-[0_24px_80px_rgba(3,7,18,0.65)]">
+        <DialogContent
+          className="
+            grid grid-rows-[auto_1fr] gap-0 overflow-hidden border-white/10 bg-[#0A0D12] p-0 text-white shadow-[0_24px_80px_rgba(3,7,18,0.65)]
+            w-full max-w-[640px]
+            h-[100dvh] max-h-[100dvh] rounded-none
+            sm:h-[min(85dvh,720px)] sm:max-h-[85dvh] sm:rounded-2xl
+          "
+        >
           {/* Header */}
           <header className="flex items-center gap-3 border-b border-white/8 bg-gradient-to-b from-[#141B2D] to-[#0F1524] px-5 py-4">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#6366F1]/25 to-[#8B5CF6]/15 ring-1 ring-[#6366F1]/30">
@@ -104,8 +111,8 @@ export default function FeedPage() {
             </div>
           </header>
 
-          {/* Body */}
-          <div className="min-h-0 px-5 py-4">
+          {/* Body — min-h-0 lets it shrink when keyboard appears */}
+          <div className="min-h-0 px-5 py-4 overflow-hidden">
             {activeCommentIdea && (
               <CommentsSection
                 ideaId={activeCommentIdea._id as Id<"ideas">}

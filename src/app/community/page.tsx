@@ -15,10 +15,12 @@ import { Spinner } from "@/components/ui/spinner";
 import FooterSection from "@/components/footer";
 import { InvitationButton } from "@/components/requests/invitation-button";
 import { useChat } from "@/components/chat/ChatContext";
+import { FloatingChatButton } from "@/components/chat/FloatingChatButton";
 
 import { UserProfile } from "../../../convex/users";
 
 // Error Boundary to prevent leaderboard failures from crashing the page
+// NOTE: keep generic params on a single line — multiline breaks Turbopack
 class LeaderboardErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
@@ -140,17 +142,21 @@ export default function CommunityPage() {
             <div className="text-center py-20">
               <Users className="w-16 h-16 mx-auto text-muted-foreground mb-6" />
               <h3 className="text-2xl font-semibold mb-4">No users yet</h3>
-              <p className="text-muted-foreground text-lg">Be the first to join our community!</p>
+              <p className="text-muted-foreground text-lg">
+                Be the first to join our community!
+              </p>
             </div>
           )}
         </div>
       </main>
 
+      <FloatingChatButton />
       <FooterSection />
     </div>
   );
 }
 
+// Weekly Leaderboard Component
 type LeaderboardUser = {
   _id: string;
   username: string;
@@ -160,9 +166,27 @@ type LeaderboardUser = {
 };
 
 const RANK_STYLES = {
-  1: { border: "border-yellow-500/50", bg: "bg-yellow-500/5", accent: "bg-yellow-500", avatarRing: "border-yellow-500/30", pointsText: "text-yellow-400" },
-  2: { border: "border-gray-400/50", bg: "bg-gray-400/5", accent: "bg-gray-400", avatarRing: "border-gray-400/30", pointsText: "text-gray-300" },
-  3: { border: "border-orange-700/50", bg: "bg-orange-700/5", accent: "bg-orange-700", avatarRing: "border-orange-700/30", pointsText: "text-orange-400" },
+  1: {
+    border: "border-yellow-500/50",
+    bg: "bg-yellow-500/5",
+    accent: "bg-yellow-500",
+    avatarRing: "border-yellow-500/30",
+    pointsText: "text-yellow-400",
+  },
+  2: {
+    border: "border-gray-400/50",
+    bg: "bg-gray-400/5",
+    accent: "bg-gray-400",
+    avatarRing: "border-gray-400/30",
+    pointsText: "text-gray-300",
+  },
+  3: {
+    border: "border-orange-700/50",
+    bg: "bg-orange-700/5",
+    accent: "bg-orange-700",
+    avatarRing: "border-orange-700/30",
+    pointsText: "text-orange-400",
+  },
 } as const;
 
 const PodiumCard: React.FC<{ user: LeaderboardUser; rank: 1 | 2 | 3 }> = ({ user, rank }) => {
@@ -170,31 +194,54 @@ const PodiumCard: React.FC<{ user: LeaderboardUser; rank: 1 | 2 | 3 }> = ({ user
   const isFirst = rank === 1;
 
   return (
-    <Card className={`relative overflow-hidden border-2 ${styles.border} ${styles.bg} shadow-lg flex flex-col items-center text-center transition-transform duration-300 hover:scale-[1.03] ${isFirst ? "p-6 md:p-8" : "p-4 md:p-5"}`}>
+    <Card
+      className={`relative overflow-hidden border-2 ${styles.border} ${styles.bg} shadow-lg flex flex-col items-center text-center transition-transform duration-300 hover:scale-[1.03] ${
+        isFirst ? "p-6 md:p-8" : "p-4 md:p-5"
+      }`}
+    >
       <div className={`absolute top-0 left-0 w-full ${isFirst ? "h-1.5" : "h-1"} ${styles.accent}`} />
 
-      <div className={`flex items-center justify-center rounded-full text-white font-bold shadow-md ${styles.accent} ${isFirst ? "w-12 h-12 text-lg -mt-2 mb-3" : "w-9 h-9 text-sm -mt-1 mb-2"}`} aria-label={`Rank ${rank}`}>
+      <div
+        className={`flex items-center justify-center rounded-full text-white font-bold shadow-md ${styles.accent} ${
+          isFirst ? "w-12 h-12 text-lg -mt-2 mb-3" : "w-9 h-9 text-sm -mt-1 mb-2"
+        }`}
+        aria-label={`Rank ${rank}`}
+      >
         #{rank}
       </div>
 
-      {isFirst && <Trophy className="absolute top-3 right-3 w-5 h-5 text-yellow-500" aria-hidden="true" />}
+      {isFirst && (
+        <Trophy className="absolute top-3 right-3 w-5 h-5 text-yellow-500" aria-hidden="true" />
+      )}
 
       <Link href={`/profile/${encodeURIComponent(user.username)}`} className="w-full flex flex-col items-center">
-        <Avatar className={`shadow-md border-4 ${styles.avatarRing} ${isFirst ? "w-24 h-24 mb-4" : "w-16 h-16 mb-3"}`}>
+        <Avatar
+          className={`shadow-md border-4 ${styles.avatarRing} ${
+            isFirst ? "w-24 h-24 mb-4" : "w-16 h-16 mb-3"
+          }`}
+        >
           <AvatarImage src={user.avatar ?? undefined} alt={user.displayName} />
           <AvatarFallback className={`font-semibold bg-background ${isFirst ? "text-2xl" : "text-lg"}`}>
             {user.displayName.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
 
-        <h3 className={`font-bold text-foreground truncate w-full hover:text-primary transition-colors ${isFirst ? "text-xl" : "text-base"}`}>
+        <h3
+          className={`font-bold text-foreground truncate w-full hover:text-primary transition-colors ${
+            isFirst ? "text-xl" : "text-base"
+          }`}
+        >
           {user.displayName}
         </h3>
         <p className={`text-muted-foreground ${isFirst ? "text-xs mb-4" : "text-[11px] mb-3"}`}>
           @{user.username}
         </p>
 
-        <div className={`bg-background rounded-full border border-border/50 flex items-center gap-1.5 ${isFirst ? "px-4 py-1.5" : "px-3 py-1"}`}>
+        <div
+          className={`bg-background rounded-full border border-border/50 flex items-center gap-1.5 ${
+            isFirst ? "px-4 py-1.5" : "px-3 py-1"
+          }`}
+        >
           <span className={`font-bold font-mono ${styles.pointsText} ${isFirst ? "text-base" : "text-sm"}`}>
             {user.points}
           </span>
@@ -231,9 +278,11 @@ const WeeklyLeaderboard = () => {
         <div className="md:order-1 md:pb-0 md:translate-y-2">
           {second ? <PodiumCard user={second} rank={2} /> : <div className="hidden md:block" />}
         </div>
+
         <div className="md:order-2 md:-translate-y-2">
           {first && <PodiumCard user={first} rank={1} />}
         </div>
+
         <div className="md:order-3 md:translate-y-2">
           {third ? <PodiumCard user={third} rank={3} /> : <div className="hidden md:block" />}
         </div>
@@ -242,6 +291,7 @@ const WeeklyLeaderboard = () => {
   );
 };
 
+// User Card Component
 interface UserCardProps {
   user: UserProfile;
   currentUserId?: string;
@@ -290,6 +340,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUserId, onTagClick }) 
                   {ind}
                 </span>
               ))}
+
               {user.skills.slice(0, 2).map((skill, i) => (
                 <span key={`skill-${i}`} onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTagClick?.(skill); }} className="cursor-pointer text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-600 border border-blue-500/20 truncate max-w-[80px]">
                   {skill}

@@ -1,15 +1,12 @@
-
 import React, { memo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageSquare, Plus, ArrowLeft, Hash } from "lucide-react";
-import { CreateGroupDialog } from "./CreateGroupDialog";
+import { Plus, ArrowLeft, Hash } from "lucide-react";
+import { CreateChannelPanel } from "./CreateChannelPanel";
 import { formatDistanceToNow } from "date-fns";
-import { useChat } from "./ChatContext";
 
 interface ChannelListProps {
     ideaId: Id<"ideas">;
@@ -19,11 +16,24 @@ interface ChannelListProps {
 
 const ChannelList: React.FC<ChannelListProps> = memo(({ ideaId, onBack, onSelectChannel }) => {
     const channels = useQuery(api.communities.getChannels, { ideaId });
-    const [showCreateGroup, setShowCreateGroup] = useState(false);
+    const [showCreate, setShowCreate] = useState(false);
     const idea = useQuery(api.ideas.getIdeaById, { ideaId });
 
-    // Filter out "General" channel if needed, or sort it to top
-    // Assuming 'channels' returns all groups linked to this idea
+    // Inline create-channel panel — replaces this view inside the chat sheet
+    // so it doesn't get hidden behind the sheet's high z-index.
+    if (showCreate) {
+        return (
+            <CreateChannelPanel
+                ideaId={ideaId}
+                onBack={() => setShowCreate(false)}
+                onClose={onBack}
+                onCreated={(id) => {
+                    setShowCreate(false);
+                    onSelectChannel(id);
+                }}
+            />
+        );
+    }
 
     return (
         <div className="w-full h-full bg-background flex flex-col">
@@ -40,7 +50,9 @@ const ChannelList: React.FC<ChannelListProps> = memo(({ ideaId, onBack, onSelect
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-primary hover:bg-primary/10"
-                    onClick={() => setShowCreateGroup(true)}
+                    onClick={() => setShowCreate(true)}
+                    aria-label="Create channel"
+                    title="Create channel"
                 >
                     <Plus className="w-4 h-4" />
                 </Button>
@@ -57,7 +69,7 @@ const ChannelList: React.FC<ChannelListProps> = memo(({ ideaId, onBack, onSelect
                             <Button
                                 variant="link"
                                 className="text-xs h-auto p-0 mt-1"
-                                onClick={() => setShowCreateGroup(true)}
+                                onClick={() => setShowCreate(true)}
                             >
                                 Create one?
                             </Button>
@@ -93,13 +105,6 @@ const ChannelList: React.FC<ChannelListProps> = memo(({ ideaId, onBack, onSelect
                     )}
                 </div>
             </ScrollArea>
-
-            <CreateGroupDialog
-                isOpen={showCreateGroup}
-                onClose={() => setShowCreateGroup(false)}
-                ideaId={ideaId}
-                onGroupCreated={(id) => onSelectChannel(id)}
-            />
         </div>
     );
 });

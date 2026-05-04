@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { useQuery } from "convex/react";
-import { ArrowUpRight, Flame, Trophy, Zap } from "lucide-react";
+import { ArrowUpRight, Flame } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -133,25 +133,6 @@ export function IdeaForgeRightRail({
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-[16px] border border-[#10B981]/18 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.24),transparent_36%),linear-gradient(160deg,#101826,#111827_62%,#0b1220)] p-5 shadow-[0_14px_42px_rgba(16,185,129,0.08)]">
-          <div className="flex items-center gap-2 text-[#A7F3D0]">
-            <Trophy className="h-4 w-4" />
-            <span className="text-xs font-semibold uppercase tracking-[0.18em]">Active Challenge</span>
-          </div>
-          <h3 className={cn(displayFontClass, "mt-4 text-xl font-semibold text-white")}>Build in Public Sprint</h3>
-          <p className="mt-2 text-sm leading-6 text-[#D1FAE5]/78">
-            Share one polished idea update, spark three founders, and leave one actionable comment to unlock this week&apos;s bonus.
-          </p>
-          <div className="mt-5 flex items-center justify-between rounded-[14px] border border-white/8 bg-black/20 px-4 py-3">
-            <div>
-              <p className="text-xs text-[#A7F3D0]">Reward</p>
-              <p className="text-lg font-semibold text-white">+120 XP</p>
-            </div>
-            <div className="rounded-full bg-[#10B981]/12 p-3 text-[#34D399]">
-              <Zap className="h-5 w-5" />
-            </div>
-          </div>
-        </section>
       </div>
     </aside>
   );

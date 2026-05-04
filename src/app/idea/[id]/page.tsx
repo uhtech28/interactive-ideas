@@ -8,7 +8,8 @@ import { HeroHeader } from "@/components/header";
 import FooterSection from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { Eye, Trash2, Pencil, Check, Plus, X, Lightbulb } from "lucide-react";
+import { Eye, Trash2, Pencil, Check, Plus, X, Lightbulb, Menu } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useMutation, useQuery } from "convex/react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,6 +60,7 @@ import PowerPointViewer from "@/components/PowerPointViewer";
 import { IdeaSideNav } from "@/components/IdeaSideNav";
 import { IdeaBottomBar } from "@/components/IdeaBottomBar";
 import { CreateSubIdeaDialog } from "@/components/ideas/CreateSubIdeaDialog";
+import { FloatingChatButton } from "@/components/chat/FloatingChatButton";
 
 type ConvexIdea = {
   _id: string;
@@ -176,9 +178,10 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
 
       <main className="flex-1 w-full py-12 pt-24">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          {/* Desktop: persistent right rail */}
           <div className="hidden lg:block">
             <IdeaSideNav
-              className="fixed right-3 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 rounded-2xl border border-white/10 bg-[#0F1726]/95 backdrop-blur-xl p-2 shadow-[0_18px_44px_rgba(3,7,18,0.55)]"
+              className="fixed right-3 top-1/2 -translate-y-1/2 z-40 rounded-2xl border border-white/10 bg-[#0F1726]/95 backdrop-blur-xl p-2 shadow-[0_18px_44px_rgba(3,7,18,0.55)]"
               onOpenHierarchy={() => setShowHierarchy(true)}
               onOpenTodos={() => setShowTodos(true)}
               onOpenCalendar={() => setShowCalendar(true)}
@@ -188,6 +191,38 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
               onCreateSubIdea={() => setShowCreateSubIdea(true)}
             />
           </div>
+
+          {/* Mobile: hamburger menu anchored just below navbar profile icon (top-right). Click → opens side rail popover. */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="Open idea actions"
+                className="lg:hidden fixed top-[60px] right-3 z-40 inline-flex h-8 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground border border-white/10 hover:bg-primary/90 active:scale-95 transition-colors"
+              >
+                <Menu className="h-4 w-4" strokeWidth={2.5} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="bottom"
+              align="end"
+              sideOffset={8}
+              className="w-auto p-1.5 rounded-2xl border border-white/10 bg-[#0F1726]/95 backdrop-blur-xl shadow-[0_18px_44px_rgba(3,7,18,0.55)]"
+            >
+              <IdeaSideNav
+                onOpenHierarchy={() => setShowHierarchy(true)}
+                onOpenTodos={() => setShowTodos(true)}
+                onOpenCalendar={() => setShowCalendar(true)}
+                todoCount={todosQuery?.filter((t) => t.status !== "done").length || 0}
+                ideaId={id}
+                isContributor={ideaQuery?.isAuthor || userRequestsQuery?.some((r) => r.ideaId === id && r.status === "accepted")}
+                onCreateSubIdea={() => setShowCreateSubIdea(true)}
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* Floating chat button — same as community page */}
+          <FloatingChatButton />
 
           {ideaQuery === undefined ? (
             <div className="flex items-center justify-center py-12">
@@ -247,9 +282,9 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
               </Dialog>
 
               <Dialog open={showTodos} onOpenChange={setShowTodos}>
-                <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[95vw] h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-background/95 backdrop-blur-xl">
-                  <DialogHeader className="p-6 pb-2 shrink-0 border-b">
-                    <DialogTitle className="text-xl">Project Management</DialogTitle>
+                <DialogContent className="w-[calc(100vw-1rem)] max-w-5xl max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-background/95 backdrop-blur-xl">
+                  <DialogHeader className="px-4 sm:px-6 py-3 shrink-0 border-b">
+                    <DialogTitle>Project Management</DialogTitle>
                   </DialogHeader>
                   <div className="flex-1 min-h-0 overflow-hidden">
                     <TodoSection
@@ -434,16 +469,17 @@ const IdeaContent: React.FC<{
 
   return (
     <div className="group relative overflow-hidden rounded-3xl border border-border/50 bg-card text-card-foreground transition-all duration-300 flex flex-col shadow-xl">
-      <div className="relative bg-gradient-to-br from-indigo-500/12 via-purple-500/10 to-pink-500/8 px-5 pt-5 pb-4 shrink-0 border-b border-border/40">
-        <div className="w-full max-w-[36rem] mx-auto text-center mb-6">
-          {isEditing ? (
-            <Input value={editedTitle} onChange={(e) => setEditedTitle(e.target.value)} className="text-2xl font-bold bg-background/80 backdrop-blur-md border-white/20 h-auto py-2 text-center" placeholder="Idea Title" />
-          ) : (
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-[1.15] line-clamp-3 break-words">{idea.title}</h1>
-          )}
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <Link href={`/profile/${idea.author?.username || idea.authorId}`} className="rounded-full transition-all hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+      <div className="relative bg-gradient-to-br from-indigo-500/12 via-purple-500/10 to-pink-500/8 px-5 pt-5 pb-5 shrink-0 border-b border-border/40">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {isEditing ? (
+              <Input value={editedTitle} onChange={(e) => setEditedTitle(e.target.value)} className="text-2xl font-bold bg-background/80 backdrop-blur-md border-white/20 h-auto py-2" placeholder="Idea Title" />
+            ) : (
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-[1.15] break-words">{idea.title}</h1>
+            )}
+          </div>
+
+          <Link href={`/profile/${idea.author?.username || idea.authorId}`} className="shrink-0 rounded-full transition-all hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
             {idea.author?.avatar ? (
               <Image src={idea.author.avatar} alt={idea.author?.name || idea.author?.username || "User"} className="w-11 h-11 rounded-full object-cover border-2 border-border/50 shadow-md" width={44} height={44} />
             ) : (
@@ -452,16 +488,6 @@ const IdeaContent: React.FC<{
               </div>
             )}
           </Link>
-          {(idea.isAuthor || false) && !isEditing && (
-            <div className="flex gap-1.5">
-              <Button variant="secondary" size="icon" onClick={handleEdit} className="h-9 w-9 rounded-full bg-background/70 backdrop-blur-md hover:bg-background border border-border/50 shadow-sm">
-                <Pencil className="w-4 h-4 text-foreground/80" />
-              </Button>
-              <Button variant="destructive" size="icon" onClick={handleDelete} disabled={isDeleting} className="h-9 w-9 rounded-full bg-red-500/90 hover:bg-red-600 border border-red-500/30 shadow-sm">
-                {isDeleting ? <Spinner size={14} /> : <Trash2 className="w-4 h-4 text-white" />}
-              </Button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -474,24 +500,65 @@ const IdeaContent: React.FC<{
           )}
         </div>
 
-        <div className="flex flex-col gap-4 pt-6 border-t border-border/50">
-          <div className="flex flex-wrap items-center gap-2">
-            {displayedIndustries.map((tag, i) => (
-              <button key={`ind-${i}`} onClick={() => onTagClick?.(tag)} className="text-xs font-medium px-3 py-1.5 rounded-lg bg-purple-500/10 text-purple-600 border border-purple-500/20 hover:bg-purple-500/20 transition-colors cursor-pointer">{tag}</button>
-            ))}
-            {!showAllIndustries && industries.length > 1 && (
-              <button onClick={() => setShowAllIndustries(true)} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-purple-500/5 text-purple-600 border border-purple-500/10 hover:bg-purple-500/10 transition-colors">•••</button>
-            )}
-            {displayedSkills.map((tag, i) => (
-              <button key={`skill-${i}`} onClick={() => onTagClick?.(tag)} className="text-xs font-medium px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 transition-colors cursor-pointer">{tag}</button>
-            ))}
-            {!showAllSkills && skills.length > 1 && (
-              <button onClick={() => setShowAllSkills(true)} className="text-xs font-bold px-3 py-1.5 rounded-lg bg-blue-500/5 text-blue-600 border border-blue-500/10 hover:bg-blue-500/10 transition-colors">•••</button>
-            )}
-            {(showAllIndustries && industries.length > 1) || (showAllSkills && skills.length > 1) ? (
-              <button onClick={() => { setShowAllIndustries(false); setShowAllSkills(false); }} className="text-xs font-medium px-2 py-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors ml-1">Show less</button>
-            ) : null}
-          </div>
+        <div className="flex flex-col gap-3 pt-6 border-t border-border/50">
+          {/* Edit / Delete — top-right of tag block */}
+          {(idea.isAuthor || false) && !isEditing && (
+            <div className="flex justify-end gap-1.5">
+              <button
+                type="button"
+                onClick={handleEdit}
+                aria-label="Edit idea"
+                title="Edit"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-background/70 border border-border/50 text-foreground/80 hover:bg-background hover:text-foreground transition-colors"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                aria-label="Delete idea"
+                title="Delete"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 hover:text-red-300 transition-colors disabled:opacity-50"
+              >
+                {isDeleting ? <Spinner size={12} /> : <Trash2 className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+          )}
+
+          {/* Industries — own row */}
+          {industries.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              {displayedIndustries.map((tag, i) => (
+                <button key={`ind-${i}`} onClick={() => onTagClick?.(tag)} className="text-xs font-medium px-3 py-1.5 rounded-lg bg-purple-500/10 text-purple-600 border border-purple-500/20 hover:bg-purple-500/20 transition-colors cursor-pointer">{tag}</button>
+              ))}
+              {!showAllIndustries && industries.length > 1 && (
+                <button onClick={() => setShowAllIndustries(true)} aria-label="Show all industries" className="inline-flex items-center justify-center h-7 w-7 rounded-lg bg-purple-500/10 text-purple-600 border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Skills — own row */}
+          {skills.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              {displayedSkills.map((tag, i) => (
+                <button key={`skill-${i}`} onClick={() => onTagClick?.(tag)} className="text-xs font-medium px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 transition-colors cursor-pointer">{tag}</button>
+              ))}
+              {!showAllSkills && skills.length > 1 && (
+                <button onClick={() => setShowAllSkills(true)} aria-label="Show all skills" className="inline-flex items-center justify-center h-7 w-7 rounded-lg bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 transition-colors">
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          )}
+
+          {((showAllIndustries && industries.length > 1) || (showAllSkills && skills.length > 1)) && (
+            <div>
+              <button onClick={() => { setShowAllIndustries(false); setShowAllSkills(false); }} className="text-xs font-medium px-2 py-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors">Show less</button>
+            </div>
+          )}
         </div>
 
         {Array.isArray(idea.attachments) && idea.attachments.length > 0 && (
@@ -645,22 +712,32 @@ const TodoSection: React.FC<{
   };
 
   return (
-    <div className="w-full h-full flex flex-col p-6">
+    <div className="w-full h-full flex flex-col p-4 sm:p-5 overflow-y-auto">
       <div className="flex-1 flex flex-col min-h-0">
-        <div className="flex items-center justify-between mb-6 shrink-0">
-          <h3 className="text-lg font-semibold">Kanban Board</h3>
+        <div className="flex items-center justify-between mb-4 shrink-0">
+          <h3 className="text-base font-semibold">Kanban Board</h3>
           <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 px-3 py-1 rounded-full border border-border/50">
-              <Check className="w-4 h-4" /><span>{groupedTodos.done.length} done</span><span className="mx-1 opacity-30">•</span><span>{groupedTodos.in_progress.length} in progress</span><span className="mx-1 opacity-30">•</span><span>{groupedTodos.todo.length} todo</span>
+            <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 px-2.5 py-1 rounded-full border border-border/50">
+              <Check className="w-3.5 h-3.5" /><span>{groupedTodos.done.length} done</span><span className="mx-1 opacity-30">•</span><span>{groupedTodos.in_progress.length} in progress</span><span className="mx-1 opacity-30">•</span><span>{groupedTodos.todo.length} todo</span>
             </div>
-            {canManageTodos && (<Button onClick={() => setIsCreateTodoDialogOpen(true)} size="sm"><Plus className="w-4 h-4 mr-2" />Add Todo</Button>)}
+            {canManageTodos && (
+              <Button
+                onClick={() => setIsCreateTodoDialogOpen(true)}
+                size="icon"
+                aria-label="Add todo"
+                title="Add todo"
+                className="h-8 w-8"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
 
         {kanbanData.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">{canManageTodos ? <p>No todos yet. Add your first todo above!</p> : <p>No todos yet.</p>}</div>
+          <div className="text-center py-6 text-sm text-muted-foreground">{canManageTodos ? <p>No todos yet. Tap + to add the first one.</p> : <p>No todos yet.</p>}</div>
         ) : (
-          <div className="w-full min-h-[500px]">
+          <div className="w-full min-h-[400px]">
             <KanbanProvider className="w-full" columns={kanbanColumns} data={kanbanData} onDataChange={handleDataChange}>
               {(column) => (
                 <KanbanBoard id={column.id} className="h-full bg-transparent border-none shadow-none">
@@ -938,14 +1015,24 @@ const HierarchicalIdeasSection: React.FC<{
       }
       currentPath[level - 1] = isLast;
     }
+    // Mark the node that matches the page we're currently on so the user can
+    // see where they are in the chain at a glance.
+    const isCurrent = treeNode._id === idea._id;
     return (
       <TreeNode key={treeNode._id} nodeId={treeNode._id} level={level} isLast={isLast} parentPath={currentPath}>
-        <TreeNodeTrigger className="flex items-center justify-between" aria-label={`Idea: ${treeNode.title} by ${treeNode.author?.name || treeNode.author?.username}`} onClick={() => router.push(`/idea/${treeNode._id}`)}>
+        <TreeNodeTrigger
+          className={`flex items-center justify-between rounded-md ${isCurrent ? "bg-primary/10 ring-1 ring-primary/40" : ""}`}
+          aria-label={`Idea: ${treeNode.title} by ${treeNode.author?.name || treeNode.author?.username}${isCurrent ? " (current)" : ""}`}
+          onClick={() => router.push(`/idea/${treeNode._id}`)}
+        >
           <div className="flex items-center space-x-3 flex-1 min-w-0">
             <TreeExpander hasChildren={treeNode.children && treeNode.children.length > 0} />
-            <TreeIcon hasChildren={treeNode.children && treeNode.children.length > 0} icon={<Lightbulb className="w-4 h-4" />} />
+            <TreeIcon hasChildren={treeNode.children && treeNode.children.length > 0} icon={<Lightbulb className={`w-4 h-4 ${isCurrent ? "text-primary" : ""}`} />} />
             <div className="flex-1 min-w-0">
-              <TreeLabel className="font-medium truncate block">{treeNode.title}</TreeLabel>
+              <TreeLabel className={`font-medium truncate block ${isCurrent ? "text-primary" : ""}`}>
+                {treeNode.title}
+                {isCurrent && <span className="ml-2 inline-flex items-center rounded-full border border-primary/40 bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary align-middle">You are here</span>}
+              </TreeLabel>
               <div className="text-xs text-muted-foreground mt-1 truncate">
                 {parseCategoryDisplay(treeNode.category) || "General"} • by {treeNode.author?.name || treeNode.author?.username}
                 {treeNode.childrenCount > 0 && ` • ${treeNode.childrenCount} sub-idea${treeNode.childrenCount !== 1 ? "s" : ""}`}

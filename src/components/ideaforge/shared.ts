@@ -1,5 +1,3 @@
-import { industryCardOptions, skillCardOptions } from "@/lib/options";
-
 export const cardSurface =
   "rounded-[16px] border border-white/[0.07] bg-[#111827]/92 shadow-[0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl";
 export const transitionBase = "transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]";
@@ -16,9 +14,8 @@ export const feedTabs = [
   { key: "following", label: "Following" },
 ] as const;
 export const myIdeaTabs = [
-  { key: "ideas", label: "My Ideas" },
-  { key: "saved", label: "Saved" },
-  { key: "drafts", label: "Drafts" },
+  { key: "public", label: "Public" },
+  { key: "private", label: "Private" },
   { key: "analytics", label: "Analytics" },
 ] as const;
 
@@ -109,66 +106,20 @@ export function formatRelativeTime(timestamp: number) {
   return new Date(timestamp).toLocaleDateString();
 }
 
-// Pre-built lookup table of known canonical industry/skill names. Sorted by
-// length so the parser greedily matches the longest known name first when a
-// raw legacy string is supplied (handles values that contain commas).
-const KNOWN_TAGS: string[] = [
-  ...industryCardOptions.map((o) => o.value),
-  ...skillCardOptions.map((o) => o.value),
-].sort((a, b) => b.length - a.length);
-
-/**
- * Parse a stored tag string into an array of clean tag values.
- *
- * Three formats are supported:
- *  1. JSON array (preferred for new posts) — e.g. `["Automobiles, Two...","Social Services, ..."]`
- *  2. Legacy comma-joined string of canonical industry/skill names that may
- *     themselves contain commas — e.g. `"Automobiles, Two Wheelers..., Social Services..."`.
- *     These are reassembled by greedily matching against KNOWN_TAGS.
- *  3. Free-form comma-separated text — fallback simple split.
- */
 export function parseTags(tagStr?: string) {
   if (!tagStr) return [] as string[];
-
-  // 1. JSON array form (new posts)
   try {
     const parsed = JSON.parse(tagStr);
     if (Array.isArray(parsed)) {
       return parsed.map((entry) => String(entry).trim()).filter(Boolean);
     }
   } catch {
-    // not JSON — fall through
+    // Ignore JSON parse errors and fall back to CSV parsing.
   }
-
-  // 2. Greedy match against canonical names (legacy data with commas inside names)
-  const result: string[] = [];
-  let remaining = tagStr.trim();
-
-  outer: while (remaining.length > 0) {
-    for (const known of KNOWN_TAGS) {
-      if (
-        remaining === known ||
-        remaining.startsWith(known + ",") ||
-        remaining.startsWith(known + ", ")
-      ) {
-        result.push(known);
-        remaining = remaining.slice(known.length).replace(/^[\s,]+/, "");
-        continue outer;
-      }
-    }
-    // 3. No canonical match — fall back to comma split for the rest of the string.
-    const idx = remaining.indexOf(",");
-    if (idx >= 0) {
-      const part = remaining.slice(0, idx).trim();
-      if (part) result.push(part);
-      remaining = remaining.slice(idx + 1).trim();
-    } else {
-      const part = remaining.trim();
-      if (part) result.push(part);
-      break;
-    }
-  }
-  return result;
+  return tagStr
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
 }
 
 export function getDisplayName(author?: IdeaAuthor | null) {

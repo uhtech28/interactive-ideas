@@ -115,6 +115,7 @@
 @layer base {
   html {
     color-scheme: dark;
+    overflow-x: hidden;
   }
 
   * {
@@ -123,6 +124,8 @@
 
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+    width: 100%;
     background-image:
       radial-gradient(circle at top, rgba(99, 102, 241, 0.14), transparent 28%),
       linear-gradient(180deg, rgba(10, 13, 18, 0.98), rgba(10, 13, 18, 1));

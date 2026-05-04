@@ -67,7 +67,7 @@ export const InvitationSection: React.FC<InvitationSectionProps> = ({ idea }) =>
   };
 
   const handleCancelInvitation = async (invitationId: Id<"invitations">) => {
-    if (!confirm("Are you sure you want to cancel this invitation?")) return;
+    // Inline action — clicking the Cancel button is itself the confirmation.
     try {
       await cancelInvitationMutation({ invitationId });
     } catch (err) {
@@ -76,7 +76,7 @@ export const InvitationSection: React.FC<InvitationSectionProps> = ({ idea }) =>
   };
 
   const handleAcceptInvitation = async (invitationId: Id<"invitations">) => {
-    if (!confirm("Are you sure you want to accept this invitation?")) return;
+    // Inline action — clicking the Accept Invitation button is the confirm.
     try {
       setIsAccepting(invitationId);
       await acceptInvitationMutation({ invitationId });
@@ -97,7 +97,7 @@ export const InvitationSection: React.FC<InvitationSectionProps> = ({ idea }) =>
   };
 
   const handleRejectInvitation = async (invitationId: Id<"invitations">) => {
-    if (!confirm("Are you sure you want to decline this invitation?")) return;
+    // Inline action — clicking Decline is the explicit user intent.
     try {
       setIsRejecting(invitationId);
       await rejectInvitationMutation({ invitationId });

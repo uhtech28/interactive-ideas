@@ -25,7 +25,7 @@ const ROLES = [
   },
   {
     key: "founder",
-    label: "Startup / Founder",
+    label: "Founder",
     icon: Rocket,
     gradient: "from-purple-500/15 to-pink-500/15",
     border: "border-purple-400/30",
@@ -52,8 +52,9 @@ export default function RoleSelector() {
     }
   };
 
+  // Card classNames extracted so we can reuse for the button & link variants.
   const cardClass = (role: { gradient: string; border: string }) =>
-    `group relative flex flex-col items-start justify-between rounded-2xl border ${role.border} bg-gradient-to-br ${role.gradient} p-4 md:p-6 min-h-[110px] md:min-h-[140px] transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:border-primary/40 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 text-left w-full cursor-pointer`;
+    `group relative flex flex-col items-center justify-center gap-2 md:gap-3 rounded-2xl border ${role.border} bg-gradient-to-br ${role.gradient} p-4 md:p-6 min-h-[110px] md:min-h-[140px] transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:border-primary/40 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 text-center w-full cursor-pointer`;
 
   return (
     <section className="py-10 md:py-14">
@@ -72,19 +73,14 @@ export default function RoleSelector() {
 
           const cardInner = (
             <>
-              <Icon className="h-6 w-6 md:h-8 md:w-8 text-foreground/90" />
-              <div className="mt-2 md:mt-3">
-                <div className="font-semibold text-sm md:text-base text-foreground">
-                  {role.label}
-                </div>
-                <div className="mt-1 text-[11px] md:text-xs text-muted-foreground opacity-80">
-                  {isSignedIn ? "Continue →" : "Sign up →"}
-                </div>
+              <Icon className="h-7 w-7 md:h-9 md:w-9 text-foreground/90" />
+              <div className="font-semibold text-sm md:text-base text-foreground">
+                {role.label}
               </div>
             </>
           );
 
-          // Already signed in? Skip Clerk modal — go straight to feed.
+          // Already signed in? Skip Clerk modal — go straight to feed (or profile setup).
           if (isSignedIn) {
             return (
               <button

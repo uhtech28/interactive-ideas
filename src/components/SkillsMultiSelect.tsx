@@ -13,6 +13,7 @@ export interface SkillOption {
   label: string;
 }
 
+// Group skills for better organization
 const groupSkills = (skills: SkillOption[]) => {
   const groups: { [key: string]: SkillOption[] } = {};
 
@@ -95,28 +96,28 @@ export function SkillsMultiSelect({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between"
+            className="w-full justify-between min-w-0"
           >
-            {selectedSkills.length > 0 ? `${selectedSkills.length} selected` : placeholder}
+            <span className="truncate text-left flex-1 min-w-0">
+              {selectedSkills.length > 0 ? `${selectedSkills.length} selected` : placeholder}
+            </span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-[var(--radix-popover-trigger-width)] p-0 flex flex-col h-[340px] overflow-hidden"
+          className="w-[var(--radix-popover-trigger-width)] p-0 flex flex-col h-[min(60dvh,420px)] overflow-hidden"
           align="start"
           side="bottom"
           sideOffset={4}
-          avoidCollisions={false}
+          collisionPadding={16}
+          avoidCollisions
         >
-          <Command className="flex h-full flex-col">
-            <div className="shrink-0 border-b border-white/10">
-              <CommandInput
-                placeholder="Search skills..."
-                value={searchValue}
-                onValueChange={setSearchValue}
-                className="border-0"
-              />
-            </div>
+          <Command>
+            <CommandInput
+              placeholder="Search skills..."
+              value={searchValue}
+              onValueChange={setSearchValue}
+            />
             <CommandList className="flex-1 overflow-y-auto max-h-none">
               <CommandEmpty>No skills found.</CommandEmpty>
               {filteredSkills.map(group => (
@@ -135,13 +136,11 @@ export function SkillsMultiSelect({
                         readOnly
                       />
                       {item.label}
-                      {selectedSkills.includes(item.value) && (
-                        <Check className="ml-auto h-4 w-4 opacity-50" />
-                      )}
                     </CommandItem>
                   ))}
                 </CommandGroup>
               ))}
+              {/* Mobile view with collapsed groups */}
               <div className="md:hidden">
                 <CommandGroup>
                   <div className="px-1 py-2 text-sm font-semibold text-muted-foreground">All Skills</div>
@@ -160,9 +159,6 @@ export function SkillsMultiSelect({
                           readOnly
                         />
                         {item.label}
-                        {selectedSkills.includes(item.value) && (
-                          <Check className="ml-auto h-4 w-4 opacity-50" />
-                        )}
                       </CommandItem>
                     ))
                   )}
@@ -173,33 +169,23 @@ export function SkillsMultiSelect({
         </PopoverContent>
       </Popover>
 
-      {/* Selected Skills Badges — blue to match the color coding on idea cards. */}
+      {/* Selected Skills Badges */}
       {selectedSkills.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {selectedSkills.map((skill) => {
-            const isMandatory = mandatorySkills.includes(skill);
             return (
-              <Badge
-                key={skill}
-                variant="outline"
-                className="pl-2.5 pr-1 py-1 flex items-center gap-1 max-w-full rounded-full border-blue-400/35 bg-blue-500/15 text-blue-200 hover:bg-blue-500/20"
-              >
-                <span className="truncate">{skill}</span>
-                {!isMandatory && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleSelect(skill);
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    className="ml-1 shrink-0 hover:bg-blue-500/30 rounded-full p-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/40 cursor-pointer"
-                    aria-label={`Remove ${skill}`}
-                  >
-                    <X className="h-3.5 w-3.5 text-blue-200/80 hover:text-white pointer-events-none" />
-                  </button>
-                )}
+              <Badge key={skill} variant="secondary" className="pl-2 pr-1 py-1 flex items-center gap-1">
+                {skill}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleSelect(skill);
+                  }}
+                  className="ml-1 hover:bg-destructive/20 rounded-full p-0.5 transition-colors focus:outline-none"
+                >
+                  <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                  <span className="sr-only">Remove {skill}</span>
+                </button>
               </Badge>
             );
           })}
