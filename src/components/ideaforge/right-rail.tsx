@@ -77,9 +77,17 @@ export function IdeaForgeRightRail({
     : "skip");
   const allUsers = useQuery(api.users.getAllUsers);
 
+  // Top-5 trending — keeps the right rail's vertical length close to the
+  // feed list so both columns end at roughly the same scroll position.
+  // If the rail still feels too long after a future redesign, drop this
+  // to 3 — the grid below it (Suggested Builders, also 3) will line up.
   const trendingIdeas = useMemo(() => {
     return [...publicIdeas]
-      .sort((a, b) => (b.sparkCount || 0) - (a.sparkCount || 0) || b.createdAt - a.createdAt)
+      .sort(
+        (a, b) =>
+          (b.sparkCount || 0) - (a.sparkCount || 0) ||
+          b.createdAt - a.createdAt
+      )
       .slice(0, 5);
   }, [publicIdeas]);
 

@@ -56,7 +56,7 @@ export const NotificationBell = () => {
         {unreadCount && unreadCount > 0 && (
           <Badge
             variant="destructive"
-            className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+            className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] rounded-full p-0 text-[10px] leading-none font-semibold flex items-center justify-center px-1 ring-2 ring-[#0A0D12]"
           >
             {unreadCount > 99 ? '99+' : unreadCount}
           </Badge>
@@ -66,13 +66,11 @@ export const NotificationBell = () => {
       {mounted && open &&
         createPortal(
           <>
-            {/* Backdrop on mobile — taps outside close */}
             <div
               aria-hidden
               className="fixed inset-0 z-[55] bg-black/40 lg:hidden"
               onClick={() => setOpen(false)}
             />
-            {/* Panel — half-size, anchored below navbar */}
             <div
               ref={panelRef}
               role="dialog"
@@ -85,7 +83,6 @@ export const NotificationBell = () => {
                 bg-background border border-border/60 rounded-xl shadow-2xl
               "
             >
-              {/* Close button — high z-index, clearly visible */}
               <button
                 type="button"
                 onClick={() => setOpen(false)}

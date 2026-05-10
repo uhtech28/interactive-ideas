@@ -110,8 +110,10 @@ export const HeroHeader = ({
                     isScrolled && 'shadow-[0_4px_24px_-8px_rgba(0,0,0,0.6)]'
                 )}
             >
-                {/* MOBILE BAR — matches IdeaForgeNavbar exactly */}
-                <div className="flex items-center gap-2 px-3 py-2 lg:hidden">
+                {/* MOBILE BAR — h-14 to match IdeaForgeNavbar so the navbar
+                    height stays constant when the user moves between
+                    marketing pages and app pages. */}
+                <div className="flex h-14 items-center gap-2 px-3 lg:hidden">
                     {mobileSearchOpen ? (
                         <>
                             <button
@@ -237,7 +239,7 @@ export const HeroHeader = ({
 
                 {/* DESKTOP BAR */}
                 <div className="hidden w-full px-4 sm:px-6 lg:px-8 lg:block">
-                    <div className="flex items-center justify-between h-16 gap-3 lg:gap-6">
+                    <div className="flex items-center h-16 gap-3 lg:gap-4">
                         <Link
                             href="/"
                             aria-label="InteractiveIdeas Home"
@@ -263,7 +265,52 @@ export const HeroHeader = ({
                             </div>
                         </Link>
 
-                        <div className="flex flex-1 max-w-xl mx-2 lg:mx-6">
+                        {/* Nav menu — placed before + + Search so the Feed
+                            icon sits to the LEFT of the + button. */}
+                        <nav className="flex items-center gap-1">
+                            {menuItems.map((item) => {
+                                const Icon = item.icon
+                                const active = isActive(item.href)
+                                return (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        aria-label={item.name}
+                                        title={item.name}
+                                        className={cn(
+                                            'relative flex items-center justify-center w-10 h-10 rounded-lg transition-colors duration-200',
+                                            active
+                                                ? 'text-white bg-white/[0.06]'
+                                                : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                                        )}
+                                    >
+                                        <Icon className="h-5 w-5" />
+                                        {active && (
+                                            <span
+                                                aria-hidden
+                                                className="absolute left-2 right-2 -bottom-px h-px bg-gradient-to-r from-transparent via-violet-400 to-transparent shadow-[0_0_10px_rgba(167,139,250,0.7)]"
+                                            />
+                                        )}
+                                    </Link>
+                                )
+                            })}
+                        </nav>
+
+                        {/* + button — sits between Feed icon (left) and
+                            Search bar (right) per client request. */}
+                        <SignedIn>
+                            <button
+                                type="button"
+                                aria-label="Post Idea"
+                                title="Post Idea"
+                                onClick={() => setShowIdeaWizard(true)}
+                                className="inline-flex items-center justify-center w-10 h-10 shrink-0 rounded-[10px] bg-[#6366F1] text-white shadow-[0_10px_32px_rgba(99,102,241,0.18)] hover:bg-[#8B5CF6] transition-colors"
+                            >
+                                <Plus className="h-5 w-5" />
+                            </button>
+                        </SignedIn>
+
+                        <div className="flex flex-1 max-w-xl">
                             <SearchBar
                                 value={searchQuery}
                                 onSearch={handleSearch}
@@ -272,38 +319,9 @@ export const HeroHeader = ({
                             />
                         </div>
 
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                            <nav className="flex items-center gap-1">
-                                {menuItems.map((item) => {
-                                    const Icon = item.icon
-                                    const active = isActive(item.href)
-                                    return (
-                                        <Link
-                                            key={item.href}
-                                            href={item.href}
-                                            aria-label={item.name}
-                                            title={item.name}
-                                            className={cn(
-                                                'relative flex items-center justify-center w-10 h-10 rounded-lg transition-colors duration-200',
-                                                active
-                                                    ? 'text-white bg-white/[0.06]'
-                                                    : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-                                            )}
-                                        >
-                                            <Icon className="h-5 w-5" />
-                                            {active && (
-                                                <span
-                                                    aria-hidden
-                                                    className="absolute left-2 right-2 -bottom-px h-px bg-gradient-to-r from-transparent via-violet-400 to-transparent shadow-[0_0_10px_rgba(167,139,250,0.7)]"
-                                                />
-                                            )}
-                                        </Link>
-                                    )
-                                })}
-                            </nav>
-
+                        <div className="flex items-center gap-3 flex-shrink-0 ml-auto">
                             <SignedOut>
-                                <div className="flex gap-2 ml-1">
+                                <div className="flex gap-2">
                                     <SignInButton>
                                         <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white">
                                             Login
@@ -316,17 +334,7 @@ export const HeroHeader = ({
                             </SignedOut>
 
                             <SignedIn>
-                                <div className="flex items-center gap-2 ml-1">
-                                    <button
-                                        type="button"
-                                        aria-label="Post Idea"
-                                        title="Post Idea"
-                                        onClick={() => setShowIdeaWizard(true)}
-                                        className="inline-flex items-center justify-center w-10 h-10 rounded-[10px] bg-[#6366F1] text-white shadow-[0_10px_32px_rgba(99,102,241,0.18)] hover:bg-[#8B5CF6] transition-colors"
-                                    >
-                                        <Plus className="h-5 w-5" />
-                                    </button>
-
+                                <div className="flex items-center gap-3">
                                     <NotificationBell />
 
                                     <Popover>
