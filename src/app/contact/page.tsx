@@ -7,6 +7,11 @@ export default function ContactPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('save') === 'true') {
+      // Trigger the VCF download programmatically
+      const link = document.createElement('a');
+      link.href = '/aryan-awasthi.vcf';
+      link.click();
+      // Then set opened so the UI updates and redirect timer starts
       setOpened(true);
     }
   }, []);
