@@ -5,7 +5,7 @@ import { ConvexHttpClient } from 'convex/browser'
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
-const isPublicRoute = createRouteMatcher(['/', '/sign-in(.*)', '/sign-up(.*)', '/onboarding', '/profile-setup'])
+const isPublicRoute = createRouteMatcher(['/', '/contact', '/aryan-awasthi.vcf' , '/sign-in(.*)', '/sign-up(.*)', '/onboarding', '/profile-setup'])
 
 /** Cookie name for the profile-complete cache flag */
 const PROFILE_COMPLETE_COOKIE = 'vq_profile_complete'
@@ -55,9 +55,7 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes
+    '/((?!_next|[^?]*\\.(?:html?|css|js|jpe?g|webp|png|gif|svg|ico|ttf|woff2?|csv|docx?|xlsx?|zip|webmanifest|vcf)).*)',
     '/(api|trpc)(.*)',
   ],
 }

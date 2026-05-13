@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { DM_Sans, JetBrains_Mono, Sora } from "next/font/google";
 import { ClerkProvider } from '@clerk/nextjs';
 
 export const dynamic = 'force-dynamic';
@@ -10,25 +11,68 @@ import { ChatProvider } from "@/components/chat/ChatContext";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import "./globals.css";
 
+const displayFont = Sora({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const bodyFont = DM_Sans({
+  variable: "--font-body",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+});
+
+const monoFont = JetBrains_Mono({
+  variable: "--font-code",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+});
+
+// metadataBase makes openGraph/twitter image URLs absolute, which Insta /
+// LinkedIn / X / Slack require to actually render the preview image.
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://theinteractiveideas.com";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-  ),
-  title: "InteractiveIdeas - Share & Cultivate Brilliant Ideas",
-  description: "Connect with like-minded creators, share your brilliant ideas, get valuable feedback, and collaborate on groundbreaking projects in our innovative community.",
-  keywords: "ideas, innovation, collaboration, creativity, community, startup, prototyping",
+  metadataBase: new URL(siteUrl),
+  title: "Interactive Ideas - Share & Cultivate Brilliant Ideas",
+  description:
+    "Connect with like-minded creators, share your brilliant ideas, get valuable feedback, and collaborate on groundbreaking projects in our innovative community.",
+  keywords:
+    "ideas, innovation, collaboration, creativity, community, startup, prototyping",
   icons: {
     icon: [
-      { url: '/logo.png', type: 'image/png' },
+      { url: "/logo.png", type: "image/png", sizes: "any" },
+      { url: "/logo.png", type: "image/png", sizes: "16x16" },
+      { url: "/logo.png", type: "image/png", sizes: "32x32" },
+      { url: "/logo.png", type: "image/png", sizes: "192x192" },
+      { url: "/logo.png", type: "image/png", sizes: "512x512" },
     ],
-    apple: '/logo.png',
+    shortcut: "/logo.png",
+    apple: [{ url: "/logo.png", sizes: "180x180", type: "image/png" }],
+    other: [{ rel: "mask-icon", url: "/logo.png", color: "#6366F1" }],
   },
   openGraph: {
-    title: "InteractiveIdeas - Where Brilliant Ideas Come to Life",
-    description: "Join thousands of creators sharing ideas, finding collaborators, and building the future together.",
+    title: "Interactive Ideas - Where Brilliant Ideas Come to Life",
+    description:
+      "Join thousands of creators sharing ideas, finding collaborators, and building the future together.",
     type: "website",
     url: "/",
-    images: [{ url: '/logo.png', width: 512, height: 512 }],
+    siteName: "Interactive Ideas",
+    images: [{ url: "/logo.png", width: 1200, height: 630, alt: "Interactive Ideas" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Interactive Ideas - Where Brilliant Ideas Come to Life",
+    description:
+      "Join thousands of creators sharing ideas, finding collaborators, and building the future together.",
+    images: ["/logo.png"],
+  },
+  other: {
+    "msapplication-TileColor": "#6366F1",
+    "msapplication-TileImage": "/logo.png",
+    "theme-color": "#0A0D12",
   },
 };
 
@@ -50,19 +94,9 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <ConvexClientProvider>
-        <html lang="en" className="dark" suppressHydrationWarning>
+        <html lang="en" className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable} dark`} suppressHydrationWarning>
           <body
             className="font-sans antialiased"
-            style={
-              {
-                "--font-display":
-                  'Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif',
-                "--font-body":
-                  'Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif',
-                "--font-code":
-                  '"JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
-              } as React.CSSProperties
-            }
           >
             <ThemeProvider>
               <ChatProvider>

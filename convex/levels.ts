@@ -120,6 +120,38 @@ export const awardPoints = mutation({
 });
 
 /**
+ * Validate that the user meets the task-gate requirements for advancing to a
+ * given target level. Levels 1–6 are task-gated per the PDF; level 7+ is purely
+ * points-based, so this returns true once titlePoints clears the threshold.
+ *
+ * Uses fields tracked on userLevels: ideasCreated, commentsCount,
+ * collaboratorsRecruited, collaboratorsJoined, goldCheckpoints, etc.
+ */
+export function meetsLevelRequirements(targetLevel: number, userLevel: any): boolean {
+  const ideas = userLevel.ideasCreated || 0
+  const comments = userLevel.commentsCount || 0
+  const collaborators = (userLevel.collaboratorsRecruited || 0) + (userLevel.collaboratorsJoined || 0)
+  const gold = userLevel.goldCheckpoints || 0
+  const points = userLevel.titlePoints || 0
+
+  switch (targetLevel) {
+    case 2: // Explorer — must have engaged: 1 comment OR 1 idea
+      return comments >= 1 || ideas >= 1
+    case 3: // Thinker — must have created their first idea
+      return ideas >= 1
+    case 4: // Connector — 50 pts + 1 idea + (1 comment OR 1 collaborator)
+      return points >= 50 && ideas >= 1 && (comments >= 1 || collaborators >= 1)
+    case 5: // Contributor — 150 pts + at least 2 comments
+      return points >= 150 && comments >= 2
+    case 6: // Initiator — 300 pts + 1 collaborator
+      return points >= 300 && collaborators >= 1
+    default:
+      // Levels 7–50 are purely points-based; titlePoints check happens in caller
+      return true
+  }
+}
+
+/**
  * Check if user qualifies for next level and advance if so.
  */
 async function checkLevelUp(
@@ -144,6 +176,19 @@ async function checkLevelUp(
   for (let level = currentLevel + 1; level <= targetLevel; level++) {
     const levelDef = LEVEL_DEFINITIONS.find((l) => l.level === level);
     if (!levelDef) continue;
+
+    // Levels 1–6 have task-gated requirements (PDF spec). 7+ is points only.
+    if (level <= 6 && !meetsLevelRequirements(level, userLevel)) {
+      // User hasn't finished the tasks required for this level yet,
+      // so we stop the jump here.
+      break;
+    }
+
+    // Award points and update level record
+    await ctx.db.patch(userLevelId, {
+      currentLevel: level,
+      updatedAt: Date.now(),
+    });
 
     const levelUpPoints = level * 5;
     let wl = await ctx.db
@@ -181,30 +226,26 @@ export const getUserLevelProgress = query({
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
 
-    if (!userLevel) return null;
+    // Always return real, fully-resolved level info — even before the user has
+    // earned a point — so the UI can render "Level 1 — Newcomer" out of the box.
+    const currentLevel = userLevel?.currentLevel ?? 1;
+    const titlePoints = userLevel?.titlePoints ?? 0;
+    const totalPoints = userLevel?.totalPoints ?? 0;
 
-    const currentLevel = deriveLevelFromTitlePoints(userLevel.titlePoints);
-    const currentDef = LEVEL_DEFINITIONS.find(
-      (l) => l.level === currentLevel,
-    );
-    const nextDef = LEVEL_DEFINITIONS.find(
-      (l) => l.level === currentLevel + 1,
-    );
+    const currentDef = LEVEL_DEFINITIONS.find((l) => l.level === currentLevel);
+    const nextDef = LEVEL_DEFINITIONS.find((l) => l.level === currentLevel + 1);
 
     return {
       level: currentLevel,
-      title: currentDef?.title ?? "Unknown",
+      title: currentDef?.title ?? "Newcomer",
       phase: currentDef?.phase ?? "tutorial",
-      titlePoints: userLevel.titlePoints,
-      totalPoints: userLevel.totalPoints,
+      titlePoints,
+      totalPoints,
       nextLevel: nextDef?.level ?? null,
       nextLevelTitle: nextDef?.title ?? null,
       nextLevelPoints: nextDef?.titlePoints ?? null,
-      progress: nextDef
-        ? Math.min(
-            100,
-            Math.round((userLevel.titlePoints / nextDef.titlePoints) * 100),
-          )
+      progress: nextDef && nextDef.titlePoints > 0
+        ? Math.min(100, Math.round((titlePoints / nextDef.titlePoints) * 100))
         : 100,
       requirements: currentDef?.requirements ?? [],
     };

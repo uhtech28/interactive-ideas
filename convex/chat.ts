@@ -114,30 +114,32 @@ export const getGroupConversationsList = query({
     const allIdeas = [...authoredIdeas, ...contributedIdeas].filter((idea): idea is NonNullable<typeof idea> => idea !== null);
     const uniqueIdeas = Array.from(new Map(allIdeas.map(item => [item._id, item])).values());
 
-    // Retrieve "General" conversations for these ideas
+    // Retrieve the canonical "General" conversation for each idea.
+    //
+    // BUG FIX: previously this returned EVERY implicit (creatorId-less)
+    // conversation per idea. A race in `sendMessage` could create more than
+    // one "main" convo per idea, and each one rendered as a separate
+    // community in the chat sidebar — so an idea with 3 contributions could
+    // show up as 3 communities. We now keep only the OLDEST implicit
+    // conversation per idea as the canonical "General" channel; any
+    // duplicates that already exist in the DB are silently ignored
+    // (messages stay searchable, but the sidebar shows one entry per idea).
     const generalGroups = await Promise.all(uniqueIdeas.map(async (idea) => {
       const convo = await ctx.db
         .query("conversations")
         .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
-        .filter(q => q.eq(q.field("type"), "group")) // Ensure it's a group
+        .filter(q => q.eq(q.field("type"), "group"))
         .collect();
 
-      // Find the "main" one (created automatically or has no custom name/creator)
-      // Or simply include ALL groups for this idea if we are "Author"?
-      // Actually, "Sub-groups" should probably require explicit membership even for Authors if we want strict separation,
-      // BUT usually Authors see everything. Let's stick to:
-      // - Sub-Groups: Only if in `conversationMembers` (or maybe Author sees all? Let's say explicit for now)
-      // - Main Idea Chat: Implicit for Authors/Contributors.
+      const implicit = convo.filter(c => !c.creatorId);
+      if (implicit.length === 0) return [];
 
-      // Let's assume the "Main" chat is the one created implicitly (no creatorId or specific name?)
-      // Or we just return ALL conversations linked to these ideas, assuming Authors/Contributors have access to at least the Main one?
-      // To avoid confusion, let's stick to the current logic:
-      // We look for existing conversations for the idea.
-
-      // Filter out sub-groups from this "Implicit" list if they are meant to be private.
-      // If a sub-group has a `creatorId`, it's a sub-group.
-
-      return convo.filter(c => !c.creatorId); // implicit groups only
+      // Oldest implicit convo wins — that's the one the rest of the app
+      // (sendMessage, ensureSubIdeaChannel) treats as canonical.
+      const canonical = implicit.reduce((oldest, c) =>
+        c.createdAt < oldest.createdAt ? c : oldest
+      );
+      return [canonical];
     }));
 
     const flatGeneralGroups = generalGroups.flat();
@@ -256,29 +258,35 @@ export const sendMessage = mutation({
 
     let conversationId = args.conversationId;
 
-    // Handle Group Chat Creation/Retrieval
+    // Handle Group Chat Creation/Retrieval.
+    //
+    // Always route to the OLDEST implicit (creatorId-less) conversation for
+    // the idea so messages don't fragment across duplicates created by
+    // earlier races. If none exists, create one — pairs with the dedup
+    // logic in `getGroupConversationsList` which only surfaces the oldest.
     if (args.ideaId) {
       if (!conversationId) {
-        // Try to find the "Main" conversation for this idea (no creatorId)
         const existingConvo = await ctx.db
           .query("conversations")
           .withIndex("by_idea", (q) => q.eq("ideaId", args.ideaId))
           .filter(q => q.eq(q.field("type"), "group"))
           .collect();
 
-        // Find one without creatorId (the specific default one)
-        const mainConvo = existingConvo.find(c => !c.creatorId);
+        const implicit = existingConvo.filter(c => !c.creatorId);
+        const canonical = implicit.length > 0
+          ? implicit.reduce((oldest, c) => c.createdAt < oldest.createdAt ? c : oldest)
+          : null;
 
-        if (mainConvo) {
-          conversationId = mainConvo._id;
+        if (canonical) {
+          conversationId = canonical._id;
         } else {
-          // Create new DEFAULT group conversation
+          // No main convo yet — create one. Subsequent callers will reuse
+          // this one via the lookup above.
           conversationId = await ctx.db.insert("conversations", {
             type: 'group',
             ideaId: args.ideaId,
             createdAt: Date.now(),
             updatedAt: Date.now(),
-            // No creatorId for system/default groups
           });
         }
       }
