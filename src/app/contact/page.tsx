@@ -101,7 +101,7 @@ export default function ContactPage() {
             <div className="mt-10 border-t border-white/10 pt-8">
               {!opened ? (
                 <a
-                href="/api/vcard"
+                href="/aryan-awasthi.vcf"
                 onClick={() => {
                   setOpened(true);
                 }}

@@ -19,10 +19,10 @@ export function ContentCta({
           </p>
         </div>
         <Link
-          href="/sign-up"
+          href="/"
           className="inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary/90"
         >
-          Join Interactive Ideas
+          Go to Interactive Ideas
         </Link>
       </div>
     </section>
