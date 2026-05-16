@@ -10,6 +10,7 @@
 
 import type * as agent from "../agent.js";
 import type * as agent_actions from "../agent_actions.js";
+import type * as ai from "../ai.js";
 import type * as badges from "../badges.js";
 import type * as chat from "../chat.js";
 import type * as communities from "../communities.js";
@@ -18,6 +19,7 @@ import type * as crons from "../crons.js";
 import type * as debug from "../debug.js";
 import type * as flares from "../flares.js";
 import type * as gamification from "../gamification.js";
+import type * as hierarchy from "../hierarchy.js";
 import type * as ideas from "../ideas.js";
 import type * as invitations from "../invitations.js";
 import type * as leaderboard from "../leaderboard.js";
@@ -41,6 +43,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   agent: typeof agent;
   agent_actions: typeof agent_actions;
+  ai: typeof ai;
   badges: typeof badges;
   chat: typeof chat;
   communities: typeof communities;
@@ -49,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   debug: typeof debug;
   flares: typeof flares;
   gamification: typeof gamification;
+  hierarchy: typeof hierarchy;
   ideas: typeof ideas;
   invitations: typeof invitations;
   leaderboard: typeof leaderboard;
