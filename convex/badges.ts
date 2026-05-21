@@ -697,7 +697,13 @@ export async function recalculateAndAwardBadgesHelper(ctx: any, userId: Id<"user
         if (s > highestCompletedStage) highestCompletedStage = s;
         if (s >= 6) hasVentureStage6 = true;
         
-        if (stageCps.every((c: any) => c.goldBonusEarned || (c.t1Completed && c.t2Completed && c.t3Completed))) {
+        const finalCheckpoint = [...stageCps].sort(
+          (left: any, right: any) => right.checkpoint - left.checkpoint,
+        )[0];
+        if (
+          finalCheckpoint?.goldBonusEarned ||
+          checkpointTaskCount(finalCheckpoint ?? {}) === 3
+        ) {
           perfectStagesForVenture++;
         }
       }

@@ -983,12 +983,20 @@ export const getVentureSummary = query({
  * Lightweight — no tasks or evidence.
  */
 export const getUserVentureSummaries = query({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
+  args: {
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    let user;
+    if (args.userId) {
+      user = await ctx.db.get(args.userId);
+    } else {
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) return [];
+      user = await getUserByClerkId(ctx, identity.subject);
+    }
 
-    const user = await getUserByClerkId(ctx, identity.subject);
+    if (!user) return [];
 
     const ventures = await ctx.db
       .query("ventures")
