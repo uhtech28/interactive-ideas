@@ -28,6 +28,10 @@ import type { Id } from "@convex/_generated/dataModel";
 import { eventBridge } from "@/lib/phaser/utils/event-bridge";
 import type { CheckpointState } from "@/lib/phaser/utils/event-bridge";
 import { HUD } from "@/components/hud/HUD";
+import { TemplateHUD } from "@/components/hud/TemplateHUD";
+import { InterCheckpointOverlay } from "@/components/map/InterCheckpointOverlay";
+import { LiveActivityFeed } from "@/components/map/LiveActivityFeed";
+import { getTemplate, type TemplateId } from "@/config/templates";
 import { LevelUpSequence } from "@/components/animations/LevelUpSequence";
 import { BadgeAwardSequence } from "@/components/animations/BadgeAwardSequence";
 import { getVentureBadgeEmoji } from "@/components/badges/BadgeCard";
@@ -49,6 +53,8 @@ import {
   submittingTaskAtom,
   currentQuestAtom,
   activeTaskAtom,
+  templateIdAtom,
+  templateMetricAtom,
 } from "@/lib/stores/hudStore";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -175,6 +181,51 @@ const STAGES: Stage[] = [
 
 const TOTAL_CHECKPOINTS = STAGES.reduce((s, st) => s + st.checkpoints, 0); // 36
 
+function getStageMetadata(templateId: TemplateId): Stage[] {
+  if (templateId === "venture") {
+    return STAGES;
+  }
+
+  const template = getTemplate(templateId);
+  const glowsByTemplate: Record<Exclude<TemplateId, "venture">, string[]> = {
+    academic: [
+      "#d4a853",
+      "#7c8c5e",
+      "#4a7c9a",
+      "#c87941",
+      "#8e44ad",
+      "#f0c040",
+    ],
+    lab: [
+      "#1a6b8a",
+      "#2d6a4f",
+      "#4361ee",
+      "#d62828",
+      "#7209b7",
+      "#f77f00",
+      "#06d6a0",
+    ],
+    creative: [
+      "#90e0a0",
+      "#e8b4d0",
+      "#ffd166",
+      "#ff6b6b",
+      "#a8dadc",
+      "#f4a261",
+    ],
+  };
+
+  return template.stages.map((stage, index) => ({
+    id: stage.id,
+    name: stage.name,
+    biome: stage.biomeName,
+    mini: stage.monster.name,
+    glow: glowsByTemplate[templateId][index] ?? "#818cf8",
+    checkpoints: stage.checkpoints,
+    icon: stage.icon,
+  }));
+}
+
 const STAGE_ANIMATION: Record<number, string> = {
   1: "Seal Break",
   2: "Rune Inscription",
@@ -241,18 +292,17 @@ function deriveCheckpointStatus(
   currentCheckpoint: number,
 ): CheckpointStatus {
   if (cp.t1Completed && cp.t2Completed && cp.t3Completed) return "gold";
+
+  // If this checkpoint is the active checkpoint node of the venture,
+  // it should remain in active/partial status until the player actually advances.
+  if (cp.stage === currentStage && cp.checkpoint === currentCheckpoint) {
+    return (cp.t1Completed || cp.t2Completed || cp.t3Completed) ? "partial" : "active";
+  }
+
   if (cp.status === "completed") return "completed";
   if (cp.stage < currentStage) return "completed";
   if (cp.stage === currentStage && cp.checkpoint < currentCheckpoint)
     return "completed";
-  if (
-    cp.stage === currentStage &&
-    cp.checkpoint === currentCheckpoint &&
-    (cp.t1Completed || cp.t2Completed || cp.t3Completed)
-  )
-    return "partial";
-  if (cp.stage === currentStage && cp.checkpoint === currentCheckpoint)
-    return "active";
   return "locked";
 }
 
@@ -264,9 +314,11 @@ function deriveCheckpointStatus(
 function StageStrip({
   activeStage,
   onSelect,
+  stages,
 }: {
   activeStage: number;
   onSelect: (stage: number) => void;
+  stages: Stage[];
 }) {
   return (
     <motion.div
@@ -275,7 +327,7 @@ function StageStrip({
       transition={{ delay: 0.5, duration: 0.5 }}
       className="no-scrollbar absolute bottom-24 left-1/2 z-20 flex max-w-[calc(100vw-0.75rem)] -translate-x-1/2 gap-1.5 overflow-x-auto rounded-full border border-white/5 bg-[#0a0d14]/60 p-1.5 shadow-[0_0_20px_rgba(30,20,50,0.5)] backdrop-blur-md sm:bottom-10 sm:gap-2 sm:p-2 md:bottom-9 lg:bottom-8"
     >
-      {STAGES.map((st, i) => {
+      {stages.map((st, i) => {
         const isDone = i + 1 < activeStage;
         const isCurrent = i + 1 === activeStage;
         const isUnlocked = i + 1 <= activeStage;
@@ -346,6 +398,8 @@ function CheckpointPanel({
   onTaskToggle,
   evaluationSummary,
   isAdvancing,
+  activeStage,
+  activeCheckpoint,
 }: {
   detail: CheckpointDetail | null;
   onClose: () => void;
@@ -362,6 +416,8 @@ function CheckpointPanel({
     };
   }>;
   isAdvancing: boolean;
+  activeStage: number;
+  activeCheckpoint: number;
 }) {
   if (!detail) return null;
 
@@ -369,6 +425,7 @@ function CheckpointPanel({
   const canAdvance = doneTasks >= 2;
   const isGold = doneTasks >= 3;
   const isLocked = detail.status === "locked";
+  const isActiveNode = detail.stage === activeStage && detail.checkpointIndex === activeCheckpoint;
 
   return (
     <AnimatePresence>
@@ -539,8 +596,8 @@ function CheckpointPanel({
 
         {/* Advance button */}
         {!isLocked &&
-          detail.status !== "completed" &&
-          detail.status !== "gold" && (
+          (detail.status !== "completed" || isActiveNode) &&
+          (detail.status !== "gold" || isActiveNode) && (
             <div className="p-4 pt-0">
               <motion.button
                 onClick={() => {
@@ -1034,6 +1091,8 @@ function MapPageInner() {
   const setCorruptionStateAtom = useSetAtom(corruptionStateAtom);
   const setCurrentQuestAtom = useSetAtom(currentQuestAtom);
   const setActiveTaskAtom = useSetAtom(activeTaskAtom);
+  const setTemplateIdAtom = useSetAtom(templateIdAtom);
+  const setTemplateMetricAtom = useSetAtom(templateMetricAtom);
   const [audioSettings, setAudioSettings] = useAtom(audioSettingsAtom);
 
   // ── Convex queries ─────────────────────────────────────────────────────────
@@ -1090,6 +1149,12 @@ function MapPageInner() {
           stageNumber: worldMapData.venture.currentStage,
         }
       : "skip",
+  );
+
+  // Template metric (JIF Score / p-value / Fan Score)
+  const templateMetric = useQuery(
+    api.templateMetrics.getTemplateMetric,
+    activeVenture ? { ventureId: activeVenture._id } : "skip",
   );
 
   // ── Convex mutations ───────────────────────────────────────────────────────
@@ -1167,6 +1232,21 @@ function MapPageInner() {
   // Tour walkthrough state
   const [showTour, setShowTour] = useState(false);
 
+  // Inter-checkpoint events state
+  const [interCheckpointQueue, setInterCheckpointQueue] = useState<Array<"henchman" | "treasure" | "shield" | "insight" | "clear">>([]);
+  const [bypassInterCheckpoint, setBypassInterCheckpoint] = useState(false);
+
+  const interCheckpointData = useQuery(
+    api.interCheckpoint.getInterCheckpointEvents,
+    activeVenture
+      ? {
+          ventureId: activeVenture._id,
+          currentStage: activeVenture.currentStage,
+          currentCheckpoint: activeVenture.currentCheckpoint,
+        }
+      : "skip"
+  );
+
   useEffect(() => {
     if (!activeVenture) return;
     const tourCompletedKey = `worldMapTourCompleted_${activeVenture._id}`;
@@ -1201,6 +1281,14 @@ function MapPageInner() {
 
   // ── Derived values from Convex ─────────────────────────────────────────────
   const venture = worldMapData?.venture ?? null;
+  const templateStages = useMemo(
+    () => getStageMetadata((venture?.templateId ?? "venture") as TemplateId),
+    [venture?.templateId],
+  );
+  const totalCheckpointsForTemplate = useMemo(
+    () => templateStages.reduce((sum, stage) => sum + stage.checkpoints, 0),
+    [templateStages],
+  );
   // Stable reference — avoids re-renders on every Convex tick
   const checkpoints = useMemo(
     () => worldMapData?.checkpoints ?? [],
@@ -1285,7 +1373,7 @@ function MapPageInner() {
 
       const targetStage = goldCp?.stage ?? activeStage;
       const targetCP = goldCp?.checkpoint ?? activeCP;
-      const stageData = STAGES[targetStage - 1];
+      const stageData = templateStages[targetStage - 1];
 
       setGoldCheckpointNotification({
         ventureName: ideaTitle,
@@ -1326,7 +1414,7 @@ function MapPageInner() {
 
   const buildCheckpointDetail = useCallback(
     (cp: WorldMapCheckpoint): CheckpointDetail => {
-      const stageData = STAGES[cp.stage - 1];
+      const stageData = templateStages[cp.stage - 1];
       return {
         id: cp._id,
         stage: cp.stage,
@@ -1514,13 +1602,13 @@ function MapPageInner() {
       phaserReady &&
       checkpoints.length > 0
     ) {
-      // Only show if user is on checkpoint 1
+      // Only show if user is on checkpoint 1 of the very first stage
       const firstCheckpoint = checkpoints[0];
-      if (firstCheckpoint && activeCP === 1) {
+      if (firstCheckpoint && activeStage === 1 && activeCP === 1) {
         setShowFirstCheckpointPulse(true);
       }
     }
-  }, [phaserReady, checkpoints, activeCP]);
+  }, [phaserReady, checkpoints, activeStage, activeCP]);
 
   // XP / Level from Convex
   const level = levelData?.level ?? 1;
@@ -1633,11 +1721,12 @@ function MapPageInner() {
   // ── Play biome ambience + stage music whenever active stage changes ─────────
   useEffect(() => {
     if (!phaserReady) return;
+    const templateId = (activeVenture?.templateId ?? "venture") as "venture" | "academic" | "lab" | "creative";
     // Layer 1: Atmospheric ambience loop (always on)
-    audioManager.playAmbienceForStage(activeStage);
+    audioManager.playAmbienceForTemplate(templateId, activeStage);
     // Layer 2: Stage thematic music (crossfades in)
     audioManager.playStageMusic(activeStage);
-  }, [activeStage, phaserReady]);
+  }, [activeStage, activeVenture?.templateId, phaserReady]);
 
   // ── Detect level-up → trigger LevelUpSequence + fanfare ──────────────────
   // Handles multi-level progression (XP overflow) - shows all levels gained in one animation
@@ -1675,14 +1764,14 @@ function MapPageInner() {
   useEffect(() => {
     if (!venture) return;
 
-    const stageData = STAGES[activeStage - 1];
+    const stageData = templateStages[activeStage - 1];
 
     setActiveVentureAtom({
       id: venture._id,
       name: ideaTitle,
       currentStage: activeStage,
       currentCheckpoint: activeCP,
-      totalCheckpoints: TOTAL_CHECKPOINTS,
+      totalCheckpoints: totalCheckpointsForTemplate,
     });
 
     setStageInfoAtom({
@@ -1700,7 +1789,7 @@ function MapPageInner() {
 
     setCheckpointProgressAtom({
       completed: completedCount,
-      total: TOTAL_CHECKPOINTS,
+      total: totalCheckpointsForTemplate,
       goldCount,
     });
 
@@ -1801,6 +1890,20 @@ function MapPageInner() {
     setUserProgressAtom,
   ]);
 
+  // ── Sync template metric to HUD atom ──────────────────────────────────────────
+  useEffect(() => {
+    if (templateMetric) {
+      setTemplateMetricAtom(templateMetric);
+    }
+  }, [templateMetric, setTemplateMetricAtom]);
+
+  // ── Sync template ID to HUD atom ──────────────────────────────────────────────
+  useEffect(() => {
+    if (venture?.templateId) {
+      setTemplateIdAtom(venture.templateId);
+    }
+  }, [venture?.templateId, setTemplateIdAtom]);
+
   // ── Also listen for BADGE_AWARDED events dispatched via the event bridge ──
   // (Covers Phaser-side badge triggers in addition to the Convex subscription)
   useEffect(() => {
@@ -1840,6 +1943,7 @@ function MapPageInner() {
     eventBridge.dispatchToPhaser({
       type: "SET_ACTIVE_VENTURE",
       ventureId: venture._id,
+      templateId: venture.templateId ?? "venture",
       personaGender: selectedGender,
       assignedBosses: Array.isArray(venture.assignedBosses)
         ? venture.assignedBosses.map(String)
@@ -2212,6 +2316,23 @@ function MapPageInner() {
     ).length;
     if (doneTasks < 2) return;
 
+    // Check for unresolved inter-checkpoint events
+    const unresolvedEvents = interCheckpointData?.events.filter((evt) => {
+      if (evt === "clear") return false;
+      const state = interCheckpointData.existingState;
+      if (!state) return true;
+      if (evt === "henchman" && state.henchmanOutcome) return false;
+      if (evt === "treasure" && state.treasuresFound && state.treasuresFound > 0) return false;
+      if (evt === "shield" && state.shieldsEarned && state.shieldsEarned > 0) return false;
+      if (evt === "insight" && state.insightFragments && state.insightFragments > 0) return false;
+      return true;
+    }) ?? [];
+
+    if (unresolvedEvents.length > 0 && !bypassInterCheckpoint) {
+      setInterCheckpointQueue(unresolvedEvents as any);
+      return;
+    }
+
     const isGold = doneTasks >= 3;
 
     // Determine if this is the last checkpoint in the stage (stage boundary)
@@ -2280,6 +2401,8 @@ function MapPageInner() {
       await advanceCheckpoint({
         checkpointId: cp._id as Id<"ventureCheckpoints">,
       });
+
+      setBypassInterCheckpoint(false);
 
       // ── Level (checkpoint) badge — rarity based on corruption meter ────
       // Gold (legendary)  : corruption < 25  — clean, visionary execution
@@ -2353,24 +2476,15 @@ function MapPageInner() {
 
       if (isLastInStage) {
         // Stage boundary — show stage clear modal!
-        const stageNames = [
-          "Ideation",
-          "Research",
-          "Validation",
-          "Offer Design",
-          "Build & Deliver",
-          "Launch",
-          "Iteration",
-          "Scale",
-        ];
+        const stageNames = templateStages.map((stage) => stage.name);
         const stageMedalTier: "gold" | "silver" | "bronze" =
           corruptionLevel <= 30
             ? "gold"
             : corruptionLevel <= 70
               ? "silver"
               : "bronze";
-        const currentStageMeta = STAGES[cp.stage - 1];
-        const nextStageMeta = STAGES[cp.stage];
+        const currentStageMeta = templateStages[cp.stage - 1];
+        const nextStageMeta = templateStages[cp.stage];
 
         setStageClearModal({
           show: true,
@@ -2523,7 +2637,7 @@ function MapPageInner() {
       {/* Phaser canvas - Fully responsive */}
       <div
         ref={containerRef}
-        className="absolute inset-0 z-0 [image-rendering:pixelated] overflow-hidden"
+        className="phaser-canvas-wrapper absolute inset-0 z-0 [image-rendering:pixelated] overflow-hidden"
         style={{
           touchAction: "none",
           WebkitTouchCallout: "none",
@@ -2649,10 +2763,21 @@ function MapPageInner() {
           </AnimatePresence>
 
           {/* Primary HUD — reads from Jotai atoms populated by Convex data */}
-          <HUD />
+          {activeVenture?.templateId && activeVenture.templateId !== "venture" ? (
+            <TemplateHUD />
+          ) : (
+            <HUD />
+          )}
+
+          {/* Real-time Presence & Activity Feed Overlay */}
+          <LiveActivityFeed />
 
           {/* Stage navigation strip — bottom pill buttons */}
-          <StageStrip activeStage={activeStage} onSelect={handleStageSelect} />
+          <StageStrip
+            activeStage={activeStage}
+            onSelect={handleStageSelect}
+            stages={templateStages}
+          />
 
           {/* Audio toggle — syncs Jotai atom AND audioManager */}
           <AudioToggle
@@ -2702,7 +2827,7 @@ function MapPageInner() {
             onSkip={() => setBadgeQueue((q) => q.slice(1))}
           />
 
-          {/* Gold checkpoint notification popup */}
+           {/* Gold checkpoint notification popup */}
           <GoldCheckpointPopup
             isVisible={!!goldCheckpointNotification}
             ventureName={goldCheckpointNotification?.ventureName ?? ""}
@@ -2710,6 +2835,27 @@ function MapPageInner() {
             checkpoint={goldCheckpointNotification?.checkpoint ?? 0}
             onDismiss={() => setGoldCheckpointNotification(null)}
           />
+
+          {/* Inter-checkpoint passage events overlay */}
+          {activeVenture && (
+            <InterCheckpointOverlay
+              isOpen={interCheckpointQueue.length > 0}
+              events={interCheckpointQueue}
+              templateId={activeVenture.templateId as any}
+              stage={activeVenture.currentStage}
+              checkpoint={activeVenture.currentCheckpoint}
+              ventureId={activeVenture._id}
+              onComplete={() => {
+                setBypassInterCheckpoint(true);
+                setInterCheckpointQueue([]);
+                // Trigger the advance since the events are now resolved
+                setTimeout(() => {
+                  handleAdvance();
+                }, 50);
+              }}
+              onClose={() => setInterCheckpointQueue([])}
+            />
+          )}
 
           {/* Left Sidebar Trigger */}
           <div className="absolute left-2 bottom-24 z-50 sm:bottom-auto sm:left-4 sm:top-1/2 sm:-translate-y-1/2 md:left-3 lg:left-4">
@@ -2741,6 +2887,8 @@ function MapPageInner() {
                 onTaskToggle={handleTaskToggle}
                 evaluationSummary={checkpointEvaluationSummary ?? undefined}
                 isAdvancing={isAdvancingCheckpoint}
+                activeStage={activeStage}
+                activeCheckpoint={activeCP}
               />
             )}
           </AnimatePresence>
