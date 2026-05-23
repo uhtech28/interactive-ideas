@@ -350,7 +350,7 @@ export function TaskSubmissionModal({
               </div>
 
               {/* Content Area */}
-              <div className="flex-1 overflow-visible p-4 sm:p-5 safe-bottom">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 min-h-0 safe-bottom">
                 {!isOnline && (
                   <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
                     Offline mode detected. Your draft will stay on this device

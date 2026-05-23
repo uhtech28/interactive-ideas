@@ -205,7 +205,7 @@ export const AchievementUnlockModal: React.FC<AchievementUnlockModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden">
+      <div key="unlock-modal-root" className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden">
         {/* Backdrop: Glassmorphic Dark Blur Overlay */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -280,6 +280,7 @@ export const AchievementUnlockModal: React.FC<AchievementUnlockModalProps> = ({
             <AnimatePresence>
               {activeStep === "show" && (
                 <motion.div
+                  key="header-announcement"
                   initial={{ y: 50, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ type: "spring", stiffness: 260, damping: 20 }}
@@ -323,6 +324,7 @@ export const AchievementUnlockModal: React.FC<AchievementUnlockModalProps> = ({
             <AnimatePresence>
               {activeStep === "burst" && (
                 <motion.div
+                  key="burst-flash-effect"
                   initial={{ scale: 0.3, opacity: 0 }}
                   animate={{ scale: 2.8, opacity: [0, 1, 1, 0] }}
                   exit={{ opacity: 0 }}
@@ -407,6 +409,7 @@ export const AchievementUnlockModal: React.FC<AchievementUnlockModalProps> = ({
               <AnimatePresence>
                 {activeStep === "show" && (
                   <motion.h3
+                    key="badge-name"
                     initial={{ y: 30, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
@@ -424,6 +427,7 @@ export const AchievementUnlockModal: React.FC<AchievementUnlockModalProps> = ({
               <AnimatePresence>
                 {activeStep === "show" && (
                   <motion.div
+                    key="badge-description"
                     initial={{ y: 30, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.2 }}
@@ -448,6 +452,7 @@ export const AchievementUnlockModal: React.FC<AchievementUnlockModalProps> = ({
               <AnimatePresence>
                 {activeStep === "show" && (
                   <motion.div
+                    key="xp-box"
                     initial={{ scale: 0.5, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.35, type: "spring", damping: 12 }}
@@ -469,9 +474,13 @@ export const AchievementUnlockModal: React.FC<AchievementUnlockModalProps> = ({
             <div className="h-14 pt-2 flex items-center justify-center gap-3">
               <AnimatePresence>
                 {activeStep === "show" && (
-                  <>
+                  <motion.div
+                    key="actions-buttons-container"
+                    className="flex items-center justify-center gap-3"
+                  >
                     {onViewBadge && (
                       <motion.div
+                        key="view-badge-btn"
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.5 }}
@@ -490,6 +499,7 @@ export const AchievementUnlockModal: React.FC<AchievementUnlockModalProps> = ({
                     )}
 
                     <motion.div
+                      key="continue-quest-btn"
                       initial={{ x: 20, opacity: 0 }}
                       animate={{ x: 0, opacity: 1 }}
                       transition={{ delay: 0.5 }}
@@ -501,7 +511,7 @@ export const AchievementUnlockModal: React.FC<AchievementUnlockModalProps> = ({
                         Continue Quest
                       </Button>
                     </motion.div>
-                  </>
+                  </motion.div>
                 )}
               </AnimatePresence>
             </div>
@@ -512,6 +522,7 @@ export const AchievementUnlockModal: React.FC<AchievementUnlockModalProps> = ({
         <AnimatePresence>
           {activeStep === "show" && (
             <motion.div
+              key="sparky-mascot"
               initial={{ opacity: 0, scale: 0.6, y: 60, rotate: -10 }}
               animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
               exit={{ opacity: 0, scale: 0.6, y: 60 }}

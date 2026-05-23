@@ -9,8 +9,6 @@ import { StageInfo } from "./StageInfo";
 import { CheckpointProgress } from "./CheckpointProgress";
 import { AudioControls } from "./AudioControls";
 import { QuestList } from "./QuestList";
-import { GoldCounter } from "./GoldCounter";
-import { CorruptionMeter } from "./CorruptionMeter";
 import { BossHPBar } from "./BossHPBar";
 
 import {
@@ -20,7 +18,7 @@ import {
   userProgressAtom,
   stageInfoAtom,
   checkpointProgressAtom,
-  corruptionStateAtom,
+
   submittingTaskAtom,
   activeTaskAtom,
 } from "@/lib/stores/hudStore";
@@ -33,7 +31,7 @@ const HUDComponent = () => {
   const [userProgress] = useAtom(userProgressAtom);
   const [stageInfo] = useAtom(stageInfoAtom);
   const [checkpointProgress] = useAtom(checkpointProgressAtom);
-  const [corruptionState] = useAtom(corruptionStateAtom);
+
   const [, setSubmittingTask] = useAtom(submittingTaskAtom);
   const [activeTask] = useAtom(activeTaskAtom);
   const [isMobile, setIsMobile] = useState(false);
@@ -54,24 +52,9 @@ const HUDComponent = () => {
     [userProgress.level],
   );
 
-  const isHighCorruption = corruptionState.level >= 75;
+  const glitchAnimation = { y: 0, opacity: 1 };
 
-  const glitchAnimation = isHighCorruption
-    ? {
-        y: [0, 1.5, -1.5, 0, 3, -3, 0],
-        x: [0, -3, 3, 0, -1.5, 1.5, 0],
-        opacity: [1, 0.75, 1, 0.9, 1, 0.85, 1],
-      }
-    : { y: 0, opacity: 1 };
-
-  const glitchTransition = isHighCorruption
-    ? {
-        repeat: Infinity,
-        duration: 0.35,
-        ease: "easeInOut",
-        repeatDelay: Math.random() * 2.5 + 0.8,
-      }
-    : { type: "spring", stiffness: 300, damping: 30 };
+  const glitchTransition = { type: "spring", stiffness: 300, damping: 30 };
 
   if (!hudVisible) return null;
 
@@ -128,9 +111,6 @@ const HUDComponent = () => {
                     <div className="hidden h-6 w-px bg-[#c8b47a]/15 sm:block" />
 
                     <div className="shrink-0">
-                      <GoldCounter compact={true} />
-                    </div>
-                    <div className="shrink-0">
                       <CheckpointProgress
                         completed={checkpointProgress.completed}
                         total={checkpointProgress.total}
@@ -144,20 +124,7 @@ const HUDComponent = () => {
                       />
                     </div>
 
-                    <div className="hidden h-6 w-px bg-white/5 lg:block" />
 
-                    <div className="hidden shrink-0 md:block">
-                      <CorruptionMeter
-                        level={corruptionState.level}
-                        phase={corruptionState.phase}
-                        bossName={corruptionState.bossName}
-                        bossHp={corruptionState.bossHp}
-                        bossBaseHp={corruptionState.bossBaseHp}
-                        compact={true}
-                      />
-                    </div>
-
-                    <div className="hidden h-6 w-px bg-white/5 md:block" />
 
                     <div className="shrink-0">
                       <LevelDisplay

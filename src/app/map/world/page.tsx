@@ -291,13 +291,18 @@ function deriveCheckpointStatus(
   currentStage: number,
   currentCheckpoint: number,
 ): CheckpointStatus {
-  if (cp.t1Completed && cp.t2Completed && cp.t3Completed) return "gold";
-
   // If this checkpoint is the active checkpoint node of the venture,
   // it should remain in active/partial status until the player actually advances.
+  // Check this FIRST before checking gold status
   if (cp.stage === currentStage && cp.checkpoint === currentCheckpoint) {
+    // If all 3 tasks are done, it's gold but still active
+    if (cp.t1Completed && cp.t2Completed && cp.t3Completed) return "gold";
+    // If some tasks are done, it's partial
     return (cp.t1Completed || cp.t2Completed || cp.t3Completed) ? "partial" : "active";
   }
+
+  // For non-active checkpoints, check if they're gold (completed with all 3 tasks)
+  if (cp.t1Completed && cp.t2Completed && cp.t3Completed) return "gold";
 
   if (cp.status === "completed") return "completed";
   if (cp.stage < currentStage) return "completed";
@@ -435,9 +440,8 @@ function CheckpointPanel({
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: "100%", opacity: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 32 }}
-        className="absolute right-0 top-0 bottom-0 z-[60] flex flex-col font-sans"
+        className="absolute right-0 top-0 bottom-0 z-[60] flex flex-col font-sans w-full sm:w-[360px] max-w-full sm:max-w-[360px]"
         style={{
-          width: "min(100vw, 360px)",
           background:
             "linear-gradient(180deg, rgba(11, 15, 25, 0.85), rgba(7, 10, 18, 0.95))",
           backdropFilter: "blur(20px)",
@@ -451,7 +455,7 @@ function CheckpointPanel({
             audioManager.playTouch("click");
             onClose();
           }}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-[14px] transition-all duration-200 bg-white/5 hover:bg-white/10"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[13px] sm:text-[14px] transition-all duration-200 bg-white/5 hover:bg-white/10"
           style={{
             border: "1px solid rgba(255,255,255,0.1)",
             color: "#cbd5e1",
@@ -471,16 +475,16 @@ function CheckpointPanel({
           ✕
         </button>
 
-        <div className="flex flex-col gap-3.5 p-5 flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-3 sm:gap-3.5 p-3 sm:p-5 flex-1 overflow-y-auto">
           {/* Stage label */}
           <div>
             <p
-              className="text-[10px] tracking-[0.2em] font-bold uppercase mb-1.5"
+              className="text-[9px] sm:text-[10px] tracking-[0.2em] font-bold uppercase mb-1 sm:mb-1.5"
               style={{ color: detail.stageGlow }}
             >
               Stage {detail.stage} · {detail.stageName}
             </p>
-            <h2 className="text-xl font-bold tracking-tight leading-tight text-white mb-2">
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight leading-tight text-white mb-1.5 sm:mb-2">
               {detail.title}
             </h2>
           </div>
@@ -506,7 +510,7 @@ function CheckpointPanel({
 
           {/* Outcome */}
           <div
-            className="text-[13px] leading-relaxed font-medium px-4 py-3 rounded-xl backdrop-blur-md"
+            className="text-[12px] sm:text-[13px] leading-relaxed font-medium px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl backdrop-blur-md"
             style={{
               color: "#cbd5e1",
               borderLeft: `3px solid ${detail.stageGlow}`,
@@ -519,7 +523,7 @@ function CheckpointPanel({
           </div>
 
           {/* Tasks */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5 sm:gap-2">
             {detail.tasks.map((task, i) => (
               <TaskCard
                 key={i}
@@ -538,11 +542,11 @@ function CheckpointPanel({
           </div>
 
           {/* Progress dots */}
-          <div className="flex items-center gap-2 px-1 mt-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 px-0.5 sm:px-1 mt-1.5 sm:mt-2">
             {detail.tasks.map((t, i) => (
               <div
                 key={i}
-                className="h-2 flex-1 rounded-full transition-all duration-300 relative overflow-hidden bg-white/5"
+                className="h-1.5 sm:h-2 flex-1 rounded-full transition-all duration-300 relative overflow-hidden bg-white/5"
               >
                 <motion.div
                   className="absolute inset-y-0 left-0"
@@ -558,7 +562,7 @@ function CheckpointPanel({
               </div>
             ))}
           </div>
-          <p className="text-[11px] font-medium tracking-wide text-slate-400">
+          <p className="text-[10px] sm:text-[11px] font-medium tracking-wide text-slate-400">
             {doneTasks}/3 tasks ·{" "}
             {2 - doneTasks > 0 && !canAdvance
               ? `${2 - doneTasks} more to advance`
@@ -567,11 +571,11 @@ function CheckpointPanel({
                 : ""}
           </p>
 
-          <div className="rounded-xl border border-amber-500/15 bg-amber-500/5 px-4 py-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">
+          <div className="rounded-lg sm:rounded-xl border border-amber-500/15 bg-amber-500/5 px-3 sm:px-4 py-2.5 sm:py-3">
+            <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">
               Gold Checkpoint
             </p>
-            <p className="mt-1 text-[12px] leading-relaxed text-slate-300">
+            <p className="mt-1 text-[11px] sm:text-[12px] leading-relaxed text-slate-300">
               {isGold
                 ? "All 3 tasks are complete. This checkpoint will advance as gold."
                 : doneTasks === 2
@@ -581,12 +585,12 @@ function CheckpointPanel({
           </div>
 
           {/* Crossing animation label */}
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/5 bg-white/[0.02] mt-auto">
-            <span className="text-[10px] tracking-[0.15em] font-semibold uppercase text-slate-500">
+          <div className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl border border-white/5 bg-white/[0.02] mt-auto">
+            <span className="text-[9px] sm:text-[10px] tracking-[0.15em] font-semibold uppercase text-slate-500">
               Crossing:
             </span>
             <span
-              className="text-[11px] font-bold tracking-wide"
+              className="text-[10px] sm:text-[11px] font-bold tracking-wide"
               style={{ color: detail.stageGlow }}
             >
               {STAGE_ANIMATION[detail.stage]}
@@ -598,7 +602,7 @@ function CheckpointPanel({
         {!isLocked &&
           (detail.status !== "completed" || isActiveNode) &&
           (detail.status !== "gold" || isActiveNode) && (
-            <div className="p-4 pt-0">
+            <div className="p-3 sm:p-4 pt-0">
               <motion.button
                 onClick={() => {
                   audioManager.playTouch(canAdvance ? "confirm" : "error");
@@ -613,7 +617,7 @@ function CheckpointPanel({
                   canAdvance && !isAdvancing ? { scale: 1.02, y: -2 } : {}
                 }
                 whileTap={canAdvance && !isAdvancing ? { scale: 0.98 } : {}}
-                className="w-full py-3.5 rounded-xl text-[12px] tracking-[0.1em] uppercase font-black transition-all duration-300 relative overflow-hidden"
+                className="w-full py-3 sm:py-3.5 rounded-lg sm:rounded-xl text-[11px] sm:text-[12px] tracking-[0.1em] uppercase font-black transition-all duration-300 relative overflow-hidden"
                 style={{
                   background: isGold
                     ? "linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(202, 138, 4, 0.1))"
@@ -727,7 +731,7 @@ function TaskCard({
       }}
       whileHover={locked || task.done ? {} : { x: 4 }}
       whileTap={locked || task.done ? {} : { scale: 0.98 }}
-      className="flex items-start gap-3.5 px-4 py-3 rounded-xl relative overflow-hidden cursor-pointer group/task transition-colors"
+      className="flex items-start gap-2.5 sm:gap-3.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl relative overflow-hidden cursor-pointer group/task transition-colors"
       style={{
         background: task.done
           ? "rgba(99, 102, 241, 0.05)"
@@ -746,13 +750,13 @@ function TaskCard({
       )}
       {/* Left accent bar */}
       <div
-        className="absolute left-0 top-0 bottom-0 w-[4px] rounded-l-xl"
+        className="absolute left-0 top-0 bottom-0 w-[3px] sm:w-[4px] rounded-l-lg sm:rounded-l-xl"
         style={{ background: task.done ? "#818cf8" : accentColor }}
       />
 
       {/* Check circle */}
       <motion.div
-        className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[11px] font-bold"
+        className="w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[10px] sm:text-[11px] font-bold"
         style={{
           background: task.done ? "#6366f1" : "rgba(255,255,255,0.05)",
           border: `1.5px solid ${task.done ? "#6366f1" : "rgba(255,255,255,0.15)"}`,
@@ -765,33 +769,33 @@ function TaskCard({
       </motion.div>
 
       <div className="flex-1 min-w-0 relative z-10">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-0.5 sm:mb-1">
           <span
-            className="text-[10px] tracking-[0.1em] font-bold uppercase"
+            className="text-[9px] sm:text-[10px] tracking-[0.1em] font-bold uppercase"
             style={{ color: accentColor }}
           >
             {task.label}
           </span>
         </div>
-        <p className="text-[13px] leading-relaxed text-slate-300 font-medium">
+        <p className="text-[12px] sm:text-[13px] leading-relaxed text-slate-300 font-medium">
           {task.description}
         </p>
-        <p className="text-[10px] tracking-[0.1em] mt-2 font-semibold uppercase text-slate-500">
+        <p className="text-[9px] sm:text-[10px] tracking-[0.1em] mt-1.5 sm:mt-2 font-semibold uppercase text-slate-500">
           {task.tool}
         </p>
         {evaluationSummary?.isPending && (
-          <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
+          <p className="mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
             AI evaluating...
           </p>
         )}
         {evaluationSummary?.evaluation && (
-          <div className="mt-2 space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-300">
+          <div className="mt-1.5 sm:mt-2 space-y-0.5 sm:space-y-1">
+            <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-300">
               {evaluationSummary.evaluation.qualityTier} ·{" "}
               {evaluationSummary.evaluation.totalScore}/12
             </p>
             {evaluationSummary.evaluation.feedback && (
-              <p className="text-[11px] leading-relaxed text-slate-400">
+              <p className="text-[10px] sm:text-[11px] leading-relaxed text-slate-400">
                 {evaluationSummary.evaluation.feedback}
               </p>
             )}
@@ -1969,6 +1973,12 @@ function MapPageInner() {
       ventureId: venture._id,
       templateId: venture.templateId ?? "venture",
       personaGender: selectedGender,
+      userName: currentUser?.displayName || currentUser?.username || "User",
+      userImageUrl: currentUser?.displayName 
+        ? `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(currentUser.displayName)}&size=128&backgroundColor=transparent`
+        : currentUser?.username
+        ? `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(currentUser.username)}&size=128&backgroundColor=transparent`
+        : "https://api.dicebear.com/7.x/adventurer/png?seed=User&size=128&backgroundColor=transparent",
       assignedBosses: Array.isArray(venture.assignedBosses)
         ? venture.assignedBosses.map(String)
         : [],
@@ -2104,6 +2114,10 @@ function MapPageInner() {
     },
     [selectedDetail, setSubmittingTask],
   );
+
+  // Stable ref so handleTaskSubmissionSuccess can call handleAdvance
+  // without creating a circular useCallback dependency.
+  const handleAdvanceRef = useRef<(forceBypass?: boolean) => void>(() => {});
 
   const handleTaskSubmissionSuccess = useCallback(
     ({
@@ -2303,6 +2317,14 @@ function MapPageInner() {
           setActiveTaskAtom(null);
         }
 
+        // ── Auto-advance when the checkpoint is now ready (≥2 tasks done) ──
+        // Delay gives the badge animation time to breathe before transitioning.
+        if (doneCount >= 2) {
+          setTimeout(() => {
+            handleAdvanceRef.current();
+          }, 1800);
+        }
+
         return {
           ...current,
           status:
@@ -2328,7 +2350,7 @@ function MapPageInner() {
   );
 
   // ── Advance checkpoint → Convex mutation ──────────────────────────────────
-  const handleAdvance = useCallback(async () => {
+  const handleAdvance = useCallback(async (forceBypass = false) => {
     if (!selectedDetail || !venture || isAdvancingCheckpoint) return;
 
     // Find the real Convex checkpoint document
@@ -2352,7 +2374,7 @@ function MapPageInner() {
       return true;
     }) ?? [];
 
-    if (unresolvedEvents.length > 0 && !bypassInterCheckpoint) {
+    if (unresolvedEvents.length > 0 && !bypassInterCheckpoint && !forceBypass) {
       setInterCheckpointQueue(unresolvedEvents as any);
       return;
     }
@@ -2426,6 +2448,7 @@ function MapPageInner() {
         checkpointId: cp._id as Id<"ventureCheckpoints">,
       });
 
+      // Reset bypass flag AFTER successful advance
       setBypassInterCheckpoint(false);
 
       // ── Level (checkpoint) badge — rarity based on corruption meter ────
@@ -2598,7 +2621,12 @@ function MapPageInner() {
     phaserReady,
     corruptionLevel,
     setBadgeQueue,
+    bypassInterCheckpoint,
+    interCheckpointData,
   ]);
+
+  // Keep handleAdvanceRef always pointing at the latest handleAdvance
+  handleAdvanceRef.current = handleAdvance;
 
   // ── Destroy audio on unmount ──────────────────────────────────────────────
   useEffect(() => {
@@ -2763,18 +2791,7 @@ function MapPageInner() {
             <div className="pointer-events-none absolute inset-0 z-[13] animate-pulse border-[10px] border-red-500/25" />
           )}
 
-          <AnimatePresence>
-            {showPhaseBanner && activeStage <= PHASE_ONE_STAGE_LIMIT && (
-              <PhaseLaunchBanner
-                onOpenRoadmap={() => {
-                  setActiveToolsTab("roadmap");
-                  setIsToolsPanelOpen(true);
-                  setSelectedDetail(null);
-                }}
-                onClose={() => setShowPhaseBanner(false)}
-              />
-            )}
-          </AnimatePresence>
+          {/* Phase banner removed per user request */}
 
           <AnimatePresence>
             {showStageResetNotice && brightness && (
@@ -2872,10 +2889,12 @@ function MapPageInner() {
               onComplete={() => {
                 setBypassInterCheckpoint(true);
                 setInterCheckpointQueue([]);
-                // Trigger the advance since the events are now resolved
+                // Trigger the advance since the events are now resolved.
+                // Small delay lets the overlay exit animation finish first,
+                // then handleAdvance fires the checkpoint animation + persona walk.
                 setTimeout(() => {
-                  handleAdvance();
-                }, 50);
+                  handleAdvance(true);
+                }, 300);
               }}
               onClose={() => setInterCheckpointQueue([])}
             />

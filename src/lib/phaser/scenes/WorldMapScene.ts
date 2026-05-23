@@ -307,6 +307,8 @@ export class WorldMapScene extends Phaser.Scene {
       ventureId: string;
       templateId?: TemplateId;
       personaGender: "male" | "female";
+      userName?: string;
+      userImageUrl?: string;
       assignedBosses?: string[];
       currentStage?: number;
       corruptionLevel?: number;
@@ -5117,6 +5119,8 @@ export class WorldMapScene extends Phaser.Scene {
     assignedBosses?: string[];
     currentStage?: number;
     corruptionLevel?: number;
+    userName?: string;
+    userImageUrl?: string;
     superBoss?: {
       bossSlug: string;
       bossName: string;
@@ -5169,6 +5173,8 @@ export class WorldMapScene extends Phaser.Scene {
           0,
           0,
           event.personaGender as PersonaGender,
+          event.userName ?? "User",
+          event.userImageUrl ?? "https://api.dicebear.com/7.x/adventurer/png?seed=User&size=128&backgroundColor=transparent",
         );
         this.gameLayer.add(this.persona);
       }
@@ -5292,68 +5298,114 @@ export class WorldMapScene extends Phaser.Scene {
 
   /**
    * Position persona beside the active checkpoint on a walkable map tile.
+   *
+   * Selection rules (strictly forward):
+   * 1. Collect all "active" and "in_progress" nodes (NOT "gold"/"completed" –
+   *    those are done and must never pull the persona backward).
+   * 2. Among candidates, pick the one with the HIGHEST globalIndex so the
+   *    persona always advances to the current frontier checkpoint.
+   * 3. If nothing is active yet, fall back to the highest completed/gold node
+   *    (still highest-index only), and ultimately the very first node.
    */
   private positionPersonaOnActiveCheckpoint(): void {
     if (!this.persona) return;
 
-    // Find active checkpoint
-    for (const node of this.checkpointNodes.values()) {
-      const status = node.status;
-      if (status === "active" || status === "in_progress") {
-        const pos = this.getPersonaMarkerPosition(node);
-        const nextCheckpointId = node.checkpointId;
-        if (!this.lastPersonaCheckpointId) {
-          this.persona.setPosition(pos.x, pos.y);
-          this.persona.setIdleFacingRight(this.getPersonaIdleFacingRight(node));
-          this.persona.playIdle();
-          this.lastPersonaCheckpointId = nextCheckpointId;
-          return;
-        }
+    const allNodes = Array.from(this.checkpointNodes.values());
 
-        if (this.lastPersonaCheckpointId !== nextCheckpointId) {
-          const previousNode = this.checkpointNodes.get(
-            this.lastPersonaCheckpointId,
-          );
-          const route = this.getPersonaWalkingRoute(
-            this.lastPersonaCheckpointId,
-            nextCheckpointId,
-          );
-          const destination = route[route.length - 1] ?? pos;
-          this.persona.moveAlongPath(
-            route,
-            this.getPersonaMoveDuration(destination.x, destination.y),
-          );
-          if (previousNode && previousNode.stage !== node.stage) {
-            this.playStageEntryWeather(
-              node.x,
-              node.y - 120,
-              node.stage,
-              this.activeBiomeConfigs[node.stage - 1]?.colors.accent2 ??
-                0xdff5ff,
-            );
-          }
-          this.lastPersonaCheckpointId = nextCheckpointId;
-          return;
-        }
+    // ── 1. Find the furthest-forward active/in_progress node ──────────────
+    const frontierNode = allNodes
+      .filter((n) => n.status === "active" || n.status === "in_progress")
+      .sort((a, b) => b.globalIndex - a.globalIndex)[0] ?? null;
 
-        this.persona.setPosition(pos.x, pos.y);
-        this.persona.setIdleFacingRight(this.getPersonaIdleFacingRight(node));
-        this.persona.playIdle();
-        return;
-      }
+    // ── 2. Determine target node ───────────────────────────────────────────
+    let targetNode: CheckpointNode | null = frontierNode;
+
+    if (!targetNode) {
+      // All tasks done in current stage – stand on the last completed node
+      targetNode =
+        allNodes
+          .filter((n) => n.status === "completed" || n.status === "gold")
+          .sort((a, b) => b.globalIndex - a.globalIndex)[0] ?? null;
     }
 
-    // Default: position on first checkpoint if no active found
-    const firstNode = Array.from(this.checkpointNodes.values())[0];
-    if (firstNode) {
-      const pos = this.getPersonaMarkerPosition(firstNode);
+    if (!targetNode) {
+      // Absolute fallback: very first checkpoint node
+      targetNode =
+        allNodes.sort((a, b) => a.globalIndex - b.globalIndex)[0] ?? null;
+    }
+
+    if (!targetNode) return; // no nodes exist at all
+
+    const nextCheckpointId = targetNode.checkpointId;
+    const pos = this.getPersonaMarkerPosition(targetNode);
+
+    // ── 3. Initial placement (no previous position known) ─────────────────
+    if (!this.lastPersonaCheckpointId) {
       this.persona.setPosition(pos.x, pos.y);
       this.persona.setIdleFacingRight(
-        this.getPersonaIdleFacingRight(firstNode),
+        this.getPersonaIdleFacingRight(targetNode),
       );
       this.persona.playIdle();
-      this.lastPersonaCheckpointId = firstNode.checkpointId;
+      this.lastPersonaCheckpointId = nextCheckpointId;
+      return;
     }
+
+    // ── 4. Already at the correct checkpoint – idle in place ──────────────
+    if (this.lastPersonaCheckpointId === nextCheckpointId) {
+      // Keep persona alive at current position; only snap if not walking
+      if (!this.persona.walking) {
+        this.persona.setPosition(pos.x, pos.y);
+        this.persona.setIdleFacingRight(
+          this.getPersonaIdleFacingRight(targetNode),
+        );
+        this.persona.playIdle();
+      }
+      return;
+    }
+
+    // ── 5. New frontier – walk forward along path ──────────────────────────
+    const previousNode = this.getCheckpointNode(this.lastPersonaCheckpointId);
+
+    // Safety guard: never walk backward. If somehow the new target is behind
+    // the last known position, just teleport forward silently.
+    const lastNode = previousNode;
+    if (lastNode && targetNode.globalIndex < lastNode.globalIndex) {
+      console.warn(
+        '[WorldMapScene] ⚠️ Prevented backward persona movement from',
+        lastNode.globalIndex, '→', targetNode.globalIndex,
+      );
+      this.persona.setPosition(pos.x, pos.y);
+      this.persona.setIdleFacingRight(
+        this.getPersonaIdleFacingRight(targetNode),
+      );
+      this.persona.playIdle();
+      this.lastPersonaCheckpointId = nextCheckpointId;
+      return;
+    }
+
+    const route = this.getPersonaWalkingRoute(
+      this.lastPersonaCheckpointId,
+      nextCheckpointId,
+    );
+
+    const destination = route[route.length - 1] ?? pos;
+    this.persona.moveAlongPath(
+      route,
+      this.getPersonaMoveDuration(destination.x, destination.y),
+    );
+
+    // Stage-transition weather burst
+    if (previousNode && previousNode.stage !== targetNode.stage) {
+      this.playStageEntryWeather(
+        targetNode.x,
+        targetNode.y - 120,
+        targetNode.stage,
+        this.activeBiomeConfigs[targetNode.stage - 1]?.colors.accent2 ??
+          0xdff5ff,
+      );
+    }
+
+    this.lastPersonaCheckpointId = nextCheckpointId;
   }
 
   private getPersonaWalkingRoute(

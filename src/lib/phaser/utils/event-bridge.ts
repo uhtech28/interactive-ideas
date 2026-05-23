@@ -104,6 +104,8 @@ export type ReactToPhaserEvent =
       ventureId: string;
       templateId?: "venture" | "academic" | "lab" | "creative";
       personaGender: "male" | "female";
+      userName?: string;
+      userImageUrl?: string;
       assignedBosses?: string[];
       currentStage?: number;
       corruptionLevel?: number;

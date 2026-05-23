@@ -85,28 +85,28 @@ function MetricDisplay() {
     : metric.value > 0;   // Others: going up
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5">
       <div
-        className="text-2xl select-none"
+        className="text-xl select-none"
         style={{ filter: isHighCorruption ? "drop-shadow(0 0 10px rgba(239, 68, 68, 0.6))" : `drop-shadow(${colors.metricGlow})` }}
       >
         {isHighCorruption ? "☠" : metric.icon}
       </div>
       <div className="flex flex-col">
         <span
-          className="text-xs font-medium uppercase tracking-widest"
+          className="text-[9px] font-medium uppercase tracking-widest"
           style={{
             color: isHighCorruption ? "#ef4444" : isWarningCorruption ? "#f59e0b" : colors.secondary,
             fontFamily: "monospace",
           }}
         >
-          {isHighCorruption ? "SYSTEM COMPROMISED" : metric.label}
+          {isHighCorruption ? "COMPROMISED" : metric.label}
         </span>
         <motion.span
           key={metric.displayValue}
           initial={{ scale: 1.1, opacity: 0.7 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="text-lg font-bold leading-none"
+          className="text-base font-bold leading-none"
           style={{
             color: isHighCorruption ? "#ef4444" : colors.primary,
             fontFamily: templateId === "lab" ? "Share Tech Mono, monospace" : "inherit",
@@ -116,20 +116,20 @@ function MetricDisplay() {
           {metric.displayValue}
           {/* Direction arrow for Lab (lower is better) */}
           {metric.direction === "lower_is_better" && (
-            <span className="ml-1 text-xs" style={{ color: isImproving ? "#06d6a0" : "#ef4444" }}>
+            <span className="ml-1 text-[10px]" style={{ color: isImproving ? "#06d6a0" : "#ef4444" }}>
               {isImproving ? "▼" : "▲"}
             </span>
           )}
         </motion.span>
         <span
-          className="text-xs mt-0.5 capitalize"
+          className="text-[9px] mt-0.5 capitalize"
           style={{
             color: metric.qualityTier === "high" ? "#fbbf24"
               : metric.qualityTier === "standard" ? colors.primary
               : "#6b7280",
           }}
         >
-          {metric.qualityTier === "high" ? "✦ High Impact" : metric.qualityTier === "standard" ? "Standard" : "Developing"}
+          {metric.qualityTier === "high" ? "✦ High" : metric.qualityTier === "standard" ? "Standard" : "Dev"}
         </span>
       </div>
     </div>
@@ -148,16 +148,16 @@ function CorruptionMeter() {
   if (corruption.level === 0) return null;
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-0.5">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-widest text-red-400/70">
+        <span className="text-[9px] font-medium uppercase tracking-widest text-red-400/70">
           ☠ Corruption
         </span>
-        <span className="text-xs font-mono" style={{ color: isCritical ? "#ef4444" : isWarning ? "#f59e0b" : "#6b7280" }}>
+        <span className="text-[9px] font-mono" style={{ color: isCritical ? "#ef4444" : isWarning ? "#f59e0b" : "#6b7280" }}>
           {corruption.level}%
         </span>
       </div>
-      <div className="relative h-1.5 rounded-full overflow-hidden bg-white/10">
+      <div className="relative h-1 rounded-full overflow-hidden bg-white/10">
         <motion.div
           className="h-full rounded-full"
           style={{
@@ -176,11 +176,11 @@ function CorruptionMeter() {
       </div>
       {isCritical && (
         <motion.p
-          className="text-xs text-red-400 font-medium"
+          className="text-[9px] text-red-400 font-medium"
           animate={{ opacity: [0.6, 1, 0.6] }}
           transition={{ repeat: Infinity, duration: 2 }}
         >
-          ⚠ Boss emerging — complete tasks to purge
+          ⚠ Boss emerging
         </motion.p>
       )}
     </div>
@@ -200,31 +200,31 @@ function StageInfo() {
   const pct = progress.total > 0 ? (progress.completed / progress.total) * 100 : 0;
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <span className="text-lg">{stageInfo.stageIcon}</span>
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-1.5">
+        <span className="text-base">{stageInfo.stageIcon}</span>
         <div className="flex flex-col">
-          <span className="text-xs text-white/50 uppercase tracking-widest font-mono">
+          <span className="text-[9px] text-white/50 uppercase tracking-widest font-mono">
             Stage {stageInfo.stage}
           </span>
-          <span className="text-sm font-semibold text-white leading-tight">
+          <span className="text-xs font-semibold text-white leading-tight">
             {stageInfo.stageName}
           </span>
-          <span className="text-xs text-white/40">{stageInfo.biomeName}</span>
+          <span className="text-[9px] text-white/40">{stageInfo.biomeName}</span>
         </div>
       </div>
 
       {/* Checkpoint progress bar */}
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-0.5">
         <div className="flex justify-between">
-          <span className="text-xs text-white/40">
+          <span className="text-[9px] text-white/40">
             CP {stageInfo.currentCheckpoint}/{stageInfo.totalCheckpointsInStage}
           </span>
-          <span className="text-xs font-mono" style={{ color: colors.primary }}>
+          <span className="text-[9px] font-mono" style={{ color: colors.primary }}>
             {progress.completed}/{progress.total}
           </span>
         </div>
-        <div className="relative h-1 rounded-full overflow-hidden bg-white/10">
+        <div className="relative h-0.5 rounded-full overflow-hidden bg-white/10">
           <motion.div
             className="h-full rounded-full"
             initial={{ width: 0 }}
@@ -234,7 +234,7 @@ function StageInfo() {
           />
         </div>
         {progress.goldCount > 0 && (
-          <span className="text-xs text-yellow-400/80">
+          <span className="text-[9px] text-yellow-400/80">
             ✦ {progress.goldCount} gold
           </span>
         )}
@@ -282,12 +282,12 @@ export function TemplateHUD() {
 
   return (
     <motion.div
-      className="fixed top-4 left-4 z-50 flex flex-col gap-3 p-4 rounded-xl backdrop-blur-md select-none animate-pulse-slow"
+      className="fixed top-2 left-2 z-50 flex flex-col gap-2 p-2.5 rounded-lg backdrop-blur-md select-none animate-pulse-slow"
       style={{
         background: isHighCorruption ? "rgba(28, 5, 5, 0.94)" : colors.bg,
         border: isHighCorruption ? "1px solid #ef4444dd" : isWarningCorruption ? "1px solid #f59e0b88" : `1px solid ${colors.primary}33`,
         boxShadow: isHighCorruption ? "0 0 25px rgba(239, 68, 68, 0.45)" : colors.metricGlow,
-        minWidth: 220,
+        minWidth: 180,
         filter: hudFilter,
       }}
       initial={{ opacity: 0, x: -20 }}
@@ -297,7 +297,7 @@ export function TemplateHUD() {
       {/* Template badge */}
       <div className="flex items-center justify-between">
         <span
-          className="text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+          className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full"
           style={{
             background: `${colors.primary}22`,
             color: colors.primary,
@@ -306,8 +306,8 @@ export function TemplateHUD() {
         >
           {template.name}
         </span>
-        <span className="text-xs text-white/30 font-mono">
-          {template.totalCheckpoints} CP total
+        <span className="text-[9px] text-white/30 font-mono">
+          {template.totalCheckpoints} CP
         </span>
       </div>
 
@@ -329,7 +329,7 @@ export function TemplateHUD() {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
           >
-            <div className="h-px bg-white/10 mb-3" />
+            <div className="h-px bg-white/10 mb-2" />
             <CorruptionMeter />
           </motion.div>
         )}
