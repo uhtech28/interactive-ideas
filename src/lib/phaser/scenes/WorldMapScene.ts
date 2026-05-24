@@ -395,8 +395,9 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   private buildWorldForCurrentTemplate(): void {
-    this.cameras.main.setBounds(0, 0, this.MAP_WIDTH, this.MAP_HEIGHT);
-    this.physics.world.setBounds(0, 0, this.MAP_WIDTH, this.MAP_HEIGHT);
+    // Extend vertical bounds to MAP_HEIGHT + 160 to make the bottom of all map panels fully visible under full zoom
+    this.cameras.main.setBounds(0, 0, this.MAP_WIDTH, this.MAP_HEIGHT + 160);
+    this.physics.world.setBounds(0, 0, this.MAP_WIDTH, this.MAP_HEIGHT + 160);
 
     this.createBiomeZones();
     this.createTilemap();
@@ -2349,22 +2350,22 @@ export class WorldMapScene extends Phaser.Scene {
     const midRow = Math.floor(ROWS / 2);
     const midCol = Math.floor(COLS / 2);
     
-    // Enhanced Stage 7 twilight color palette
+    // Spectacular warm sunset orange & golden autumn theme
     const COLORS = {
-      sky: 0x13082a,
-      ground: 0x1e0d40,
-      groundAlt: 0x180a30,
-      grass: 0x2d1a4d,
-      grassDark: 0x1f0d3a,
-      path: 0x4a3a2a,
-      pathEdge: 0x5a4a3a,
-      accent: 0x7c3aed,
-      highlight: 0xa78bfa,
-      glow: 0xddd6fe,
-      tree: 0x3d1d6e,
-      treeDark: 0x2d0f5a,
-      flower: 0xc084fc,
-      flowerGlow: 0xe9d5ff,
+      sky: 0x240f03,          // Deepest velvety rich dark amber/chocolate
+      ground: 0x2d1304,        // Warm amber-brown ground
+      groundAlt: 0x291103,     // Slightly darker amber-brown
+      grass: 0x451a03,         // Warm autumn auburn/dark orange grass
+      grassDark: 0x1c0700,     // Deep autumn grass shadow
+      path: 0x4a2708,          // Sophisticated dark golden paths
+      pathEdge: 0xb45309,      // Glowing amber edges for paths
+      accent: 0xd97706,        // Vibrant amber/orange highlight
+      highlight: 0xf59e0b,     // Soft golden/orange glows
+      glow: 0xfef08a,          // Soft warm gold ambient light
+      tree: 0x5c2b03,          // Mystical dark redwood canopy
+      treeDark: 0x271000,      // Deep redwood shadow
+      flower: 0xf97316,        // Vibrant orange sunset flower
+      flowerGlow: 0xffedd5,    // Soft warm cream/peach glow
     };
     
     // Check if external tileset is loaded (optional enhancement)
@@ -2473,68 +2474,197 @@ export class WorldMapScene extends Phaser.Scene {
     midCol: number,
     colors: Record<string, number>,
   ): void {
-    // Tile type constants for enhanced 2D array
-    const EMPTY = 0, GROUND = 1, GRASS = 2, PATH_H = 3, PATH_V = 4;
-    const TREE = 5, FLOWER = 6, HOUSE = 7, LAMP = 8, GARDEN = 9, FENCE = 10;
+    const GROUND = 0,
+      GRASS = 1,
+      PATH_H = 2,
+      PATH_V = 3,
+      HOUSE = 4,
+      GARDEN = 5,
+      TREE = 6,
+      FLOWER = 7,
+      LAMP = 8,
+      BUSH = 9,
+      ROCK = 10,
+      WELL = 11;
+
+    const panelW = cols * tileSize;
+    const panelH = rows * tileSize;
+
+    // Draw high-fidelity gradient base ground for Crossroads Town
+    const baseGround = this.add.graphics();
+    baseGround.setDepth(1);
     
-    // Generate enhanced tilemap with town layout
+    const gradientSteps = 24;
+    for (let i = 0; i < gradientSteps; i++) {
+      const t = i / gradientSteps;
+      const stepH = panelH / gradientSteps;
+      const y = panelOffsetY + i * stepH;
+      
+      // Interpolate from deep dark space amber/black (0x140701) to rich glowing warm sunset orange (0x5a2003)
+      const rStart = 20, gStart = 7, bStart = 1;
+      const rEnd = 90, gEnd = 32, bEnd = 3;
+      
+      const r = Math.floor(rStart + (rEnd - rStart) * t);
+      const g = Math.floor(gStart + (gEnd - gStart) * t);
+      const b = Math.floor(bStart + (bEnd - bStart) * t);
+      const color = (r << 16) | (g << 8) | b;
+      
+      baseGround.fillStyle(color, 1);
+      baseGround.fillRect(panelX, y, panelW, stepH + 1);
+    }
+    this.backgroundLayer.add(baseGround);
+
+    // Add floating magical twilight fireflies
+    for (let i = 0; i < 20; i++) {
+      const fx = panelX + Math.random() * panelW;
+      const fy = panelOffsetY + Math.random() * panelH;
+      const size = 1.5 + Math.random() * 1.5;
+      
+      const firefly = this.add.circle(fx, fy, size, 0xf59e0b, 0.85);
+      firefly.setDepth(12);
+      firefly.setBlendMode(Phaser.BlendModes.ADD);
+      this.animationLayer.add(firefly);
+      
+      // Floating animation
+      this.tweens.add({
+        targets: firefly,
+        x: fx + (Math.random() - 0.5) * 20,
+        y: fy + (Math.random() - 0.5) * 20,
+        alpha: { from: 0.2, to: 0.9 },
+        scale: { from: 0.7, to: 1.3 },
+        duration: 2000 + Math.random() * 2000,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut"
+      });
+    }
+
+    // 8 beautifully planned estates with two trees each and exact checkpoint alignment
+    const estates = [
+      // --- TOP-LEFT QUADRANT (2 houses) ---
+      {
+        houseRow: 5, houseCol: 5,
+        trees: [[4, 4], [4, 6]],
+        lawn: { minR: 3, maxR: 7, minC: 3, maxC: 7 },
+        walkway: [[6, 5], [7, 5], [8, 5]]
+      },
+      {
+        houseRow: 5, houseCol: 12,
+        trees: [[4, 11], [4, 13]],
+        lawn: { minR: 3, maxR: 7, minC: 10, maxC: 14 },
+        walkway: [[6, 12], [7, 12], [8, 12]]
+      },
+      
+      // --- TOP-RIGHT QUADRANT (2 houses) ---
+      {
+        houseRow: 5, houseCol: 27,
+        trees: [[4, 26], [4, 28]],
+        lawn: { minR: 3, maxR: 7, minC: 25, maxC: 29 },
+        walkway: [[6, 27], [7, 27], [8, 27]]
+      },
+      {
+        houseRow: 5, houseCol: 34,
+        trees: [[4, 33], [4, 35]],
+        lawn: { minR: 3, maxR: 7, minC: 32, maxC: 36 },
+        walkway: [[6, 34], [7, 34], [8, 34]]
+      },
+      
+      // --- BOTTOM-LEFT QUADRANT (2 houses) ---
+      // House 5: Aligns directly with Checkpoint 1 at (col 7, row 31)
+      {
+        houseRow: 29, houseCol: 7,
+        trees: [[28, 6], [28, 8]],
+        lawn: { minR: 27, maxR: 31, minC: 5, maxC: 9 },
+        walkway: [[30, 7], [31, 7], [32, 7]]
+      },
+      // House 6: Moved back from the road so the trees behind it are fully visible
+      {
+        houseRow: 16, houseCol: 15,
+        trees: [[13, 14], [13, 16]],
+        lawn: { minR: 14, maxR: 18, minC: 13, maxC: 17 },
+        walkway: [[17, 15], [18, 15], [19, 15], [20, 15], [21, 15], [22, 15], [22, 16], [22, 17], [22, 18], [22, 19]]
+      },
+      
+      // --- BOTTOM-RIGHT QUADRANT (2 houses) ---
+      // House 7: Moved back from the road so the trees behind it are fully visible
+      {
+        houseRow: 16, houseCol: 27,
+        trees: [[13, 26], [13, 28]],
+        lawn: { minR: 14, maxR: 18, minC: 25, maxC: 29 },
+        walkway: [[17, 27], [18, 27], [19, 27], [20, 27], [21, 27], [22, 27]]
+      },
+      // House 8: Moved left to col 33 so Checkpoint 4 is completely visible and the house does not overlap
+      {
+        houseRow: 29, houseCol: 33,
+        trees: [[26, 32], [26, 34]],
+        lawn: { minR: 27, maxR: 31, minC: 31, maxC: 35 },
+        walkway: [[30, 33], [31, 33], [32, 33]]
+      }
+    ];
+
+    // Generate enhanced tilemap with beautiful town layout
     const levelData: number[][] = Array.from({ length: rows }, (_, row) => 
       Array.from({ length: cols }, (_, col) => {
-        // Main crossroads paths (wider)
+        // 1. Check estate grids first
+        for (const est of estates) {
+          if (row === est.houseRow && col === est.houseCol) {
+            return HOUSE;
+          }
+          for (const [tr, tc] of est.trees) {
+            if (row === tr && col === tc) {
+              return TREE;
+            }
+          }
+          for (const [wr, wc] of est.walkway) {
+            if (row === wr && col === wc) {
+              return PATH_H; // paved stone walkway to main streets
+            }
+          }
+          if (row >= est.lawn.minR && row <= est.lawn.maxR &&
+              col >= est.lawn.minC && col <= est.lawn.maxC) {
+            return GRASS;
+          }
+        }
+
+        // 2. Main crossroads paths (wider)
         if (row >= midRow - 1 && row <= midRow + 1) return PATH_H;
         if (col >= midCol - 1 && col <= midCol + 1) return PATH_V;
         
-        // Side paths (narrower streets)
-        if (row === Math.floor(midRow / 2) || row === Math.floor(midRow * 1.5)) {
+        // 3. Side paths creating town blocks
+        if (row === 8 || row === 22) {
           if (col < midCol - 2 || col > midCol + 2) return PATH_H;
         }
-        
-        // Houses in quadrants (strategic placement)
-        // Top-left quadrant
-        if (row >= 3 && row <= 6 && col >= 3 && col <= 6) return HOUSE;
-        if (row >= 3 && row <= 6 && col >= 10 && col <= 13) return HOUSE;
-        
-        // Top-right quadrant
-        if (row >= 3 && row <= 6 && col >= midCol + 4 && col <= midCol + 7) return HOUSE;
-        if (row >= 3 && row <= 6 && col >= midCol + 10 && col <= midCol + 13) return HOUSE;
-        
-        // Bottom-left quadrant
-        if (row >= midRow + 4 && row <= midRow + 7 && col >= 3 && col <= 6) return HOUSE;
-        if (row >= midRow + 4 && row <= midRow + 7 && col >= 10 && col <= 13) return HOUSE;
-        
-        // Bottom-right quadrant
-        if (row >= midRow + 4 && row <= midRow + 7 && col >= midCol + 4 && col <= midCol + 7) return HOUSE;
-        if (row >= midRow + 4 && row <= midRow + 7 && col >= midCol + 10 && col <= midCol + 13) return HOUSE;
-        
-        // Gardens around houses
-        if ((row === 2 || row === 7) && col >= 3 && col <= 13) return GARDEN;
-        if ((row === midRow + 3 || row === midRow + 8) && col >= 3 && col <= 13) return GARDEN;
-        
-        // Lamp posts along paths
-        if ((row === midRow - 2 || row === midRow + 2) && col % 5 === 0) return LAMP;
-        if ((col === midCol - 2 || col === midCol + 2) && row % 5 === 0) return LAMP;
-        
-        // Trees scattered in open areas
-        if ((row + col) % 8 === 0 && 
-            Math.abs(row - midRow) > 3 && 
-            Math.abs(col - midCol) > 3) {
-          return TREE;
+        if (col === 8 || col === 22) {
+          if (row < midRow - 2 || row > midRow + 2) return PATH_V;
         }
         
-        // Flowers in gardens and near houses
-        if ((row + col) % 6 === 0 && 
-            (row < midRow - 2 || row > midRow + 2) &&
-            (col < midCol - 2 || col > midCol + 2)) {
-          return FLOWER;
-        }
+        // 4. Street Junction Lamp Posts (perfectly aligned at path intersections only)
+        if (row === 7 && col === 7) return LAMP;
+        if (row === 7 && col === midCol + 3) return LAMP;
+        if (row === midRow + 3 && col === 7) return LAMP;
+        if (row === midRow + 3 && col === midCol + 3) return LAMP;
         
-        // Grass patches for variety
-        if ((row + col) % 3 === 0) return GRASS;
+        // 5. Symmetric Wells next to residential estates
+        if (row === 8 && col === 2) return WELL;
+        if (row === 8 && col === cols - 3) return WELL;
+        if (row === midRow + 8 && col === 2) return WELL;
+        if (row === midRow + 8 && col === cols - 3) return WELL;
         
+        // Decorative rocks/benches next to roads (spaced regularly)
+        if (row === midRow - 2 && (col === 4 || col === cols - 5)) return ROCK;
+        if (row === midRow + 2 && (col === 4 || col === cols - 5)) return ROCK;
+        
+        // 6. Forest Borders (Beautiful outer framing tree lines)
+        if (row === 1 && col % 4 === 0) return TREE;
+        if (row === rows - 2 && col % 4 === 0) return TREE;
+        if (col === 1 && row % 4 === 0) return TREE;
+        if (col === cols - 2 && row % 4 === 0) return TREE;
+        
+        // Default to a perfectly clean background ground
         return GROUND;
       })
     );
-    
+
     // Render tiles from enhanced 2D array
     const toX = (col: number) => panelX + col * tileSize + tileSize / 2;
     const toY = (row: number) => panelOffsetY + row * tileSize + tileSize / 2;
@@ -2547,15 +2677,13 @@ export class WorldMapScene extends Phaser.Scene {
         
         switch (tileType) {
           case GROUND: {
-            const shade = (row + col) % 2 === 0 ? colors.sky : colors.groundAlt;
-            const tile = this.add.rectangle(x, y, tileSize, tileSize, shade, 1);
-            tile.setDepth(1);
-            this.backgroundLayer.add(tile);
+            // Let the gorgeous mystical twilight gradient base ground show through
             break;
           }
           
           case GRASS: {
-            const tile = this.add.rectangle(x, y, tileSize, tileSize, colors.grass, 1);
+            // Semi-transparent grass to blend with the glowing background gradient
+            const tile = this.add.rectangle(x, y, tileSize, tileSize, colors.grass, 0.75);
             tile.setDepth(1);
             this.backgroundLayer.add(tile);
             
@@ -2715,44 +2843,151 @@ export class WorldMapScene extends Phaser.Scene {
             }
             break;
           }
+          
+          case BUSH: {
+            const ground = this.add.rectangle(x, y, tileSize, tileSize, colors.grass, 1);
+            ground.setDepth(1);
+            this.backgroundLayer.add(ground);
+            
+            // Decorative bush
+            const bush = this.add.ellipse(x, y, 10, 8, colors.tree, 0.8);
+            bush.setDepth(4);
+            this.backgroundLayer.add(bush);
+            
+            const bushHighlight = this.add.ellipse(x - 2, y - 2, 4, 3, colors.grass, 0.6);
+            bushHighlight.setDepth(5);
+            this.backgroundLayer.add(bushHighlight);
+            break;
+          }
+          
+          case ROCK: {
+            const ground = this.add.rectangle(x, y, tileSize, tileSize, colors.grass, 1);
+            ground.setDepth(1);
+            this.backgroundLayer.add(ground);
+            
+            // Use existing rock sprite if available
+            if (this.textures.exists('Rock_Brown_1')) {
+              const rock = this.add.sprite(x, y, 'Rock_Brown_1');
+              rock.setOrigin(0.5, 0.5);
+              rock.setScale(scale * 0.6);
+              rock.setTint(0x6a5a8a);
+              rock.setDepth(4);
+              this.backgroundLayer.add(rock);
+            } else {
+              // Fallback rock
+              const rock = this.add.ellipse(x, y, 8, 6, 0x4a3a5a, 1);
+              rock.setDepth(4);
+              this.backgroundLayer.add(rock);
+            }
+            break;
+          }
+          
+          case WELL: {
+            const ground = this.add.rectangle(x, y, tileSize, tileSize, colors.path, 1);
+            ground.setDepth(2);
+            this.backgroundLayer.add(ground);
+            
+            // Town well/fountain
+            const wellBase = this.add.circle(x, y, tileSize * 0.6, 0x6a5a4a, 1);
+            wellBase.setDepth(7);
+            this.backgroundLayer.add(wellBase);
+            
+            const wellTop = this.add.circle(x, y, tileSize * 0.4, colors.accent, 0.8);
+            wellTop.setDepth(8);
+            this.backgroundLayer.add(wellTop);
+            
+            // Water glow
+            const waterGlow = this.add.circle(x, y, tileSize * 0.5, colors.highlight, 0.3);
+            waterGlow.setDepth(9);
+            waterGlow.setBlendMode(Phaser.BlendModes.ADD);
+            this.backgroundLayer.add(waterGlow);
+            break;
+          }
         }
       }
     }
     
-    // Add center intersection plaza
-    const plazaSize = tileSize * 2;
-    const plaza = this.add.circle(
+    // Add impressive center plaza with decorative elements
+    const plazaSize = tileSize * 3;
+    
+    // Outer plaza circle
+    const plazaOuter = this.add.circle(
       toX(midCol),
       toY(midRow),
       plazaSize / 2,
       colors.accent,
+      0.2
+    );
+    plazaOuter.setDepth(3);
+    this.backgroundLayer.add(plazaOuter);
+    
+    // Middle plaza ring
+    const plazaMiddle = this.add.circle(
+      toX(midCol),
+      toY(midRow),
+      plazaSize / 3,
+      colors.highlight,
       0.3
     );
-    plaza.setDepth(3);
-    this.backgroundLayer.add(plaza);
+    plazaMiddle.setDepth(4);
+    this.backgroundLayer.add(plazaMiddle);
     
-    // Center fountain or monument
+    // Center fountain/monument
+    const monumentBase = this.add.circle(
+      toX(midCol),
+      toY(midRow),
+      tileSize * 0.8,
+      0x6a5a4a,
+      1
+    );
+    monumentBase.setDepth(7);
+    this.backgroundLayer.add(monumentBase);
+    
     const monument = this.add.circle(
       toX(midCol),
       toY(midRow),
-      tileSize / 2,
+      tileSize * 0.6,
       colors.highlight,
-      0.6
+      0.8
     );
-    monument.setDepth(7);
+    monument.setDepth(8);
     this.backgroundLayer.add(monument);
     
-    // Monument glow
+    // Monument glow (pulsing effect)
     const monumentGlow = this.add.circle(
       toX(midCol),
       toY(midRow),
-      tileSize,
+      tileSize * 1.2,
       colors.glow,
-      0.2
+      0.3
     );
     monumentGlow.setDepth(6);
     monumentGlow.setBlendMode(Phaser.BlendModes.ADD);
     this.backgroundLayer.add(monumentGlow);
+    
+    // Add decorative stars around monument
+    const starPositions = [
+      { angle: 0, dist: tileSize * 1.5 },
+      { angle: 90, dist: tileSize * 1.5 },
+      { angle: 180, dist: tileSize * 1.5 },
+      { angle: 270, dist: tileSize * 1.5 },
+    ];
+    
+    starPositions.forEach(({ angle, dist }) => {
+      const rad = (angle * Math.PI) / 180;
+      const starX = toX(midCol) + Math.cos(rad) * dist;
+      const starY = toY(midRow) + Math.sin(rad) * dist;
+      
+      const star = this.add.circle(starX, starY, 3, colors.flower, 0.8);
+      star.setDepth(5);
+      star.setBlendMode(Phaser.BlendModes.ADD);
+      this.backgroundLayer.add(star);
+      
+      const starGlow = this.add.circle(starX, starY, 8, colors.flowerGlow, 0.2);
+      starGlow.setDepth(5);
+      starGlow.setBlendMode(Phaser.BlendModes.ADD);
+      this.backgroundLayer.add(starGlow);
+    });
   }
 
   private createCapitalTilePanel(

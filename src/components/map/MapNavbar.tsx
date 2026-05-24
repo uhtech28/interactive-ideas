@@ -117,7 +117,7 @@ export function MapNavbar() {
   const templateMetric = useAtomValue(templateMetricAtom);
   const corruption = useAtomValue(corruptionStateAtom);
 
-  const isTemplateVenture = (activeVenture as any)?.templateId && (activeVenture as any).templateId !== "venture";
+  const isTemplateVenture = activeVenture?.templateId && activeVenture.templateId !== "venture";
   const template = isTemplateVenture ? getTemplate(templateId) : null;
   const colors = isTemplateVenture ? TEMPLATE_COLORS[templateId] : null;
 

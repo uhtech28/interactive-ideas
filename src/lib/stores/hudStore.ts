@@ -7,6 +7,7 @@ export interface VentureData {
   currentStage: number;
   currentCheckpoint: number;
   totalCheckpoints: number;
+  templateId?: string;
 }
 
 export interface UserProgress {

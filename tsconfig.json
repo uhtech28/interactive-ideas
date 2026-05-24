@@ -26,6 +26,7 @@
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": [
     "node_modules",
+    "stage7_beautiful_farmland.ts",
     "public/assets/fan-tasy/**/*.tsx",
     "The Fan-tasy Tileset (Free) 1.5.7/**/*.tsx",
     "QUEST_SYSTEM_INTEGRATION_EXAMPLE.tsx",
