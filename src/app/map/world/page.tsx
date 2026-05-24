@@ -21,6 +21,7 @@ import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
+import { useAuth } from "@clerk/nextjs";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { audioManager } from "@/lib/audio/audioManager";
 import { api } from "@convex/_generated/api";
@@ -29,7 +30,7 @@ import type { Id } from "@convex/_generated/dataModel";
 import { eventBridge } from "@/lib/phaser/utils/event-bridge";
 import type { CheckpointState } from "@/lib/phaser/utils/event-bridge";
 import { CommentsSection } from "@/components/comments/CommentsSection";
-import { MessageSquare, X } from "lucide-react";
+import { MessageSquare, X, Users, Send, Share2, ExternalLink, Check, Copy } from "lucide-react";
 import { QuestList, BossHPBar, StageInfo, CheckpointProgress, LevelDisplay, XPBar, AudioControls } from "@/components/hud";
 import { InterCheckpointOverlay } from "@/components/map/InterCheckpointOverlay";
 import { getTemplate, type TemplateId } from "@/config/templates";
@@ -40,6 +41,11 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { LeftSidebar } from "@/components/map/LeftSidebar";
 import { ToolsPanel } from "@/components/map/ToolsPanel";
 import { IdeaForgeNavbar } from "@/components/ideaforge/navbar";
+import { ContributionDashboard } from "@/components/requests/ContributionDashboard";
+import { InvitationSection } from "@/components/requests/invitation-section";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { IdeaHierarchyFlowchart } from "@/components/idea/IdeaHierarchyNav";
+import { GitBranch, Rss } from "lucide-react";
 
 // Dynamic/lazy loaded overlay components for faster page loading performance
 const LevelUpSequence = dynamic(() => import("@/components/animations/LevelUpSequence").then(mod => mod.LevelUpSequence), { ssr: false });
@@ -1332,6 +1338,9 @@ function MapPageInner() {
 
   // Group chat popup modal state
   const [isGroupChatOpen, setIsGroupChatOpen] = useState(false);
+  const [isContributorsOpen, setIsContributorsOpen] = useState(false);
+  const [isContributionsOpen, setIsContributionsOpen] = useState(false);
+  const [isHierarchyOpen, setIsHierarchyOpen] = useState(false);
 
   // Badge queue — pop-and-show one at a time
   const [badgeQueue, setBadgeQueue] = useState<BadgePayload[]>([]);
@@ -1410,6 +1419,10 @@ function MapPageInner() {
 
   // ── Derived values from Convex ─────────────────────────────────────────────
   const venture = worldMapData?.venture ?? null;
+  const ideaForContributors = useQuery(
+    api.ideas.getIdeaById,
+    venture?.ideaId ? { ideaId: venture.ideaId } : "skip",
+  );
   const templateStages = useMemo(
     () => getStageMetadata((venture?.templateId ?? "venture") as TemplateId),
     [venture?.templateId],
@@ -3012,6 +3025,9 @@ function MapPageInner() {
               onTabChange={(tab) => updateUrlParams({ panel: "tools", tab })}
               activeVentureId={activeVenture?._id}
               onOpenGroupChat={() => setIsGroupChatOpen(true)}
+              onOpenContributors={() => setIsContributorsOpen(true)}
+              onOpenContributions={() => setIsContributionsOpen(true)}
+              onOpenHierarchy={() => setIsHierarchyOpen(true)}
             />
           </div>
 
@@ -3084,6 +3100,223 @@ function MapPageInner() {
             }
           />
 
+          {/* Contributions / Project Feed Popup Modal */}
+          <AnimatePresence>
+            {isContributionsOpen && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsContributionsOpen(false)}
+                  className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  transition={{ type: "spring", duration: 0.5 }}
+                  className="relative w-full max-w-[600px] h-[680px] max-h-[88vh] rounded-3xl border border-white/10 overflow-hidden shadow-2xl z-10 flex flex-col"
+                  style={{
+                    background: "linear-gradient(180deg, rgba(16, 20, 35, 0.95), rgba(10, 12, 22, 0.98))",
+                    boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.7)",
+                  }}
+                >
+                  <div className="flex-1 h-full min-h-0 flex flex-col p-5">
+                    {/* Header */}
+                    <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-white/10 shrink-0">
+                      <h2 className="text-md font-bold text-white flex items-center gap-2">
+                        <Rss className="w-5 h-5 text-indigo-400" />
+                        Project Feed
+                      </h2>
+                      <button
+                        onClick={() => setIsContributionsOpen(false)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {(() => {
+                      if (!activeVenture?.ideaId || !ideaForContributors) {
+                        return (
+                          <div className="flex flex-col items-center justify-center h-48 gap-3 text-center">
+                            <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                            <span className="text-sm text-slate-400">Loading project feed...</span>
+                          </div>
+                        );
+                      }
+
+                      // Safe parsing helper matching our main schema
+                      const parseTagsString = (str?: string) => {
+                        if (!str) return [];
+                        try {
+                          const parsed = JSON.parse(str);
+                          if (Array.isArray(parsed)) return parsed.map(s => String(s).trim()).filter(Boolean);
+                        } catch {}
+                        return str.split(",").map(s => s.trim()).filter(Boolean);
+                      };
+
+                      const tags = [
+                        ...parseTagsString(ideaForContributors.category),
+                        ...parseTagsString(ideaForContributors.industries),
+                      ];
+
+                      return (
+                        <MapFeedComposer
+                          ideaId={activeVenture.ideaId}
+                          ideaTitle={ideaForContributors.title}
+                          ideaTags={tags}
+                          onPosted={() => {}}
+                        />
+                      );
+                    })()}
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* Hierarchy Popup Modal */}
+          <AnimatePresence>
+            {isHierarchyOpen && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsHierarchyOpen(false)}
+                  className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  transition={{ type: "spring", duration: 0.5 }}
+                  className="relative w-full max-w-[700px] h-[600px] max-h-[85vh] rounded-3xl border border-white/10 overflow-hidden shadow-2xl z-10 flex flex-col"
+                  style={{
+                    background: "linear-gradient(180deg, rgba(16, 20, 35, 0.95), rgba(10, 12, 22, 0.98))",
+                    boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.7)",
+                  }}
+                >
+                  <div className="flex-1 h-full min-h-0 flex flex-col p-5">
+                    <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-white/10 shrink-0">
+                      <h2 className="text-md font-bold text-white flex items-center gap-2">
+                        <GitBranch className="w-5 h-5 text-indigo-400" />
+                        Idea Hierarchy
+                      </h2>
+                      <button
+                        onClick={() => setIsHierarchyOpen(false)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
+                      {ideaForContributors ? (
+                        <IdeaHierarchyFlowchart
+                          ideaId={ideaForContributors._id as Id<"ideas">}
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-48 gap-3 text-center">
+                          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                          <span className="text-sm text-slate-400">Loading hierarchy...</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* Contributors Popup Modal — same style as Group Chat */}
+          <AnimatePresence>
+            {isContributorsOpen && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsContributorsOpen(false)}
+                  className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  transition={{ type: "spring", duration: 0.5 }}
+                  className="relative w-full max-w-[600px] h-[650px] max-h-[85vh] rounded-3xl border border-white/10 overflow-hidden shadow-2xl z-10 flex flex-col"
+                  style={{
+                    background: "linear-gradient(180deg, rgba(16, 20, 35, 0.95), rgba(10, 12, 22, 0.98))",
+                    boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.7)",
+                  }}
+                >
+                  <div className="flex-1 h-full min-h-0 flex flex-col p-5">
+                    <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-white/10 shrink-0">
+                      <h2 className="text-md font-bold text-white flex items-center gap-2">
+                        <Users className="w-5 h-5 text-indigo-400" />
+                        Team &amp; Contributors
+                      </h2>
+                      <button
+                        onClick={() => setIsContributorsOpen(false)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
+                      {ideaForContributors ? (
+                        ideaForContributors.isAuthor ? (
+                          <Tabs defaultValue="incoming" className="w-full">
+                            <TabsList className="grid w-full grid-cols-2 bg-white/5 border border-white/10 rounded-xl p-1 mb-3">
+                              <TabsTrigger value="incoming" className="data-[state=active]:bg-white/10 rounded-lg text-xs">Incoming Requests</TabsTrigger>
+                              <TabsTrigger value="invite" className="data-[state=active]:bg-white/10 rounded-lg text-xs">Invite Contributors</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="incoming">
+                              <ContributionDashboard
+                                ideaId={ideaForContributors._id as Id<"ideas">}
+                                ideaTitle={ideaForContributors.title}
+                                authorId={ideaForContributors.authorId}
+                                authorName={ideaForContributors.author?.name || ideaForContributors.author?.username}
+                                isAuthor
+                                onClose={() => setIsContributorsOpen(false)}
+                                embedded
+                              />
+                            </TabsContent>
+                            <TabsContent value="invite">
+                              <InvitationSection
+                                idea={{ _id: ideaForContributors._id as Id<"ideas">, isAuthor: true }}
+                                embedded
+                              />
+                            </TabsContent>
+                          </Tabs>
+                        ) : (
+                          <div className="space-y-4">
+                            <ContributionDashboard
+                              ideaId={ideaForContributors._id as Id<"ideas">}
+                              ideaTitle={ideaForContributors.title}
+                              authorId={ideaForContributors.authorId}
+                              authorName={ideaForContributors.author?.name || ideaForContributors.author?.username}
+                              isAuthor={false}
+                              onClose={() => setIsContributorsOpen(false)}
+                            />
+                            <InvitationSection idea={{ _id: ideaForContributors._id as Id<"ideas">, isAuthor: false }} />
+                          </div>
+                        )
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-48 gap-3 text-center">
+                          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                          <span className="text-sm text-slate-400">Loading team dashboard...</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
           {/* Real-time Group Chat Popup Modal */}
           <AnimatePresence>
             {isGroupChatOpen && (
@@ -3111,23 +3344,13 @@ function MapPageInner() {
                 >
                   {/* Embedded Comments/Chat Thread Component */}
                   {activeVenture?.ideaId ? (
-                    <div className="flex-1 h-full min-h-0 flex flex-col p-5">
-                      {/* Header bar mirroring feed style but floating and clean */}
-                      <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-white/10 shrink-0">
-                        <h2 className="text-md font-bold text-white flex items-center gap-2">
-                          <MessageSquare className="w-5 h-5 text-indigo-400" />
-                          Group Chat & Discussion
-                        </h2>
-                        <button
-                          onClick={() => setIsGroupChatOpen(false)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-                      <div className="flex-1 min-h-0">
-                        <CommentsSection ideaId={activeVenture.ideaId} commentCount={0} />
-                      </div>
+                    <div className="flex-1 h-full min-h-0 flex flex-col overflow-hidden rounded-3xl">
+                      <ChatThread
+                        conversationId={activeConversationId ? (activeConversationId as Id<"conversations">) : null}
+                        onBack={() => setIsGroupChatOpen(false)}
+                        onClose={() => setIsGroupChatOpen(false)}
+                        ideaId={activeVenture.ideaId}
+                      />
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center flex-1 text-center p-6 space-y-4">
@@ -3143,6 +3366,290 @@ function MapPageInner() {
           </AnimatePresence>
         </>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MapFeedComposer — inline feed post composer for the Project Contributions popup
+// Posts via api.ideas.addComment with auto-prepended project name + tags header
+// ─────────────────────────────────────────────────────────────────────────────
+function MapFeedComposer({
+  ideaId,
+  ideaTitle,
+  ideaCategory,
+  ideaTags,
+  onPosted,
+}: {
+  ideaId: Id<"ideas">;
+  ideaTitle: string;
+  ideaCategory?: string;
+  ideaTags?: string[];
+  onPosted?: () => void;
+}) {
+  const { userId } = useAuth();
+  const addCommentMutation = useMutation(api.ideas.addComment);
+  const comments = useQuery(api.ideas.getComments, { ideaId, limit: 50 });
+
+  const [content, setContent] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [posted, setPosted] = useState(false);
+  const [sharingPost, setSharingPost] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const tagsArr: string[] = ideaTags ?? (ideaCategory ? [ideaCategory] : []);
+
+  // Build the feed header that gets auto-prepended
+  const buildTagHeader = () => {
+    const tagLine = tagsArr.length > 0 ? tagsArr.map(t => `#${t}`).join(" ") : "";
+    return `📌 ${ideaTitle}${tagLine ? `  ${tagLine}` : ""}\n\n`;
+  };
+
+  const handlePost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!content.trim() || !userId || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const fullContent = buildTagHeader() + content.trim();
+      await addCommentMutation({ ideaId, content: fullContent });
+      setContent("");
+      setPosted(true);
+      setSharingPost(fullContent); // Open share modal immediately on post success!
+      setTimeout(() => setPosted(false), 2500);
+      onPosted?.();
+      setTimeout(() => {
+        if (scrollRef.current) scrollRef.current.scrollTop = 0;
+      }, 100);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const formatRelative = (ts: number) => {
+    const s = Math.floor((Date.now() - ts) / 1000);
+    if (s < 60) return "just now";
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    return `${Math.floor(s / 86400)}d ago`;
+  };
+
+  const handleCopyLink = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const shareUrls = (text: string) => {
+    const cleanText = text.replace(/📌/g, "").trim();
+    const shareText = `${cleanText}\n\nCheck out our venture:`;
+    const shareLink = typeof window !== "undefined" ? `${window.location.origin}/idea/${ideaId}` : "";
+    return {
+      x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareLink)}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareLink)}`,
+      whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + " " + shareLink)}`,
+      instagram: "https://www.instagram.com",
+    };
+  };
+
+  return (
+    <div className="flex flex-col h-full min-h-0 gap-3 relative">
+      {/* Auto-tag preview bar */}
+      <div className="flex flex-wrap items-center gap-2 px-1 shrink-0">
+        <span className="text-[11px] text-slate-500 font-medium uppercase tracking-wider">Auto-tagged:</span>
+        <span className="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-[11px] font-semibold rounded-full px-2.5 py-0.5">
+          📌 {ideaTitle}
+        </span>
+        {tagsArr.map((tag) => (
+          <span
+            key={tag}
+            className="inline-flex items-center bg-white/5 border border-white/10 text-slate-300 text-[11px] rounded-full px-2 py-0.5"
+          >
+            #{tag}
+          </span>
+        ))}
+      </div>
+
+      {/* Composer box */}
+      <div className="shrink-0">
+        <form onSubmit={handlePost}>
+          <div className="relative rounded-xl border border-white/10 bg-white/[0.03] focus-within:border-indigo-500/40 focus-within:bg-white/[0.05] transition-all">
+            <textarea
+              placeholder="Share an update, insight, or file with the team... (posts publicly to the idea feed)"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              maxLength={1200}
+              rows={4}
+              className="w-full resize-none rounded-xl bg-transparent px-4 pt-3.5 pb-10 text-sm text-white placeholder:text-slate-500 outline-none focus:ring-0 leading-relaxed"
+              disabled={isSubmitting}
+            />
+            <div className="absolute bottom-3 left-4 text-[10px] text-slate-500 tabular-nums pointer-events-none">
+              {content.length}/1200
+            </div>
+            <button
+              type="submit"
+              disabled={!content.trim() || isSubmitting}
+              className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors"
+            >
+              {isSubmitting ? (
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Send className="w-3.5 h-3.5" />
+              )}
+              Post to Feed
+            </button>
+          </div>
+        </form>
+        {posted && (
+          <motion.p
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="text-xs text-emerald-400 mt-1.5 px-1"
+          >
+            ✓ Posted successfully to the project feed!
+          </motion.p>
+        )}
+      </div>
+
+      {/* Feed divider */}
+      <div className="flex items-center gap-2 shrink-0">
+        <div className="h-px flex-1 bg-white/8" />
+        <span className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Recent Posts</span>
+        <div className="h-px flex-1 bg-white/8" />
+      </div>
+
+      {/* Past posts scroll list */}
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-3 pr-0.5">
+        {comments === undefined ? (
+          <div className="flex items-center justify-center h-24 gap-2 text-slate-500">
+            <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs">Loading posts…</span>
+          </div>
+        ) : comments.filter(c => !c.parentCommentId).length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-24 gap-2 text-center">
+            <Rss className="w-5 h-5 text-slate-600" />
+            <p className="text-xs text-slate-500">No posts yet. Be the first to contribute!</p>
+          </div>
+        ) : (
+          comments
+            .filter(c => !c.parentCommentId)
+            .slice()
+            .reverse()
+            .map(c => (
+              <div key={c._id} className="rounded-xl border border-white/8 bg-white/[0.02] px-3.5 py-3 space-y-2 transition-all hover:bg-white/[0.04]">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-white truncate">
+                      {c.author?.name || c.author?.username || "Someone"}
+                    </span>
+                    <span className="text-[10px] text-slate-500 shrink-0">{formatRelative(c.createdAt)}</span>
+                  </div>
+                  <button
+                    onClick={() => setSharingPost(c.content)}
+                    className="p-1 rounded bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                    title="Share Post"
+                  >
+                    <Share2 className="w-3 h-3" />
+                  </button>
+                </div>
+                <p className="text-sm text-slate-300 whitespace-pre-wrap break-words leading-relaxed">{c.content}</p>
+              </div>
+            ))
+        )}
+      </div>
+
+      {/* Premium Social Share Drawer/Modal overlay */}
+      <AnimatePresence>
+        {sharingPost && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/85 backdrop-blur-md rounded-2xl flex flex-col justify-center p-6 z-20"
+          >
+            <div className="text-center space-y-1 mb-5">
+              <h3 className="text-base font-bold text-white flex items-center justify-center gap-2">
+                <Share2 className="w-4 h-4 text-indigo-400" /> Share Contribution
+              </h3>
+              <p className="text-xs text-slate-400">Share your latest milestone update with the world</p>
+            </div>
+
+            <div className="bg-white/5 border border-white/10 rounded-xl p-3 mb-5 max-h-[140px] overflow-y-auto no-scrollbar">
+              <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed italic">{sharingPost}</p>
+            </div>
+
+            {/* Social Grid */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <a
+                href={shareUrls(sharingPost).x}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-900 border border-white/10 hover:border-white/20 text-white font-semibold text-xs transition-colors"
+              >
+                𝕏 Share on X
+              </a>
+              <a
+                href={shareUrls(sharingPost).linkedin}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#0077B5]/20 border border-[#0077B5]/40 hover:bg-[#0077B5]/30 text-white font-semibold text-xs transition-colors"
+              >
+                LinkedIn
+              </a>
+              <a
+                href={shareUrls(sharingPost).whatsapp}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#25D366]/25 border border-[#25D366]/40 hover:bg-[#25D366]/35 text-white font-semibold text-xs transition-colors"
+              >
+                WhatsApp
+              </a>
+              <button
+                onClick={() => {
+                  handleCopyLink(sharingPost);
+                  window.open(shareUrls(sharingPost).instagram, "_blank");
+                }}
+                className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-[#833AB4]/20 via-[#FD1D1D]/20 to-[#F56040]/20 border border-[#FD1D1D]/30 hover:opacity-90 text-white font-semibold text-xs transition-colors"
+              >
+                📸 Instagram Info
+              </button>
+            </div>
+
+            {/* Copy Link Actions */}
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => handleCopyLink(sharingPost)}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    Copied text!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    Copy Post Text
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => setSharingPost(null)}
+                className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 text-xs font-semibold transition-colors"
+              >
+                Close
+              </button>
+            </div>
+            {copied && (
+              <p className="text-[10px] text-center text-indigo-300 mt-3">
+                ✓ Ready to paste! Instagram will open so you can share your milestone.
+              </p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -29,7 +29,7 @@ import type { Id } from "@convex/_generated/dataModel";
 import { eventBridge } from "@/lib/phaser/utils/event-bridge";
 import type { CheckpointState } from "@/lib/phaser/utils/event-bridge";
 import { CommentsSection } from "@/components/comments/CommentsSection";
-import { MessageSquare, X } from "lucide-react";
+import { MessageSquare, X, Lock, Users } from "lucide-react";
 import { QuestList, BossHPBar, StageInfo, CheckpointProgress, LevelDisplay, XPBar, AudioControls } from "@/components/hud";
 import { InterCheckpointOverlay } from "@/components/map/InterCheckpointOverlay";
 import { getTemplate, type TemplateId } from "@/config/templates";
@@ -40,6 +40,9 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { LeftSidebar } from "@/components/map/LeftSidebar";
 import { ToolsPanel } from "@/components/map/ToolsPanel";
 import { IdeaForgeNavbar } from "@/components/ideaforge/navbar";
+import { ContributionDashboard } from "@/components/requests/ContributionDashboard";
+import { InvitationSection } from "@/components/requests/invitation-section";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Dynamic/lazy loaded overlay components for faster page loading performance
 const LevelUpSequence = dynamic(() => import("@/components/animations/LevelUpSequence").then(mod => mod.LevelUpSequence), { ssr: false });
@@ -599,7 +602,7 @@ function CheckpointPanel({
                 key={i}
                 task={task}
                 index={i}
-                locked={isLocked}
+                locked={isLocked || (i > 0 && !detail.tasks[i - 1].done)}
                 evaluationSummary={evaluationSummary?.find(
                   (entry) => entry.taskLevel === task._taskLevel,
                 )}
@@ -805,13 +808,17 @@ function TaskCard({
       style={{
         background: task.done
           ? "rgba(99, 102, 241, 0.05)"
-          : "rgba(255, 255, 255, 0.02)",
+          : locked
+            ? "rgba(255, 255, 255, 0.01)"
+            : "rgba(255, 255, 255, 0.02)",
         border: "1px solid",
         borderColor: task.done
           ? "rgba(99, 102, 241, 0.2)"
-          : "rgba(255,255,255,0.05)",
+          : locked
+            ? "rgba(255, 255, 255, 0.02)"
+            : "rgba(255,255,255,0.05)",
         cursor: locked || task.done ? "default" : "pointer",
-        opacity: task.done ? 0.6 : 1,
+        opacity: locked ? 0.4 : task.done ? 0.6 : 1,
       }}
     >
       {/* Hover glow */}
@@ -821,30 +828,30 @@ function TaskCard({
       {/* Left accent bar */}
       <div
         className="absolute left-0 top-0 bottom-0 w-[3px] sm:w-[4px] rounded-l-lg sm:rounded-l-xl"
-        style={{ background: task.done ? "#818cf8" : accentColor }}
+        style={{ background: task.done ? "#818cf8" : locked ? "#475569" : accentColor }}
       />
 
       {/* Check circle */}
       <motion.div
         className="w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[10px] sm:text-[11px] font-bold"
         style={{
-          background: task.done ? "#6366f1" : "rgba(255,255,255,0.05)",
-          border: `1.5px solid ${task.done ? "#6366f1" : "rgba(255,255,255,0.15)"}`,
-          color: task.done ? "#ffffff" : "transparent",
+          background: task.done ? "#6366f1" : locked ? "rgba(255,255,255,0.01)" : "rgba(255,255,255,0.05)",
+          border: `1.5px solid ${task.done ? "#6366f1" : locked ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.15)"}`,
+          color: task.done ? "#ffffff" : locked ? "#64748b" : "transparent",
         }}
         animate={task.done ? { scale: [0.8, 1.2, 1] } : { scale: 1 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
       >
-        {task.done && "✓"}
+        {task.done ? "✓" : locked ? <Lock className="h-2.5 w-2.5 text-slate-500" /> : ""}
       </motion.div>
 
       <div className="flex-1 min-w-0 relative z-10">
         <div className="flex items-center gap-2 mb-0.5 sm:mb-1">
           <span
             className="text-[9px] sm:text-[10px] tracking-[0.1em] font-bold uppercase"
-            style={{ color: accentColor }}
+            style={{ color: locked ? "#64748b" : accentColor }}
           >
-            {task.label}
+            {task.label} {locked && "(Locked)"}
           </span>
         </div>
         <p className="text-[12px] sm:text-[13px] leading-relaxed text-slate-300 font-medium">
@@ -1343,6 +1350,7 @@ function MapPageInner() {
 
   // Group chat popup modal state
   const [isGroupChatOpen, setIsGroupChatOpen] = useState(false);
+  const [isContributorsOpen, setIsContributorsOpen] = useState(false);
 
   // Badge queue — pop-and-show one at a time
   const [badgeQueue, setBadgeQueue] = useState<BadgePayload[]>([]);
@@ -1421,6 +1429,10 @@ function MapPageInner() {
 
   // ── Derived values from Convex ─────────────────────────────────────────────
   const venture = worldMapData?.venture ?? null;
+  const ideaForContributors = useQuery(
+    api.ideas.getIdeaById,
+    venture?.ideaId ? { ideaId: venture.ideaId } : "skip",
+  );
   const templateStages = useMemo(
     () => getStageMetadata((venture?.templateId ?? "venture") as TemplateId),
     [venture?.templateId],
@@ -2798,11 +2810,11 @@ function MapPageInner() {
       `}</style>
 
       {/* IdeaForge Navbar at top */}
-      <IdeaForgeNavbar 
+      <IdeaForgeNavbar
         currentUser={currentUser}
         searchQuery=""
-        onSearchChange={() => {}}
-        onOpenComposer={() => {}}
+        onSearchChange={() => { }}
+        onOpenComposer={() => { }}
         backHref="/my-ideas"
       />
 
@@ -3023,6 +3035,7 @@ function MapPageInner() {
               onTabChange={(tab) => updateUrlParams({ panel: "tools", tab })}
               activeVentureId={activeVenture?._id}
               onOpenGroupChat={() => setIsGroupChatOpen(true)}
+              onOpenContributors={() => setIsContributorsOpen(true)}
             />
           </div>
 
@@ -3094,6 +3107,93 @@ function MapPageInner() {
               setStageClearModal({ ...stageClearModal, show: false })
             }
           />
+
+          {/* Contributors Popup Modal — same style as Group Chat */}
+          <AnimatePresence>
+            {isContributorsOpen && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsContributorsOpen(false)}
+                  className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  transition={{ type: "spring", duration: 0.5 }}
+                  className="relative w-full max-w-[600px] h-[650px] max-h-[85vh] rounded-3xl border border-white/10 overflow-hidden shadow-2xl z-10 flex flex-col"
+                  style={{
+                    background: "linear-gradient(180deg, rgba(16, 20, 35, 0.95), rgba(10, 12, 22, 0.98))",
+                    boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.7)",
+                  }}
+                >
+                  <div className="flex-1 h-full min-h-0 flex flex-col p-5">
+                    <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-white/10 shrink-0">
+                      <h2 className="text-md font-bold text-white flex items-center gap-2">
+                        <Users className="w-5 h-5 text-indigo-400" />
+                        Team &amp; Contributors
+                      </h2>
+                      <button
+                        onClick={() => setIsContributorsOpen(false)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
+                      {ideaForContributors ? (
+                        ideaForContributors.isAuthor ? (
+                          <Tabs defaultValue="incoming" className="w-full">
+                            <TabsList className="grid w-full grid-cols-2 bg-white/5 border border-white/10 rounded-xl p-1 mb-3">
+                              <TabsTrigger value="incoming" className="data-[state=active]:bg-white/10 rounded-lg text-xs">Incoming Requests</TabsTrigger>
+                              <TabsTrigger value="invite" className="data-[state=active]:bg-white/10 rounded-lg text-xs">Invite Contributors</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="incoming">
+                              <ContributionDashboard
+                                ideaId={ideaForContributors._id as Id<"ideas">}
+                                ideaTitle={ideaForContributors.title}
+                                authorId={ideaForContributors.authorId}
+                                authorName={ideaForContributors.author?.name || ideaForContributors.author?.username}
+                                isAuthor
+                                onClose={() => setIsContributorsOpen(false)}
+                                embedded
+                              />
+                            </TabsContent>
+                            <TabsContent value="invite">
+                              <InvitationSection
+                                idea={{ _id: ideaForContributors._id as Id<"ideas">, isAuthor: true }}
+                                embedded
+                              />
+                            </TabsContent>
+                          </Tabs>
+                        ) : (
+                          <div className="space-y-4">
+                            <ContributionDashboard
+                              ideaId={ideaForContributors._id as Id<"ideas">}
+                              ideaTitle={ideaForContributors.title}
+                              authorId={ideaForContributors.authorId}
+                              authorName={ideaForContributors.author?.name || ideaForContributors.author?.username}
+                              isAuthor={false}
+                              onClose={() => setIsContributorsOpen(false)}
+                            />
+                            <InvitationSection idea={{ _id: ideaForContributors._id as Id<"ideas">, isAuthor: false }} />
+                          </div>
+                        )
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-48 gap-3 text-center">
+                          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                          <span className="text-sm text-slate-400">Loading team dashboard...</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
 
           {/* Real-time Group Chat Popup Modal */}
           <AnimatePresence>

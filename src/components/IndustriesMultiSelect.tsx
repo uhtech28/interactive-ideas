@@ -75,6 +75,7 @@ interface IndustriesMultiSelectProps {
   maxSelection?: number;
   singleSelect?: boolean;
   mandatoryIndustries?: string[];
+  hideBadges?: boolean;
 }
 
 export function IndustriesMultiSelect({
@@ -84,6 +85,7 @@ export function IndustriesMultiSelect({
   maxSelection,
   singleSelect = false,
   mandatoryIndustries = [],
+  hideBadges = false,
 }: IndustriesMultiSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -229,7 +231,7 @@ export function IndustriesMultiSelect({
       </Popover>
 
       {/* Selected Industries Badges */}
-      {selectedIndustries.length > 0 && (
+      {!hideBadges && selectedIndustries.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {selectedIndustries.map((industry) => {
             const isMandatory = mandatoryIndustries.includes(industry);

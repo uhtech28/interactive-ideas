@@ -382,8 +382,8 @@ async function applyCheckpointCorruptionDelta(
   nextCheckpoint: WorldMapCheckpointDoc,
   now: number,
 ) {
-  const previousCompleted = getCompletedTaskCount(previousCheckpoint) >= 2;
-  const nextCompleted = getCompletedTaskCount(nextCheckpoint) >= 2;
+  const previousCompleted = getCompletedTaskCount(previousCheckpoint) >= 3;
+  const nextCompleted = getCompletedTaskCount(nextCheckpoint) >= 3;
   const previousGold =
     !!previousCheckpoint.goldBonusEarned ||
     getCompletedTaskCount(previousCheckpoint) === 3;
@@ -418,7 +418,7 @@ async function syncCheckpointProgressState(
 
   if (completedCount === 0) return;
 
-  if (completedCount === 1) {
+  if (completedCount < 3) {
     await ctx.db.patch(checkpoint._id, {
       status: "in_progress",
       partialStartedAt: checkpoint.partialStartedAt ?? now,
@@ -439,7 +439,7 @@ async function advanceWorldMapPointerAfterCheckpoint(
   checkpoint: WorldMapCheckpointDoc,
   now: number,
 ) {
-  if (getCompletedTaskCount(checkpoint) < 2) return;
+  if (getCompletedTaskCount(checkpoint) < 3) return;
 
   const nextCheckpoint = await ctx.db
     .query("ventureCheckpoints")

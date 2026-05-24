@@ -111,11 +111,23 @@ export class MiniBoss extends Phaser.GameObjects.Container {
       case "Pathwarden Wraith":
         this.drawPathwardenWraith();
         break;
+      case "Advocate of Comfortable Lies":
+        this.drawAdvocateOfComfortableLies();
+        break;
       case "Unfinished Golem":
         this.drawUnfinishedGolem();
         break;
       case "Collapse Specter":
         this.drawCollapseSpecter();
+        break;
+      case "Harbourmaster of Hesitation":
+        this.drawHarbourmasterOfHesitation();
+        break;
+      case "Babel Merchant":
+        this.drawBabelMerchant();
+        break;
+      case "Iron Bureaucrat":
+        this.drawIronBureaucrat();
         break;
       default:
         // Generic boss visual for other types
@@ -123,20 +135,43 @@ export class MiniBoss extends Phaser.GameObjects.Container {
         break;
     }
 
-    // ── Nameplate ───────────────────────────────────────────────────────────
+    // ── Nameplate Capsule Badge (Modern premium glassmorphism) ─────────────
     const displayName = this.getBossName();
-    this.namePlate = new Phaser.GameObjects.Text(scene, 0, 90, displayName, {
-      fontSize: "12px",
-      fontFamily: '"Courier New", Courier, monospace',
-      color: "#DC2626",
+    
+    // Create capsule background (semi-transparent dark glass with glowing red stroke)
+    const namePlateBg = scene.add.graphics();
+    const textWidth = displayName.length * 7;
+    const padX = 14;
+    const padY = 6;
+    const badgeW = textWidth + padX * 2;
+    const badgeH = 22;
+    const badgeX = -badgeW / 2;
+    const badgeY = 88;
+
+    namePlateBg.fillStyle(0x0f172a, 0.85); // Slate 900
+    namePlateBg.lineStyle(1.5, 0xef4444, 0.6); // Rose 500
+    namePlateBg.fillRoundedRect(badgeX, badgeY, badgeW, badgeH, 11);
+    namePlateBg.strokeRoundedRect(badgeX, badgeY, badgeW, badgeH, 11);
+
+    this.namePlate = new Phaser.GameObjects.Text(scene, 0, badgeY + 4, displayName, {
+      fontSize: "10px",
+      fontFamily: "'Outfit', 'Inter', system-ui, -apple-system, sans-serif",
+      fontStyle: "bold",
+      color: "#fca5a5", // Soft rose text
       align: "center",
-      stroke: "#0a0a14",
-      strokeThickness: 3,
+      shadow: {
+        offsetX: 0,
+        offsetY: 0,
+        color: "#ef4444",
+        blur: 4,
+        stroke: true,
+        fill: true
+      }
     });
     this.namePlate.setOrigin(0.5, 0);
 
     // ── Assemble container ──────────────────────────────────────────────────
-    this.add([this.bossGraphics, this.cracksGraphics, this.namePlate]);
+    this.add([namePlateBg, this.bossGraphics, this.cracksGraphics, this.namePlate]);
     if (this.eyeLeft) this.add([this.eyeLeft, this.eyeRight!]);
 
     // Register with scene
@@ -157,17 +192,19 @@ export class MiniBoss extends Phaser.GameObjects.Container {
     const weakness = checkpointsComplete / totalCheckpoints;
     this.currentWeakness = Phaser.Math.Clamp(weakness, 0, 1);
 
-    if (this.bossType === "Fog of Vagueness") {
-      // Fog dissipates by reducing opacity
-      const targetAlpha = 1.0 - this.currentWeakness * 0.7; // 100% -> 30%
+    if (
+      this.bossType === "Fog of Vagueness" ||
+      this.bossType === "Collapse Specter" ||
+      this.bossType === "Babel Merchant"
+    ) {
+      // Ethereal types dissipate by reducing opacity
+      const targetAlpha = 1.0 - this.currentWeakness * 0.7;
       this.scene.tweens.add({
         targets: this.bossGraphics,
         alpha: targetAlpha,
         duration: 600,
         ease: "Sine.easeOut",
       });
-
-      // Eyes fade too
       if (this.eyeLeft) {
         this.scene.tweens.add({
           targets: [this.eyeLeft, this.eyeRight],
@@ -176,8 +213,19 @@ export class MiniBoss extends Phaser.GameObjects.Container {
           ease: "Sine.easeOut",
         });
       }
+    } else if (
+      this.bossType === "Harbourmaster of Hesitation"
+    ) {
+      // Sinks lower as hesitation grows
+      this.scene.tweens.add({
+        targets: this,
+        y: this.y + this.currentWeakness * 30,
+        alpha: 1.0 - this.currentWeakness * 0.5,
+        duration: 700,
+        ease: "Sine.easeOut",
+      });
     } else {
-      // Wraith shows progressive cracks
+      // Solid types (Wraith, Golem, Advocate, Bureaucrat) show progressive cracks
       this.drawCracks(this.currentWeakness);
       this.scene.tweens.add({
         targets: this.cracksGraphics,
@@ -210,21 +258,61 @@ export class MiniBoss extends Phaser.GameObjects.Container {
       this.namePlate,
     ]);
 
-    if (this.bossType === "Fog of Vagueness") {
-      // Fog dissipates outward with scale and fade
+    if (
+      this.bossType === "Fog of Vagueness" ||
+      this.bossType === "Collapse Specter"
+    ) {
+      // Ethereal types expand and dissolve
       this.scene.tweens.add({
         targets: this,
         alpha: 0,
-        scaleX: 1.5,
-        scaleY: 1.5,
+        scaleX: 1.6,
+        scaleY: 1.6,
         duration: 2000,
         ease: "Cubic.easeOut",
-        onComplete: () => {
-          this.destroy();
-        },
+        onComplete: () => { this.destroy(); },
+      });
+    } else if (this.bossType === "Babel Merchant") {
+      // Babel Merchant implodes in a swirl of chaotic data
+      this.scene.tweens.add({
+        targets: this,
+        angle: 720,
+        scaleX: 0,
+        scaleY: 0,
+        alpha: 0,
+        duration: 1800,
+        ease: "Cubic.easeIn",
+        onComplete: () => { this.destroy(); },
+      });
+    } else if (this.bossType === "Harbourmaster of Hesitation") {
+      // Sinks into the ground with a splash
+      this.scene.tweens.add({
+        targets: this,
+        y: this.y + 200,
+        alpha: 0,
+        duration: 2200,
+        ease: "Cubic.easeIn",
+        onComplete: () => { this.destroy(); },
+      });
+    } else if (this.bossType === "Iron Bureaucrat") {
+      // Collapses with a heavy slam
+      this.scene.tweens.add({
+        targets: this.bossGraphics,
+        y: this.bossGraphics.y + 40,
+        angle: -15,
+        alpha: 0,
+        duration: 1600,
+        ease: "Bounce.easeOut",
+      });
+      this.scene.tweens.add({
+        targets: this,
+        alpha: 0,
+        duration: 2000,
+        ease: "Sine.easeOut",
+        onComplete: () => { this.destroy(); },
       });
     } else {
-      // Wraith shatters and fades
+      // Wraith / Advocate / Golem — shatters and fades
       this.scene.tweens.add({
         targets: this.bossGraphics,
         alpha: 0,
@@ -232,7 +320,6 @@ export class MiniBoss extends Phaser.GameObjects.Container {
         duration: 2000,
         ease: "Cubic.easeIn",
       });
-
       this.scene.tweens.add({
         targets: this.cracksGraphics,
         alpha: 1,
@@ -241,15 +328,12 @@ export class MiniBoss extends Phaser.GameObjects.Container {
         duration: 1000,
         ease: "Back.easeOut",
       });
-
       this.scene.tweens.add({
         targets: this,
         alpha: 0,
         duration: 2000,
         ease: "Sine.easeOut",
-        onComplete: () => {
-          this.destroy();
-        },
+        onComplete: () => { this.destroy(); },
       });
     }
   }
@@ -306,31 +390,58 @@ export class MiniBoss extends Phaser.GameObjects.Container {
       });
     }
 
-    if (this.bossType === "Fog of Vagueness") {
-      // Gold fog - explodes outward with golden flash
-      this.scene.tweens.add({
-        targets: this.bossGraphics,
-        alpha: 0,
-        scaleX: 2.5,
-        scaleY: 2.5,
-        duration: 2500,
-        ease: "Expo.easeOut",
-      });
-
-      // Pulsing gold glow
+    if (
+      this.bossType === "Fog of Vagueness" ||
+      this.bossType === "Collapse Specter"
+    ) {
+      // Gold: ethereal types explode in massive golden burst
       this.scene.tweens.add({
         targets: this,
         alpha: { from: 1, to: 0 },
-        scaleX: { from: 1, to: 2 },
-        scaleY: { from: 1, to: 2 },
+        scaleX: { from: 1, to: 2.5 },
+        scaleY: { from: 1, to: 2.5 },
         duration: 2500,
         ease: "Expo.easeOut",
-        onComplete: () => {
-          this.destroy();
-        },
+        onComplete: () => { this.destroy(); },
+      });
+    } else if (this.bossType === "Babel Merchant") {
+      // Gold: implodes then scatters in all directions
+      this.scene.tweens.add({
+        targets: this,
+        angle: 1080,
+        scaleX: 0,
+        scaleY: 0,
+        alpha: 0,
+        duration: 2200,
+        ease: "Expo.easeIn",
+        onComplete: () => { this.destroy(); },
+      });
+    } else if (this.bossType === "Harbourmaster of Hesitation") {
+      // Gold: dramatic whirlpool sinking
+      this.scene.tweens.add({
+        targets: this,
+        y: this.y + 300,
+        angle: -360,
+        alpha: 0,
+        scaleX: 0.2,
+        scaleY: 0.2,
+        duration: 2800,
+        ease: "Cubic.easeIn",
+        onComplete: () => { this.destroy(); },
+      });
+    } else if (this.bossType === "Iron Bureaucrat") {
+      // Gold: topples backward with dramatic crash
+      this.scene.tweens.add({
+        targets: this,
+        angle: -90,
+        y: this.y + 120,
+        alpha: 0,
+        duration: 2000,
+        ease: "Bounce.easeOut",
+        onComplete: () => { this.destroy(); },
       });
     } else {
-      // Gold wraith - shatters violently with rotation
+      // Gold: solid types (Wraith, Advocate, Golem) shatter upward violently
       this.scene.tweens.add({
         targets: this.bossGraphics,
         alpha: 0,
@@ -341,7 +452,6 @@ export class MiniBoss extends Phaser.GameObjects.Container {
         duration: 2000,
         ease: "Back.easeIn",
       });
-
       this.scene.tweens.add({
         targets: this.cracksGraphics,
         alpha: 1,
@@ -350,8 +460,6 @@ export class MiniBoss extends Phaser.GameObjects.Container {
         duration: 1200,
         ease: "Expo.easeOut",
       });
-
-      // Eyes fly off
       if (this.eyeLeft) {
         this.scene.tweens.add({
           targets: this.eyeLeft,
@@ -362,7 +470,6 @@ export class MiniBoss extends Phaser.GameObjects.Container {
           ease: "Cubic.easeOut",
         });
       }
-
       if (this.eyeRight) {
         this.scene.tweens.add({
           targets: this.eyeRight,
@@ -373,15 +480,12 @@ export class MiniBoss extends Phaser.GameObjects.Container {
           ease: "Cubic.easeOut",
         });
       }
-
       this.scene.tweens.add({
         targets: this,
         alpha: 0,
         duration: 2500,
         ease: "Sine.easeOut",
-        onComplete: () => {
-          this.destroy();
-        },
+        onComplete: () => { this.destroy(); },
       });
     }
   }
@@ -405,8 +509,12 @@ export class MiniBoss extends Phaser.GameObjects.Container {
       this.eyeRight,
     ]);
 
-    if (this.bossType === "Fog of Vagueness") {
-      // Fog swirls inward — condenses then settles at 40% alpha
+    if (
+      this.bossType === "Fog of Vagueness" ||
+      this.bossType === "Collapse Specter" ||
+      this.bossType === "Babel Merchant"
+    ) {
+      // Ethereal types condense inward — swirl and dim
       this.scene.tweens.add({
         targets: this.bossGraphics,
         scaleX: { from: 1.0, to: 0.6 },
@@ -439,8 +547,31 @@ export class MiniBoss extends Phaser.GameObjects.Container {
         alpha: 0.3,
         duration: 500,
       });
+    } else if (this.bossType === "Harbourmaster of Hesitation") {
+      // Partially sinks then bobs back up, still looming
+      this.scene.tweens.add({
+        targets: this,
+        y: this.y + 60,
+        alpha: 0.35,
+        duration: 1200,
+        ease: "Cubic.easeInOut",
+        onComplete: () => {
+          if (!this.scene) return;
+          this.scene.tweens.add({
+            targets: this,
+            y: this.y - 20,
+            duration: 800,
+            ease: "Sine.easeOut",
+          });
+        },
+      });
+      this.scene.tweens.add({
+        targets: this.namePlate,
+        alpha: 0.3,
+        duration: 500,
+      });
     } else {
-      // Wraith / Golem / Specter / Generic — slides into the ground, re-emerges dimly
+      // Solid types (Wraith, Advocate, Golem, Bureaucrat) — sink into the ground and re-emerge dimly
       const retreatY = this.y + 120;
 
       this.scene.tweens.add({
@@ -467,7 +598,6 @@ export class MiniBoss extends Phaser.GameObjects.Container {
         alpha: 0,
         duration: 400,
       });
-
       this.scene.tweens.add({
         targets: this,
         y: retreatY,
@@ -499,99 +629,122 @@ export class MiniBoss extends Phaser.GameObjects.Container {
    * Draw "Fog of Vagueness" — grey smoky cloud monster with amber glowing eyes
    * and a dark gaping mouth. Matches IMG_9275 reference.
    */
+  /**
+   * Draw "Fog of Vagueness" — grey smoky cloud monster with amber glowing eyes
+   * and a dark gaping mouth. Matches IMG_9275 reference.
+   */
   private drawFogOfVagueness(): void {
     const g = this.bossGraphics;
     const cx = 0; // center X
     const cy = 0; // center Y
 
-    // ── Outer wispy cloud (lightest grey, largest) ───────────────────────────
-    g.fillStyle(0x9ca3af, 0.45);
-    g.fillCircle(cx - 28, cy + 18, 28);
-    g.fillCircle(cx + 28, cy + 18, 28);
-    g.fillCircle(cx, cy + 30, 32);
-    g.fillCircle(cx - 42, cy + 30, 20);
-    g.fillCircle(cx + 42, cy + 30, 20);
-    g.fillCircle(cx, cy + 50, 24);
+    // ── Swirling Mist Wisps (Layered for mystical depth) ───────────────────
+    // We mix deep indigo, cool slate grey, and wisps of pale sky blue to create
+    // a gorgeous, living nebula cloud instead of flat geometric circles.
+    
+    // Clear graphics before draw
+    g.clear();
 
-    // ── Mid cloud layer (medium grey) ────────────────────────────────────────
-    g.fillStyle(0x6b7280, 0.75);
-    g.fillCircle(cx, cy + 5, 30);
-    g.fillCircle(cx - 22, cy + 18, 26);
-    g.fillCircle(cx + 22, cy + 18, 26);
-    g.fillCircle(cx - 10, cy + 35, 22);
-    g.fillCircle(cx + 10, cy + 35, 22);
-
-    // ── Inner core (darkest grey for density) ────────────────────────────────
-    g.fillStyle(0x4b5563, 0.9);
-    g.fillCircle(cx, cy + 8, 20);
-    g.fillCircle(cx - 14, cy + 20, 16);
-    g.fillCircle(cx + 14, cy + 20, 16);
-    g.fillCircle(cx, cy + 28, 18);
-
-    // ── Dark gaping mouth ────────────────────────────────────────────────────
+    // 1. Deep Core Shadow (Obscuring void behind the fog)
     g.fillStyle(0x111827, 0.95);
-    g.fillEllipse(cx, cy + 26, 24, 14);
-    // mouth detail — inner darkness
+    g.fillCircle(cx, cy + 20, 36);
+
+    // 2. Mystical Dark Purple Mist (Base atmosphere)
+    g.fillStyle(0x312e81, 0.5);
+    g.fillCircle(cx - 15, cy + 15, 30);
+    g.fillCircle(cx + 15, cy + 15, 30);
+    g.fillCircle(cx, cy + 35, 34);
+
+    // 3. Medium Slate Smoke Layers (Creates soft volume)
+    g.fillStyle(0x6b7280, 0.65);
+    g.fillCircle(cx - 28, cy + 20, 24);
+    g.fillCircle(cx + 28, cy + 20, 24);
+    g.fillCircle(cx, cy + 8, 28);
+    g.fillCircle(cx - 12, cy + 30, 26);
+    g.fillCircle(cx + 12, cy + 30, 26);
+
+    // 4. Soft Edge Wisps (Lighter gray with alpha layering for a fuzzy cloud look)
+    g.fillStyle(0x9ca3af, 0.4);
+    g.fillCircle(cx - 36, cy + 28, 18);
+    g.fillCircle(cx + 36, cy + 28, 18);
+    g.fillCircle(cx, cy + 46, 22);
+    g.fillCircle(cx - 20, cy + 8, 20);
+    g.fillCircle(cx + 20, cy + 8, 20);
+
+    // ── Dark Gaping Mouth of the Void ──────────────────────────────────────
+    g.fillStyle(0x030712, 1);
+    g.fillEllipse(cx, cy + 26, 26, 16);
+    // Inner gaping depth
     g.fillStyle(0x000000, 1);
-    g.fillEllipse(cx, cy + 28, 16, 8);
+    g.fillEllipse(cx, cy + 28, 18, 10);
 
-    // ── Pixel scatter base (crumbling pixel effect at bottom) ────────────────
-    const pixSizes = [5, 4, 3, 4, 5, 3, 4];
-    const pixOffsets = [-30, -20, -10, 0, 10, 20, 30];
-    g.fillStyle(0x6b7280, 0.5);
-    pixOffsets.forEach((px, i) => {
-      g.fillRect(
-        cx + px - pixSizes[i] / 2,
-        cy + 56 + (i % 3) * 4,
-        pixSizes[i],
-        pixSizes[i],
-      );
-    });
+    // ── Floating Smoky Particles (Drifting upward) ─────────────────────────
+    const particleColors = [0x9ca3af, 0x6b7280, 0x4b5563];
+    for (let i = 0; i < 12; i++) {
+      const px = cx + Phaser.Math.Between(-35, 35);
+      const py = cy + Phaser.Math.Between(-10, 50);
+      const size = Phaser.Math.Between(3, 6);
+      g.fillStyle(particleColors[i % 3], 0.35);
+      g.fillCircle(px, py, size);
+    }
 
-    // ── Eyes (glowing amber — matches IMG_9275) ──────────────────────────────
-    this.eyeLeft = new Phaser.GameObjects.Arc(
-      this.scene,
-      cx - 10,
-      cy + 12,
-      5,
-      0,
-      360,
-      false,
-      0xfbbf24,
-    );
-    this.eyeLeft.setStrokeStyle(2, 0xf59e0b, 1);
+    // ── Highly Stylized Glowing Ember Eyes ────────────────────────────────
+    // We construct multi-layered glowing eyes: a wide soft orange aura with
+    // additive blend mode + a solid intense amber core + a bright white reflection.
+    
+    // Left Eye components
+    const eyeLeftX = cx - 11;
+    const eyeLeftY = cy + 10;
+    
+    // Left Eye Outer Soft Glow
+    const leftGlow = new Phaser.GameObjects.Arc(this.scene, eyeLeftX, eyeLeftY, 9, 0, 360, false, 0xf59e0b, 0.4);
+    leftGlow.setBlendMode(Phaser.BlendModes.ADD);
+    
+    // Left Eye Core
+    this.eyeLeft = new Phaser.GameObjects.Arc(this.scene, eyeLeftX, eyeLeftY, 5, 0, 360, false, 0xfbbf24, 1);
+    this.eyeLeft.setStrokeStyle(2, 0xd97706, 1);
+    
+    // Left Eye Glint
+    const leftGlint = new Phaser.GameObjects.Arc(this.scene, eyeLeftX - 1.5, eyeLeftY - 1.5, 1.5, 0, 360, false, 0xffffff, 0.9);
 
-    this.eyeRight = new Phaser.GameObjects.Arc(
-      this.scene,
-      cx + 10,
-      cy + 12,
-      5,
-      0,
-      360,
-      false,
-      0xfbbf24,
-    );
-    this.eyeRight.setStrokeStyle(2, 0xf59e0b, 1);
+    // Right Eye components
+    const eyeRightX = cx + 11;
+    const eyeRightY = cy + 10;
+    
+    // Right Eye Outer Soft Glow
+    const rightGlow = new Phaser.GameObjects.Arc(this.scene, eyeRightX, eyeRightY, 9, 0, 360, false, 0xf59e0b, 0.4);
+    rightGlow.setBlendMode(Phaser.BlendModes.ADD);
+    
+    // Right Eye Core
+    this.eyeRight = new Phaser.GameObjects.Arc(this.scene, eyeRightX, eyeRightY, 5, 0, 360, false, 0xfbbf24, 1);
+    this.eyeRight.setStrokeStyle(2, 0xd97706, 1);
+    
+    // Right Eye Glint
+    const rightGlint = new Phaser.GameObjects.Arc(this.scene, eyeRightX - 1.5, eyeRightY - 1.5, 1.5, 0, 360, false, 0xffffff, 0.9);
 
-    // Pulsing glow on eyes
+    // Add extra glowing elements to container
+    this.add([leftGlow, leftGlint, rightGlow, rightGlint]);
+
+    // ── Mystical Swirling & Floating Tweens ───────────────────────────────
+    // Soft breathing + shifting of the cloud wisps
     this.scene.tweens.add({
-      targets: [this.eyeLeft, this.eyeRight],
-      alpha: { from: 0.6, to: 1.0 },
-      scaleX: { from: 0.9, to: 1.3 },
-      scaleY: { from: 0.9, to: 1.3 },
-      duration: 900,
+      targets: g,
+      scaleX: { from: 1.0, to: 1.06 },
+      scaleY: { from: 1.0, to: 1.06 },
+      alpha: { from: 0.88, to: 1.0 },
+      duration: 2000,
       ease: "Sine.easeInOut",
       yoyo: true,
       repeat: -1,
     });
 
-    // Fog body slow pulse (expand/contract like breathing)
+    // Sinister, organic eye pulse & shimmer
     this.scene.tweens.add({
-      targets: this.bossGraphics,
-      scaleX: { from: 1.0, to: 1.06 },
-      scaleY: { from: 1.0, to: 1.06 },
-      alpha: { from: 0.9, to: 1.0 },
-      duration: 1800,
+      targets: [this.eyeLeft, this.eyeRight, leftGlow, rightGlow],
+      alpha: { from: 0.5, to: 1.0 },
+      scaleX: { from: 0.92, to: 1.15 },
+      scaleY: { from: 0.92, to: 1.15 },
+      duration: 1100,
       ease: "Sine.easeInOut",
       yoyo: true,
       repeat: -1,
@@ -852,6 +1005,371 @@ export class MiniBoss extends Phaser.GameObjects.Container {
       yoyo: true,
       repeat: -1,
       ease: "Sine.easeInOut",
+    });
+  }
+
+  /**
+   * Draw "Advocate of Comfortable Lies" — Stage 3 (Validation).
+   * A smooth, suited politician-like figure with a painted smile mask,
+   * holding a glowing scroll of false promises.
+   */
+  private drawAdvocateOfComfortableLies(): void {
+    const g = this.bossGraphics;
+    const cx = 0;
+    const cy = 0;
+
+    // ── Body — charcoal suit ──────────────────────────────────────────────────
+    g.fillStyle(0x1c1c2e, 1);
+    g.beginPath();
+    g.moveTo(cx - 22, cy + 10);
+    g.lineTo(cx + 22, cy + 10);
+    g.lineTo(cx + 30, cy + 80);
+    g.lineTo(cx - 30, cy + 80);
+    g.closePath();
+    g.fillPath();
+
+    // ── Lapels — white ────────────────────────────────────────────────────────
+    g.fillStyle(0xf0f0f0, 0.9);
+    g.beginPath();
+    g.moveTo(cx - 8, cy + 10);
+    g.lineTo(cx, cy + 30);
+    g.lineTo(cx - 18, cy + 30);
+    g.closePath();
+    g.fillPath();
+    g.beginPath();
+    g.moveTo(cx + 8, cy + 10);
+    g.lineTo(cx, cy + 30);
+    g.lineTo(cx + 18, cy + 30);
+    g.closePath();
+    g.fillPath();
+
+    // ── Tie — crimson ─────────────────────────────────────────────────────────
+    g.fillStyle(0xdc2626, 1);
+    g.beginPath();
+    g.moveTo(cx - 4, cy + 28);
+    g.lineTo(cx + 4, cy + 28);
+    g.lineTo(cx + 6, cy + 60);
+    g.lineTo(cx, cy + 68);
+    g.lineTo(cx - 6, cy + 60);
+    g.closePath();
+    g.fillPath();
+
+    // ── Head — round, pale ────────────────────────────────────────────────────
+    g.fillStyle(0xe8d5b0, 1);
+    g.fillCircle(cx, cy - 8, 20);
+
+    // ── Smile mask — painted green grin ──────────────────────────────────────
+    g.fillStyle(0x16a34a, 0.85);
+    g.fillEllipse(cx, cy - 4, 28, 16);
+    g.fillStyle(0x1c1c2e, 1);
+    g.fillEllipse(cx, cy - 10, 24, 10);
+    // teeth
+    g.fillStyle(0xffffff, 1);
+    for (let i = -3; i <= 3; i++) {
+      g.fillRect(cx + i * 3 - 1, cy - 6, 2, 5);
+    }
+
+    // ── Scroll in hand — glowing green ───────────────────────────────────────
+    g.fillStyle(0x14532d, 1);
+    g.fillRect(cx + 28, cy + 30, 14, 30);
+    g.fillStyle(0x4ade80, 0.6);
+    g.fillRect(cx + 30, cy + 34, 10, 22);
+    // scroll ends
+    g.fillStyle(0x78350f, 1);
+    g.fillEllipse(cx + 35, cy + 30, 14, 6);
+    g.fillEllipse(cx + 35, cy + 60, 14, 6);
+
+    // ── Glowing eye of deceit ─────────────────────────────────────────────────
+    this.eyeLeft = new Phaser.GameObjects.Arc(this.scene, cx - 7, cy - 10, 4, 0, 360, false, 0x4ade80, 1);
+    this.eyeRight = new Phaser.GameObjects.Arc(this.scene, cx + 7, cy - 10, 4, 0, 360, false, 0x4ade80, 1);
+    this.eyeLeft.setStrokeStyle(1, 0x16a34a, 1);
+    this.eyeRight.setStrokeStyle(1, 0x16a34a, 1);
+
+    // Sinister eye pulse
+    this.scene.tweens.add({
+      targets: [this.eyeLeft, this.eyeRight],
+      alpha: { from: 0.4, to: 1.0 },
+      scaleX: { from: 0.8, to: 1.2 },
+      scaleY: { from: 0.8, to: 1.2 },
+      duration: 1200,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // Sway animation — persuasive bobbing
+    this.scene.tweens.add({
+      targets: this,
+      angle: { from: -3, to: 3 },
+      duration: 2400,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+    });
+  }
+
+  /**
+   * Draw "Harbourmaster of Hesitation" — Stage 6 (Launch).
+   * A bloated sea-captain silhouette anchored in doubt, with a rusted anchor
+   * chain binding its legs. Teal/seafoam palette matches harbour biome.
+   */
+  private drawHarbourmasterOfHesitation(): void {
+    const g = this.bossGraphics;
+    const cx = 0;
+    const cy = 0;
+
+    // ── Heavy coat — dark teal ────────────────────────────────────────────────
+    g.fillStyle(0x0d3d3a, 1);
+    g.beginPath();
+    g.moveTo(cx - 28, cy + 5);
+    g.lineTo(cx + 28, cy + 5);
+    g.lineTo(cx + 36, cy + 85);
+    g.lineTo(cx - 36, cy + 85);
+    g.closePath();
+    g.fillPath();
+
+    // ── Coat highlights — ocean sheen ─────────────────────────────────────────
+    g.fillStyle(0x1a6b3a, 0.4);
+    g.fillRect(cx - 28, cy + 5, 10, 80);
+    g.fillRect(cx + 18, cy + 5, 10, 80);
+
+    // ── Epaulettes ───────────────────────────────────────────────────────────
+    g.fillStyle(0x38bdf8, 0.8);
+    g.fillEllipse(cx - 26, cy + 8, 18, 10);
+    g.fillEllipse(cx + 26, cy + 8, 18, 10);
+
+    // ── Head — wide captain's hat ─────────────────────────────────────────────
+    g.fillStyle(0x083344, 1);
+    g.fillCircle(cx, cy - 10, 22);
+    // Hat brim
+    g.fillRect(cx - 32, cy - 22, 64, 8);
+    // Hat top
+    g.fillRect(cx - 18, cy - 50, 36, 30);
+    // Gold band
+    g.fillStyle(0xfbbf24, 1);
+    g.fillRect(cx - 18, cy - 24, 36, 4);
+
+    // ── Face — sunken, uncertain ──────────────────────────────────────────────
+    g.fillStyle(0x7f8c8d, 1);
+    g.fillEllipse(cx, cy - 8, 30, 22);
+    // Drooping brow lines
+    g.lineStyle(2, 0x2c3e50, 1);
+    g.beginPath(); g.moveTo(cx - 12, cy - 14); g.lineTo(cx - 4, cy - 10); g.strokePath();
+    g.beginPath(); g.moveTo(cx + 12, cy - 14); g.lineTo(cx + 4, cy - 10); g.strokePath();
+
+    // ── Anchor chain at legs ──────────────────────────────────────────────────
+    g.fillStyle(0x78716c, 0.9);
+    for (let i = 0; i < 5; i++) {
+      g.fillEllipse(cx, cy + 88 + i * 12, 16, 8);
+      g.fillEllipse(cx, cy + 94 + i * 12, 8, 16);
+    }
+    // Anchor
+    g.fillStyle(0x57534e, 1);
+    g.fillRect(cx - 2, cy + 148, 4, 20);
+    g.fillRect(cx - 14, cy + 155, 28, 4);
+    g.fillCircle(cx, cy + 148, 5);
+
+    // ── Eyes — watery blue ────────────────────────────────────────────────────
+    this.eyeLeft = new Phaser.GameObjects.Arc(this.scene, cx - 8, cy - 8, 4, 0, 360, false, 0x38bdf8, 0.9);
+    this.eyeRight = new Phaser.GameObjects.Arc(this.scene, cx + 8, cy - 8, 4, 0, 360, false, 0x38bdf8, 0.9);
+
+    // Wavering eye glow — indecisive flicker
+    this.scene.tweens.add({
+      targets: [this.eyeLeft, this.eyeRight],
+      alpha: { from: 0.3, to: 0.9 },
+      duration: 2000,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // Rocking on anchor chain
+    this.scene.tweens.add({
+      targets: this,
+      y: this.y + 8,
+      duration: 2800,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+    });
+  }
+
+  /**
+   * Draw "Babel Merchant" — Stage 7 (Iteration).
+   * A chaotic figure wrapped in scrolling ticker-tape and mismatched data
+   * readouts. Purple/lavender crossroads palette.
+   */
+  private drawBabelMerchant(): void {
+    const g = this.bossGraphics;
+    const cx = 0;
+    const cy = 0;
+
+    // ── Robes — layered mismatched strips ────────────────────────────────────
+    const robeColors = [0x7c3aed, 0xa78bfa, 0x4c1d95, 0x6d28d9];
+    for (let i = 0; i < 4; i++) {
+      g.fillStyle(robeColors[i], 0.85);
+      g.fillRect(cx - 26 + i * 3, cy + 10 + i * 5, 52 - i * 6, 70 - i * 4);
+    }
+
+    // ── Body core ────────────────────────────────────────────────────────────
+    g.fillStyle(0x13082a, 1);
+    g.fillRect(cx - 20, cy + 12, 40, 65);
+
+    // ── Ticker-tape scrolls ───────────────────────────────────────────────────
+    g.fillStyle(0xf0f0f0, 0.7);
+    g.fillRect(cx - 35, cy + 20, 12, 50);
+    g.fillRect(cx + 23, cy + 15, 12, 55);
+    // Lines on scrolls (data)
+    g.lineStyle(1, 0x7c3aed, 0.6);
+    for (let i = 0; i < 6; i++) {
+      g.beginPath();
+      g.moveTo(cx - 34, cy + 25 + i * 7);
+      g.lineTo(cx - 24, cy + 25 + i * 7);
+      g.strokePath();
+      g.beginPath();
+      g.moveTo(cx + 24, cy + 20 + i * 7);
+      g.lineTo(cx + 34, cy + 20 + i * 7);
+      g.strokePath();
+    }
+
+    // ── Head — faceless orb with runes ───────────────────────────────────────
+    g.fillStyle(0x4c1d95, 1);
+    g.fillCircle(cx, cy - 5, 22);
+    g.fillStyle(0xa78bfa, 0.5);
+    g.fillCircle(cx, cy - 5, 14);
+    // Rune marks
+    g.lineStyle(2, 0xfbbf24, 0.9);
+    g.beginPath(); g.moveTo(cx - 10, cy - 14); g.lineTo(cx - 6, cy - 4); g.lineTo(cx - 14, cy - 4); g.strokePath();
+    g.beginPath(); g.moveTo(cx + 10, cy - 14); g.lineTo(cx + 6, cy - 4); g.lineTo(cx + 14, cy - 4); g.strokePath();
+
+    // ── Floating coins / tokens around body ───────────────────────────────────
+    const coinPositions = [[-42, cy + 35], [42, cy + 40], [-38, cy + 55], [40, cy + 60]];
+    coinPositions.forEach(([px, py]) => {
+      g.fillStyle(0xfbbf24, 0.8);
+      g.fillCircle(cx + px, py as number, 5);
+      g.lineStyle(1, 0x92400e, 1);
+      g.strokeCircle(cx + px, py as number, 5);
+    });
+
+    // ── Eyes — dual-color mismatched ─────────────────────────────────────────
+    this.eyeLeft = new Phaser.GameObjects.Arc(this.scene, cx - 8, cy - 5, 5, 0, 360, false, 0xfbbf24, 1);
+    this.eyeRight = new Phaser.GameObjects.Arc(this.scene, cx + 8, cy - 5, 5, 0, 360, false, 0xf87171, 1);
+
+    // Mismatched eye pulse — alternating
+    this.scene.tweens.add({
+      targets: this.eyeLeft,
+      alpha: { from: 0.3, to: 1 },
+      scaleX: { from: 0.8, to: 1.4 },
+      scaleY: { from: 0.8, to: 1.4 },
+      duration: 900,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+    });
+    this.scene.tweens.add({
+      targets: this.eyeRight,
+      alpha: { from: 1, to: 0.3 },
+      scaleX: { from: 1.4, to: 0.8 },
+      scaleY: { from: 1.4, to: 0.8 },
+      duration: 900,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // Chaotic spin-bob
+    this.scene.tweens.add({
+      targets: this,
+      y: this.y - 12,
+      angle: { from: -4, to: 4 },
+      duration: 1600,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1,
+    });
+  }
+
+  /**
+   * Draw "Iron Bureaucrat" — Stage 8 (Scale).
+   * A towering angular iron golem in a business suit with stamping fists,
+   * golden seals, and crushing bureaucratic machinery. Citadel gold palette.
+   */
+  private drawIronBureaucrat(): void {
+    const g = this.bossGraphics;
+    const cx = 0;
+    const cy = 0;
+
+    // ── Iron frame torso — angular & riveted ──────────────────────────────────
+    g.fillStyle(0x292524, 1); // stone-iron
+    g.fillRect(cx - 30, cy + 5, 60, 75);
+
+    // Rivets
+    g.fillStyle(0x78716c, 1);
+    [[-26, 10], [24, 10], [-26, 30], [24, 30], [-26, 60], [24, 60]].forEach(([rx, ry]) => {
+      g.fillCircle(cx + rx, cy + ry, 3);
+    });
+
+    // ── Suit jacket overlay ───────────────────────────────────────────────────
+    g.fillStyle(0x1c1917, 0.9);
+    g.fillRect(cx - 24, cy + 8, 20, 68);
+    g.fillRect(cx + 4, cy + 8, 20, 68);
+    // Lapel gold trim
+    g.lineStyle(2, 0xfbbf24, 1);
+    g.beginPath(); g.moveTo(cx - 8, cy + 8); g.lineTo(cx, cy + 28); g.strokePath();
+    g.beginPath(); g.moveTo(cx + 8, cy + 8); g.lineTo(cx, cy + 28); g.strokePath();
+
+    // ── Stamp arm (right) ─────────────────────────────────────────────────────
+    g.fillStyle(0x44403c, 1);
+    g.fillRect(cx + 30, cy + 10, 16, 50);
+    // Stamp head — red ink
+    g.fillStyle(0xdc2626, 1);
+    g.fillRect(cx + 28, cy + 55, 20, 12);
+    g.fillStyle(0xfca5a5, 0.6);
+    g.fillRect(cx + 30, cy + 57, 16, 6);
+
+    // ── Heavy left fist ───────────────────────────────────────────────────────
+    g.fillStyle(0x44403c, 1);
+    g.fillRect(cx - 46, cy + 15, 16, 45);
+    g.fillRect(cx - 52, cy + 42, 22, 18); // fist block
+
+    // ── Iron head — square plated ─────────────────────────────────────────────
+    g.fillStyle(0x1c1917, 1);
+    g.fillRect(cx - 22, cy - 40, 44, 48);
+    // Face plate
+    g.fillStyle(0x292524, 1);
+    g.fillRect(cx - 16, cy - 34, 32, 36);
+    // Gold seal on forehead
+    g.fillStyle(0xfbbf24, 1);
+    g.fillCircle(cx, cy - 20, 8);
+    g.fillStyle(0x92400e, 1);
+    g.fillCircle(cx, cy - 20, 4);
+
+    // ── Eyes — red data scanners ──────────────────────────────────────────────
+    this.eyeLeft = new Phaser.GameObjects.Arc(this.scene, cx - 8, cy - 12, 5, 0, 360, false, 0xdc2626, 1);
+    this.eyeRight = new Phaser.GameObjects.Arc(this.scene, cx + 8, cy - 12, 5, 0, 360, false, 0xdc2626, 1);
+    this.eyeLeft.setStrokeStyle(2, 0xfca5a5, 0.8);
+    this.eyeRight.setStrokeStyle(2, 0xfca5a5, 0.8);
+
+    // Slow menacing scan flicker
+    this.scene.tweens.add({
+      targets: [this.eyeLeft, this.eyeRight],
+      alpha: { from: 0.5, to: 1.0 },
+      duration: 600,
+      ease: "Stepped",
+      easeParams: [3],
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // Stamp arm pump animation
+    this.scene.tweens.add({
+      targets: this.bossGraphics,
+      y: { from: 0, to: 8 },
+      duration: 800,
+      ease: "Bounce.easeOut",
+      yoyo: true,
+      repeat: -1,
+      repeatDelay: 1200,
     });
   }
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAtom } from "jotai";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Scroll, ChevronUp, Zap } from "lucide-react";
+import { Check, Scroll, ChevronUp, Zap, Lock } from "lucide-react";
 import { currentQuestAtom, submittingTaskAtom } from "@/lib/stores/hudStore";
 
 // Stage names for display in the completion banner
@@ -111,101 +111,113 @@ export function QuestList() {
 
               {/* Task list */}
               <div className="p-3 space-y-2">
-                <AnimatePresence mode="popLayout">
-                  {currentQuest.tasks.map((task, index) => (
-                    <motion.div
-                      key={task.label}
-                      initial={{ x: -20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      exit={{ x: 20, opacity: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      onClick={() => {
-                        if (!task.done) {
-                          setSubmittingTask({
-                            id: task.id,
-                            checkpointId: task.checkpointId,
-                            taskLevel: task.taskLevel,
-                            title: `${task.label}: ${currentQuest.checkpointName}`,
-                            description: task.description,
-                            toolType: task.tool,
-                            points: task.points,
-                          });
-                        }
-                      }}
-                      className={`relative p-3 border rounded-xl transition-all ${
-                        task.done
-                          ? "bg-indigo-500/10 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.1)]"
-                          : "bg-slate-800/30 border-white/5 hover:border-indigo-500/50 hover:bg-slate-800/50 cursor-pointer group/task"
-                      }`}
-                    >
-                      {/* Task header */}
-                      <div className="flex items-start gap-2">
-                        {/* Checkbox */}
-                        <div className="mt-0.5 flex-shrink-0">
-                          {task.done ? (
-                            <motion.div
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              transition={{
-                                type: "spring",
-                                stiffness: 500,
-                                damping: 25,
-                              }}
-                              className="w-5 h-5 bg-indigo-500 border border-indigo-400 flex items-center justify-center rounded-md shadow-[0_0_10px_rgba(99,102,241,0.5)]"
-                            >
-                              <Check
-                                className="w-3 h-3 text-white"
-                                strokeWidth={3}
-                              />
-                            </motion.div>
-                          ) : (
-                            <div className="w-5 h-5 bg-slate-900/50 border border-white/20 rounded-md shadow-inner" />
-                          )}
-                        </div>
-
-                        {/* Task info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span
-                              className={`text-xs font-black uppercase tracking-wider ${
-                                task.done
-                                  ? "text-indigo-400 drop-shadow-[0_0_5px_rgba(99,102,241,0.5)]"
-                                  : "text-violet-300"
-                              }`}
-                            >
-                              {task.label}
-                            </span>
-                            {!task.done && (
-                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-white/5 border border-white/10 rounded-md">
-                                <span className="text-[9px] text-indigo-200/60 uppercase font-bold tracking-widest">
-                                  {task.tool}
-                                </span>
+                <AnimatePresence mode="popLayout">                  {currentQuest.tasks.map((task, index) => {
+                    const isTaskLocked = index > 0 && !currentQuest.tasks[index - 1].done;
+                    return (
+                      <motion.div
+                        key={task.label}
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        exit={{ x: 20, opacity: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        onClick={() => {
+                          if (!task.done && !isTaskLocked) {
+                            setSubmittingTask({
+                              id: task.id,
+                              checkpointId: task.checkpointId,
+                              taskLevel: task.taskLevel,
+                              title: `${task.label}: ${currentQuest.checkpointName}`,
+                              description: task.description,
+                              toolType: task.tool,
+                              points: task.points,
+                            });
+                          }
+                        }}
+                        className={`relative p-3 border rounded-xl transition-all ${
+                          task.done
+                            ? "bg-indigo-500/10 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.1)]"
+                            : isTaskLocked
+                              ? "bg-slate-900/40 border-white/5 opacity-40 cursor-not-allowed"
+                              : "bg-slate-800/30 border-white/5 hover:border-indigo-500/50 hover:bg-slate-800/50 cursor-pointer group/task"
+                        }`}
+                      >
+                        {/* Task header */}
+                        <div className="flex items-start gap-2">
+                          {/* Checkbox */}
+                          <div className="mt-0.5 flex-shrink-0">
+                            {task.done ? (
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{
+                                  type: "spring",
+                                  stiffness: 500,
+                                  damping: 25,
+                                }}
+                                className="w-5 h-5 bg-indigo-500 border border-indigo-400 flex items-center justify-center rounded-md shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+                              >
+                                <Check
+                                  className="w-3 h-3 text-white"
+                                  strokeWidth={3}
+                                />
+                              </motion.div>
+                            ) : isTaskLocked ? (
+                              <div className="w-5 h-5 bg-slate-900/50 border border-white/5 flex items-center justify-center rounded-md text-slate-600">
+                                <Lock className="w-2.5 h-2.5" />
                               </div>
+                            ) : (
+                              <div className="w-5 h-5 bg-slate-900/50 border border-white/20 rounded-md shadow-inner" />
                             )}
                           </div>
-                          <p
-                            className={`text-xs leading-relaxed ${
-                              task.done
-                                ? "text-slate-500 line-through"
-                                : "text-slate-300"
-                            }`}
-                          >
-                            {task.description}
-                          </p>
-                        </div>
-                      </div>
 
-                      {/* Completion glow effect */}
-                      {task.done && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: [0, 0.3, 0] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                          className="absolute inset-0 bg-gradient-to-r from-transparent via-indigo-500/10 to-transparent pointer-events-none rounded-xl"
-                        />
-                      )}
-                    </motion.div>
-                  ))}
+                          {/* Task info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span
+                                className={`text-xs font-black uppercase tracking-wider ${
+                                  task.done
+                                    ? "text-indigo-400 drop-shadow-[0_0_5px_rgba(99,102,241,0.5)]"
+                                    : isTaskLocked
+                                      ? "text-slate-500"
+                                      : "text-violet-300"
+                                }`}
+                              >
+                                {task.label} {isTaskLocked && "(Locked)"}
+                              </span>
+                              {!task.done && !isTaskLocked && (
+                                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-white/5 border border-white/10 rounded-md">
+                                  <span className="text-[9px] text-indigo-200/60 uppercase font-bold tracking-widest">
+                                    {task.tool}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <p
+                              className={`text-xs leading-relaxed ${
+                                task.done
+                                  ? "text-slate-500 line-through"
+                                  : isTaskLocked
+                                    ? "text-slate-500"
+                                    : "text-slate-300"
+                              }`}
+                            >
+                              {task.description}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Completion glow effect */}
+                        {task.done && (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: [0, 0.3, 0] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-indigo-500/10 to-transparent pointer-events-none rounded-xl"
+                          />
+                        )}
+                      </motion.div>
+                    );
+                  })}
                 </AnimatePresence>
               </div>
             </motion.div>

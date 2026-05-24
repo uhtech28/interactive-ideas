@@ -70,7 +70,7 @@ export function createGameConfig(
         width: 3840,
         height: 2160,
       },
-      resizeInterval: 100,
+      resizeInterval: 250,
     },
     physics: {
       default: "arcade",
@@ -85,10 +85,13 @@ export function createGameConfig(
       pixelArt: true,
       roundPixels: true,
       powerPreference: "high-performance",
+      batchSize: 4096,
     },
     fps: {
       target: 60,
-      forceSetTimeOut: isMobile, // Better performance on mobile
+      smoothStep: true,
+      panicMax: 120,
+      forceSetTimeOut: false,
     },
     audio: {
       disableWebAudio: false,

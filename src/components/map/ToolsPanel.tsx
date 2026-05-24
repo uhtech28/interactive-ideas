@@ -22,6 +22,8 @@ import {
   HelpCircle as HelpIcon,
   Settings as SettingsIcon,
   Info,
+  Users,
+  GitFork,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Slider } from "../ui/slider";
@@ -117,6 +119,9 @@ interface ToolsPanelProps {
   onTabChange: (tab: TabType) => void;
   activeVentureId?: Id<"ventures">;
   onOpenGroupChat?: () => void;
+  onOpenContributors?: () => void;
+  onOpenContributions?: () => void;
+  onOpenHierarchy?: () => void;
 }
 
 export function ToolsPanel({
@@ -126,6 +131,9 @@ export function ToolsPanel({
   onTabChange,
   activeVentureId,
   onOpenGroupChat,
+  onOpenContributors,
+  onOpenContributions,
+  onOpenHierarchy,
 }: ToolsPanelProps) {
   const [stageInfo] = useAtom(stageInfoAtom);
   const [searchQuery, setSearchQuery] = useState("");
@@ -198,8 +206,8 @@ export function ToolsPanel({
     allTabs.tools,
     allTabs.calendar,
     allTabs.kanban,
-    ...(["write", "map", "journal", "survey"].includes(activeTab)
-      ? [allTabs[activeTab as "write" | "map" | "journal" | "survey"]]
+    ...(["journal"].includes(activeTab)
+      ? [allTabs[activeTab as "journal"]]
       : []),
     allTabs.settings,
     allTabs.help,
@@ -312,6 +320,9 @@ export function ToolsPanel({
                     onToolSelect={onTabChange}
                     activeVentureId={activeVentureId}
                     onOpenGroupChat={onOpenGroupChat}
+                    onOpenContributors={onOpenContributors}
+                    onOpenContributions={onOpenContributions}
+                    onOpenHierarchy={onOpenHierarchy}
                   />
                 )}
 
@@ -399,13 +410,25 @@ function AllToolsGrid({
   onToolSelect,
   activeVentureId,
   onOpenGroupChat,
+  onOpenContributors,
+  onOpenContributions,
+  onOpenHierarchy,
 }: {
   searchQuery: string;
   onToolSelect: (id: TabType) => void;
   activeVentureId?: Id<"ventures">;
   onOpenGroupChat?: () => void;
+  onOpenContributors?: () => void;
+  onOpenContributions?: () => void;
+  onOpenHierarchy?: () => void;
 }) {
   const router = useRouter();
+  const venture = useQuery(
+    api.ventures.getVenture,
+    activeVentureId ? { ventureId: activeVentureId } : "skip",
+  );
+  const ideaId = venture?.ideaId;
+
   const tools = [
     {
       id: "feed",
@@ -426,11 +449,18 @@ function AllToolsGrid({
       path: "chat",
     },
     {
-      id: "write",
-      name: "Write Tool",
-      desc: "Craft venture documentation",
-      icon: FileText,
-      color: "#818cf8",
+      id: "contributors",
+      name: "Contributors",
+      desc: "Team & Collaborators",
+      icon: Users,
+      color: "#38bdf8",
+    },
+    {
+      id: "hierarchy",
+      name: "Hierarchy",
+      desc: "Venture lineage & tree",
+      icon: GitFork,
+      color: "#ec4899",
     },
     {
       id: "calendar",
@@ -447,25 +477,11 @@ function AllToolsGrid({
       color: "#34d399",
     },
     {
-      id: "map",
-      name: "Canvas",
-      desc: "Visualize and brainstorm",
-      icon: Grid,
-      color: "#f472b6",
-    },
-    {
       id: "journal",
       name: "Journal",
       desc: "Private progress log",
       icon: Scroll,
       color: "#a78bfa",
-    },
-    {
-      id: "survey",
-      name: "Survey",
-      desc: "Gather user feedback",
-      icon: Search,
-      color: "#2dd4bf",
     },
   ];
 
@@ -483,8 +499,14 @@ function AllToolsGrid({
           onClick={() => {
             if (tool.id === "chat" && onOpenGroupChat) {
               onOpenGroupChat();
+            } else if (tool.id === "contributors" && onOpenContributors) {
+              onOpenContributors();
+            } else if (tool.id === "feed" && onOpenContributions) {
+              onOpenContributions();
+            } else if (tool.id === "hierarchy" && onOpenHierarchy) {
+              onOpenHierarchy();
             } else if (tool.isExternal && activeVentureId) {
-              window.open(`/venture/${activeVentureId}/${tool.path}`, "_blank");
+              window.open(`/venture/${activeVentureId}/${(tool as any).path}`, "_blank");
             } else {
               onToolSelect(tool.id as TabType);
             }
@@ -749,11 +771,11 @@ function HelpPanel() {
   const faqs = [
     {
       q: "How do I progress to the next stage?",
-      a: "Complete at least 2 tasks in every checkpoint of your current stage. Once the final checkpoint is cleared, the path to the next realm will unlock.",
+      a: "Complete all 3 tasks in every checkpoint of your current stage. Once the final checkpoint is cleared, the path to the next realm will unlock.",
     },
     {
       q: "What are Gold Checkpoints?",
-      a: "If you complete all 3 tasks in a checkpoint, you earn a Gold rating. This gives bonus XP and helps your venture reach higher valuation tiers.",
+      a: "Every checkpoint requires all 3 tasks to be completed to be cleared. Completing them successfully clears the checkpoint at the Gold standard, giving you massive bonus XP and boosting your startup valuation!",
     },
     {
       q: "How does the Corruption work?",

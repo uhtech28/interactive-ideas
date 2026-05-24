@@ -40,7 +40,7 @@ export const getNotifications = query({
 
     // Define notification types for filtering
     const interactionTypes = ["spark_received", "comment_received"];
-    const requestTypes = ["contribution_request_received", "invitation_received", "invitation_accepted", "invitation_rejected"];
+    const requestTypes = ["contribution_request_received", "contribution_request_accepted", "contribution_request_rejected", "invitation_received", "invitation_accepted", "invitation_rejected"];
 
     let query = ctx.db
       .query("notifications")
@@ -380,7 +380,7 @@ export const dismissAllNotifications = mutation({
 
     // Define notification types for filtering
     const interactionTypes = ["spark_received", "comment_received"];
-    const requestTypes = ["contribution_request_received", "invitation_received", "invitation_accepted", "invitation_rejected"];
+    const requestTypes = ["contribution_request_received", "contribution_request_accepted", "contribution_request_rejected", "invitation_received", "invitation_accepted", "invitation_rejected"];
 
     let query = ctx.db
       .query("notifications")

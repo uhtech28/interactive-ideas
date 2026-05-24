@@ -140,18 +140,19 @@ export function IdeaWizard({ isOpen, onOpenChange, initialDraft }: IdeaWizardPro
       // Log what AI returned for debugging
       console.log("AI generated result:", result);
       
-      // Ensure we have at least a title and description
+      // Always preserve user's typed outline exactly as the description
+      setDescription(outline.trim());
+      
+      // Ensure we have at least a title
       if (!result.title || !result.title.trim()) {
         console.warn("AI returned empty title, using fallback");
         setAiHadError(true);
         setTitle("");
-        setDescription(result.description || outline);
         setIndustries(result.industries || []);
         setSkills(result.skills || []);
         setVisibility(result.visibility || "public");
       } else {
         setTitle(result.title);
-        setDescription(result.description);
         setIndustries(result.industries || []);
         setSkills(result.skills || []);
         setVisibility(result.visibility);
@@ -162,7 +163,7 @@ export function IdeaWizard({ isOpen, onOpenChange, initialDraft }: IdeaWizardPro
       console.error("AI generation failed:", err);
       setAiHadError(true);
       setTitle("");
-      setDescription(outline);
+      setDescription(outline.trim());
       setIndustries([]);
       setSkills([]);
       setVisibility("public");
@@ -249,11 +250,11 @@ export function IdeaWizard({ isOpen, onOpenChange, initialDraft }: IdeaWizardPro
         title: visibility === "public" ? "Idea posted!" : "Saved as private",
         description:
           visibility === "public"
-            ? "Taking you to your idea..."
+            ? "Loading your venture game map..."
             : "Only you can see it — toggle to Public any time.",
       });
       close();
-      router.push(`/idea/${newIdeaId}`);
+      router.push(`/map?ideaId=${newIdeaId}`);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Failed to post idea.");
     } finally {
@@ -263,7 +264,9 @@ export function IdeaWizard({ isOpen, onOpenChange, initialDraft }: IdeaWizardPro
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="w-[min(100%-2rem,600px)] max-w-[600px] h-auto max-h-[85vh] gap-0 flex flex-col rounded-[16px] border border-white/5 bg-[#0A0E1A] p-0 text-[#F9FAFB] shadow-[0_20px_60px_rgba(0,0,0,0.85)]">
+      <DialogContent className={cn(
+        "w-[min(100%-2rem,600px)] max-w-[600px] gap-0 flex flex-col rounded-[16px] border border-white/5 bg-[#0A0E1A] p-0 text-[#F9FAFB] shadow-[0_20px_60px_rgba(0,0,0,0.85)] transition-all duration-300 ease-in-out overflow-hidden h-auto max-h-[95vh]"
+      )}>
         {/* Step 1 — Outline */}
         {step === "outline" && (
           <>
@@ -357,7 +360,7 @@ export function IdeaWizard({ isOpen, onOpenChange, initialDraft }: IdeaWizardPro
 
         {/* Step 3 — Preview & post */}
         {step === "preview" && (
-          <form onSubmit={handleSubmit} className="flex flex-col h-full">
+          <form onSubmit={handleSubmit} className="flex flex-col h-full min-h-0">
             <DialogHeader className="border-b border-white/5 px-5 py-3 text-left bg-[#0D1117] shrink-0">
               <DialogTitle className={cn(displayFontClass, "text-lg font-semibold text-white")}>
                 Review and post
@@ -371,7 +374,7 @@ export function IdeaWizard({ isOpen, onOpenChange, initialDraft }: IdeaWizardPro
               </DialogDescription>
             </DialogHeader>
 
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2.5 min-h-0">
+            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2 min-h-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               <div className="space-y-1">
                 <Label htmlFor="wiz-title" className="text-[11px] font-semibold text-[#F9FAFB] uppercase tracking-wider">
                   Title <span className="text-destructive">*</span>
@@ -402,13 +405,13 @@ export function IdeaWizard({ isOpen, onOpenChange, initialDraft }: IdeaWizardPro
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="What's the idea? Who is it for?"
-                  className="min-h-[70px] max-h-[100px] rounded-[10px] border-white/5 bg-[#0D1117] text-sm text-white placeholder:text-[#6B7280] focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-0 focus-visible:border-transparent p-3"
+                  className="min-h-[56px] max-h-[72px] rounded-[10px] border-white/5 bg-[#0D1117] text-sm text-white placeholder:text-[#6B7280] focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-0 focus-visible:border-transparent p-3"
                   maxLength={1200}
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-[#F9FAFB] uppercase tracking-wider flex items-center gap-1.5">
                     Industries
@@ -418,6 +421,7 @@ export function IdeaWizard({ isOpen, onOpenChange, initialDraft }: IdeaWizardPro
                     selectedIndustries={industries}
                     onChange={setIndustries}
                     placeholder={isGeneratingTags ? "AI is selecting..." : "Select industries..."}
+                    hideBadges
                   />
                 </div>
                 <div className="space-y-1">
@@ -429,13 +433,14 @@ export function IdeaWizard({ isOpen, onOpenChange, initialDraft }: IdeaWizardPro
                     selectedSkills={skills}
                     onChange={setSkills}
                     placeholder={isGeneratingTags ? "AI is selecting..." : "Select skills..."}
+                    hideBadges
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
                 <Label className="text-[11px] font-semibold text-[#F9FAFB] uppercase tracking-wider">Visibility <span className="text-destructive">*</span></Label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -496,6 +501,7 @@ export function IdeaWizard({ isOpen, onOpenChange, initialDraft }: IdeaWizardPro
                   accept={"application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/jpeg,image/jpg,image/png,image/gif,video/mp4,.pdf,.docx,.pptx,.xlsx,.jpg,.jpeg,.png,.gif,.mp4"}
                   multiple={false}
                   onChange={(f) => setFiles(f)}
+                  compact
                 />
                 <p className="text-[10px] text-[#6B7280]">
                   PDF, DOCX, PPTX, XLSX, JPG, PNG, GIF, MP4 (≤50MB)

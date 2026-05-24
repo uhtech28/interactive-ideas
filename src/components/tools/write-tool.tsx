@@ -234,7 +234,8 @@ export function WriteTool({
         <CardDescription>{prompt}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className={`grid gap-4 ${layout === "compact" ? "grid-cols-1" : "xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.95fr)]"}`}>
+        {/* Changed grid layout to full-width container because AI Assist is commented out */}
+        <div className="w-full">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-1.5">
               <Button type="button" variant="outline" size="sm" onClick={() => insertAroundSelection("## ")} className="h-8 px-2 sm:px-3">
@@ -269,6 +270,21 @@ export function WriteTool({
               </Button>
             </div>
 
+            {/* Tabs structure commented out to remove the Preview button/tab and display Editor directly */}
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="write-response">Markdown response</Label>
+                <Textarea
+                  id="write-response"
+                  placeholder="Write your response here..."
+                  value={text}
+                  onChange={(event) => setText(event.target.value)}
+                  className="h-[200px] resize-none font-mono text-sm xl:h-[220px]"
+                />
+              </div>
+            </div>
+
+            {/* Commented out tabs and preview component for future implementation
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="editor">Editor</TabsTrigger>
@@ -300,6 +316,7 @@ export function WriteTool({
                 </div>
               </TabsContent>
             </Tabs>
+            */}
 
             <div className="flex items-center justify-between gap-3 text-xs">
               <span
@@ -339,122 +356,32 @@ export function WriteTool({
             </Button>
           </div>
 
-          <div className="rounded-lg border bg-slate-50 p-4 dark:bg-slate-950">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Sparkles className="h-4 w-4 text-indigo-500" />
-                  AI Assist
+            {/* Commented out the entire AI Assist panel for future implementation
+            <div className="rounded-lg border bg-slate-50 p-4 dark:bg-slate-950">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Sparkles className="h-4 w-4 text-indigo-500" />
+                    AI Assist
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Generate an outline, strengthen the draft, or tighten the writing.
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Generate an outline, strengthen the draft, or tighten the writing.
+                {assist?.modelUsed && (
+                  <Badge variant="outline">{assist.modelUsed}</Badge>
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-800 p-8 text-center bg-slate-900/20">
+                <Sparkles className="h-10 w-10 text-indigo-400/50 mb-3 animate-pulse" />
+                <p className="text-sm font-semibold text-slate-200">Coming Soon</p>
+                <p className="text-xs text-slate-400 max-w-[220px] mt-2 leading-relaxed">
+                  AI Assistant features are currently under development and will be implemented in a future update.
                 </p>
               </div>
-              {assist?.modelUsed && (
-                <Badge variant="outline">{assist.modelUsed}</Badge>
-              )}
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleAssist("outline")}
-                disabled={assistMode !== null}
-                className="w-full justify-center"
-              >
-                {assistMode === "outline" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Lightbulb className="h-4 w-4" />
-                )}
-                Outline
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleAssist("strengthen")}
-                disabled={assistMode !== null}
-                className="w-full justify-center"
-              >
-                {assistMode === "strengthen" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                Strengthen
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleAssist("sharpen")}
-                disabled={assistMode !== null}
-                className="w-full justify-center"
-              >
-                {assistMode === "sharpen" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <WandSparkles className="h-4 w-4" />
-                )}
-                Sharpen
-              </Button>
-            </div>
-
-            {assistError && (
-              <p className="mt-3 text-sm text-red-600 dark:text-red-400">
-                {assistError}
-              </p>
-            )}
-
-            {assist && (
-              <div className="mt-4 space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Coaching note
-                  </Label>
-                  <p className="text-sm leading-6">{assist.suggestion}</p>
-                </div>
-
-                {assist.bullets.length > 0 && (
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Next additions
-                    </Label>
-                    <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700 dark:text-slate-200">
-                      {assist.bullets.map((bullet) => (
-                        <li key={bullet}>{bullet}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {assist.rewrite && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                        Suggested rewrite
-                      </Label>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => setText(assist.rewrite)}
-                      >
-                        Apply rewrite
-                      </Button>
-                    </div>
-                    <div className="max-h-[180px] overflow-y-auto rounded-md border bg-white p-3 text-sm dark:bg-slate-900">
-                      <div className="space-y-3">
-                        {renderMarkdownPreview(assist.rewrite)}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+            */}
         </div>
       </CardContent>
     </Card>

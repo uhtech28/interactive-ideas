@@ -54,6 +54,7 @@ interface SkillsMultiSelectProps {
   placeholder?: string;
   maxSelection?: number;
   mandatorySkills?: string[];
+  hideBadges?: boolean;
 }
 
 export function SkillsMultiSelect({
@@ -62,6 +63,7 @@ export function SkillsMultiSelect({
   placeholder = "Select skills...",
   maxSelection,
   mandatorySkills = [],
+  hideBadges = false,
 }: SkillsMultiSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -172,7 +174,7 @@ export function SkillsMultiSelect({
       </Popover>
 
       {/* Selected Skills Badges */}
-      {selectedSkills.length > 0 && (
+      {!hideBadges && selectedSkills.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {selectedSkills.map((skill) => {
             return (

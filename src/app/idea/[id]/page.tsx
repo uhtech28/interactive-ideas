@@ -157,6 +157,24 @@ export default function IdeaDetailPage({ params }: { params: Promise<{ id: strin
     if (isLoaded && !userId) router.push("/");
   }, [isLoaded, userId, router]);
 
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && isLoaded && userId) {
+      const handleHashChange = () => {
+        const hash = window.location.hash;
+        if (hash === "#hierarchy") {
+          setShowHierarchy(true);
+        } else if (hash === "#contributors") {
+          setShowRequests(true);
+        }
+      };
+
+      handleHashChange();
+
+      window.addEventListener("hashchange", handleHashChange);
+      return () => window.removeEventListener("hashchange", handleHashChange);
+    }
+  }, [isLoaded, userId]);
+
   if (!isLoaded || !userId) {
     return (
       <div className="min-h-screen flex flex-col bg-background">

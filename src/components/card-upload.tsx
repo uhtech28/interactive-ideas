@@ -44,6 +44,7 @@ interface CardUploadProps {
     onFilesChange?: (files: FileUploadItem[]) => void;
     onChange?: (files: File[]) => void;
     simulateUpload?: boolean;
+    compact?: boolean;
 }
 
 export default function CardUpload({
@@ -55,6 +56,7 @@ export default function CardUpload({
     onFilesChange,
     onChange,
     simulateUpload = true,
+    compact = false,
 }: CardUploadProps) {
     const [uploadFiles, setUploadFiles] = useState<FileUploadItem[]>([]);
     const lastFileIdsRef = useRef<string[]>([]);
@@ -397,7 +399,8 @@ export default function CardUpload({
             {/* Upload Area */}
             <div onClick={openFileDialog} 
                 className={cn(
-                    'relative rounded-lg border border-dashed p-6 text-center transition-colors cursor-pointer',
+                    'relative rounded-lg border border-dashed text-center transition-colors cursor-pointer',
+                    compact ? 'p-3' : 'p-6',
                     isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-muted-foreground/50',
                 )}
                 onDragEnter={handleDragEnter}
@@ -407,17 +410,18 @@ export default function CardUpload({
             >
                 <input {...getInputProps()} className="sr-only" />
 
-                <div className="flex flex-col items-center gap-4">
+                <div className={cn('flex flex-col items-center', compact ? 'gap-2' : 'gap-4')}>
                     <div
                         className={cn(
-                            'flex h-12 w-12 items-center justify-center rounded-full bg-muted transition-colors',
+                            'flex items-center justify-center rounded-full bg-muted transition-colors',
+                            compact ? 'h-8 w-8' : 'h-12 w-12',
                             isDragging ? 'border-primary bg-primary/10' : 'border-muted-foreground/25',
                         )}
                     >
-                        <Upload className="h-5 w-5 text-muted-foreground" />
+                        <Upload className={cn(compact ? 'h-4 w-4' : 'h-5 w-5', 'text-muted-foreground')} />
                     </div>
 
-                    <div className="space-y-2">
+                    <div className={cn('space-y-1', compact ? 'space-y-0.5' : 'space-y-2')}>
                         <p className="text-sm font-medium">
                             Drop files here or{' '}
                             <button

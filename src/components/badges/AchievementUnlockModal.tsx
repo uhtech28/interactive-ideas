@@ -105,12 +105,12 @@ export const AchievementUnlockModal: React.FC<AchievementUnlockModalProps> = ({
       setActiveStep("backdrop");
       setXpDisplay(0);
 
-      // 1. Enter Silhouette: t=300ms
+      // 1. Enter Silhouette: t=100ms (almost instant feedback)
       const silTimer = setTimeout(() => {
         setActiveStep("silhouette");
-      }, 300);
+      }, 100);
 
-      // 2. Trigger Burst: t=1300ms (dramatic unlock)
+      // 2. Trigger Burst: t=450ms (snappy dramatic unlock)
       const burstTimer = setTimeout(() => {
         setActiveStep("burst");
 
@@ -147,16 +147,16 @@ export const AchievementUnlockModal: React.FC<AchievementUnlockModalProps> = ({
                     ? ["#A855F7", "#D946EF", "#F3E8FF", "#7E22CE", "#FBBF24"]
                     : ["#F43F5E", "#EC4899", "#818CF8", "#FFFFFF", "#FBBF24"]; // Mythic / default cosmic colors
 
-        // Generate fluttery paper confetti
-        const generated: Particle[] = Array.from({ length: 85 }).map((_, i) => {
+        // Generate 32 clean confetti particles for excellent visual weight without lagging
+        const generated: Particle[] = Array.from({ length: 32 }).map((_, i) => {
           const angle = (Math.random() * 360 * Math.PI) / 180;
-          const velocity = 80 + Math.random() * 240;
+          const velocity = 70 + Math.random() * 180;
           const x = Math.cos(angle) * velocity;
-          const y = Math.sin(angle) * velocity - (30 + Math.random() * 90); // arc upwards
-          const size = Math.random() * 11 + 5;
-          const delay = Math.random() * 0.12;
-          const duration = Math.random() * 1.5 + 1.3;
-          const rotate = Math.random() * 720 - 360;
+          const y = Math.sin(angle) * velocity - (20 + Math.random() * 60); // arc upwards
+          const size = Math.random() * 9 + 4;
+          const delay = Math.random() * 0.08;
+          const duration = Math.random() * 1.0 + 0.9;
+          const rotate = Math.random() * 360 - 180;
           const color =
             particleColors[Math.floor(Math.random() * particleColors.length)];
           const shapeSeed = Math.random();
@@ -166,22 +166,22 @@ export const AchievementUnlockModal: React.FC<AchievementUnlockModalProps> = ({
           return { id: i, x, y, size, delay, duration, rotate, color, shape };
         });
         setParticles(generated);
-      }, 1200);
+      }, 450);
 
-      // 3. Enter Show (text + XP countup + buttons): t=1600ms
+      // 3. Enter Show (text + XP countup + buttons): t=750ms
       const showTimer = setTimeout(() => {
         setActiveStep("show");
 
         let currentXp = 0;
         const interval = setInterval(() => {
-          currentXp += Math.ceil(xpEarned / 12);
+          currentXp += Math.ceil(xpEarned / 8);
           if (currentXp >= xpEarned) {
             currentXp = xpEarned;
             clearInterval(interval);
           }
           setXpDisplay(currentXp);
-        }, 30);
-      }, 1600);
+        }, 20);
+      }, 750);
 
       return () => {
         clearTimeout(silTimer);
@@ -223,25 +223,11 @@ export const AchievementUnlockModal: React.FC<AchievementUnlockModalProps> = ({
                 key={p.id}
                 initial={{ x: 0, y: 0, scale: 0, opacity: 1, rotate: 0 }}
                 animate={{
-                  // Flutter / sway horizontally using sine offsets
-                  x: [
-                    0,
-                    p.x * 0.4,
-                    p.x * 0.8,
-                    p.x + Math.sin(p.id) * 35,
-                    p.x - Math.sin(p.id) * 20,
-                  ],
-                  // Accelerate downwards representing gravity pull
-                  y: [0, p.y * 0.6, p.y, p.y + 120, p.y + 260],
-                  scale: [0, 1.4, 1.4, 1.0, 0],
-                  opacity: [1, 1, 1, 0.7, 0],
-                  rotate: [
-                    0,
-                    p.rotate * 0.3,
-                    p.rotate * 0.6,
-                    p.rotate,
-                    p.rotate + 180,
-                  ],
+                  x: [0, p.x, p.x + (p.id % 2 === 0 ? 25 : -25)],
+                  y: [0, p.y, p.y + 160],
+                  scale: [0, 1.2, 0],
+                  opacity: [1, 1, 0],
+                  rotate: [0, p.rotate],
                 }}
                 transition={{
                   duration: p.duration,
@@ -347,9 +333,9 @@ export const AchievementUnlockModal: React.FC<AchievementUnlockModalProps> = ({
                     }
                   : ["burst", "show"].includes(activeStep)
                     ? {
-                        scale: [0.3, 1.05, 1],
-                        rotateY: [180, 0],
-                        rotateZ: [0, -5, 0],
+                        scale: 1,
+                        rotateY: 0,
+                        rotateZ: 0,
                         y: 0,
                         z: 0,
                       }
@@ -359,12 +345,12 @@ export const AchievementUnlockModal: React.FC<AchievementUnlockModalProps> = ({
                 activeStep === "silhouette"
                   ? { 
                       y: { repeat: Infinity, duration: 2, ease: "easeInOut" },
-                      scale: { duration: 0.4 }
+                      scale: { duration: 0.3 }
                     }
                   : { 
-                      scale: { duration: 0.8, ease: "easeOut" },
-                      rotateY: { duration: 1.2, ease: [0.34, 1.56, 0.64, 1] }, // spring flip effect
-                      rotateZ: { duration: 1.0, ease: "easeOut" }
+                      scale: { duration: 0.4, ease: "easeOut" },
+                      rotateY: { duration: 0.6, ease: "easeOut" },
+                      rotateZ: { duration: 0.4, ease: "easeOut" }
                     }
               }
               className="relative z-10 h-64 w-52 sm:h-[17rem] sm:w-56"

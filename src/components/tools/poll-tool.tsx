@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -60,8 +60,11 @@ export function PollTool({
       })),
   );
 
+  const hasLoadedRef = useRef(false);
+
   useEffect(() => {
-    if (!initialContent) return;
+    if (!initialContent || hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
     setQuestion(initialContent.question || "");
     setOptions(initialContent.options || ["", ""]);
     setAudience(initialContent.audience || "Community");
@@ -108,7 +111,6 @@ export function PollTool({
       optionIndex === index ? value : option,
     );
     setOptions(nextOptions);
-    syncResults(nextOptions);
   };
 
   const changeVotes = (index: number, delta: number) => {
@@ -116,7 +118,7 @@ export function PollTool({
       current.map((result, resultIndex) =>
         resultIndex === index
           ? { ...result, option: options[index], votes: Math.max(0, result.votes + delta) }
-          : { ...result, option: options[resultIndex] },
+          : { ...result, option: options[resultIndex] || "" },
       ),
     );
   };

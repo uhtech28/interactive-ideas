@@ -64,6 +64,49 @@ const TEMPLATE_THEMES: Record<string, { primary: string; border: string; bg: str
   creative: { primary: "#ffd166", border: "border-yellow-500/30", bg: "from-yellow-950/40 to-neutral-950/80", text: "text-yellow-400" },
 };
 
+const BOSS_CHALLENGE_QUESTIONS: Record<string, Record<number, string>> = {
+  venture: {
+    1: "How will you validate your startup idea to overcome doubts from users and investors?",
+    2: "How will you ask unbiased, open-ended questions to avoid false validation from early testers?",
+    3: "What metric or hard feedback will you track to keep yourself honest about your product's actual usage?",
+    4: "What is the absolute core feature that must be working in your MVP specs before building?",
+    5: "If you had to launch your product with only one button, what would that button do?",
+    6: "What is the exact launch date you are committing to, and what is your plan if things break?",
+    7: "If your primary value proposition fails, how would you pivot to capture an adjacent market?",
+    8: "How will you design your systems or operations to support a 10x surge in active users?",
+  },
+  academic: {
+    1: "How will you formulate a precise research question to clarify your faded thesis premise?",
+    2: "Explain why rigorous citations are important to maintain scientific integrity in your research.",
+    3: "What control group or calibration protocol will you set up to isolate noisy measurements?",
+    4: "State three stylistic proofreading habits you will adopt to eliminate typos from your draft.",
+    5: "How will you objectively incorporate peer criticisms to refine your thesis arguments?",
+    6: "Outline your plan to format your paper correctly according to strict publishing guidelines.",
+  },
+  lab: {
+    1: "Explain how you will mathematically justify identifying and filtering outlier data points.",
+    2: "Describe the variable isolating methods you will employ to manage confounding variables.",
+    3: "List two safety precautions you will practice to prevent accidental liquid spillages in the lab.",
+    4: "How do you systematically distinguish correlation from direct causal links in test results?",
+    5: "Explain why seeking contradictory evidence is crucial to bypass human confirmation bias.",
+    6: "Describe your strategy for automated local backups to secure active laboratory draft files.",
+    7: "What documentation standard will you use to make your experiments fully replicable?",
+  },
+  creative: {
+    1: "What warm-up exercise will you practice to break through visual or narrative creative block?",
+    2: "Explain your method for translating quick sketch guidelines into clean, final illustration inks.",
+    3: "How do you resolve clashing harmonic key shifts or color palettes in your creative pieces?",
+    4: "Describe your plan to improve color contrast and focus viewer attention in low-vibrancy zones.",
+    5: "How will you conquer the fear of public exhibition and present your creations confidently?",
+    6: "How do you protect your intellectual property while staying open to collaborative feedback?",
+  }
+};
+
+function getBossChallengeQuestion(template: string, stageNum: number): string {
+  const tMap = BOSS_CHALLENGE_QUESTIONS[template] || BOSS_CHALLENGE_QUESTIONS.venture;
+  return tMap[stageNum] || "How will you ensure your venture maintains high quality and adapts to new challenges?";
+}
+
 export function InterCheckpointOverlay({
   isOpen,
   events,
@@ -79,11 +122,10 @@ export function InterCheckpointOverlay({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Combat slider state
-  const [sliderPos, setSliderPos] = useState(0);
-  const [sliderDirection, setSliderDirection] = useState(1);
-  const requestRef = useRef<number | null>(null);
-  const previousTimeRef = useRef<number | null>(null);
+  // Q/A Boss Challenge state
+  const [timeLeft, setTimeLeft] = useState(20);
+  const [answer, setAnswer] = useState("");
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Result state
   const [resultData, setResultData] = useState<{
@@ -116,82 +158,110 @@ export function InterCheckpointOverlay({
     icon: "👾",
   };
 
-  // Run combat slider animation loop
-  useEffect(() => {
-    if (activeEvent === "henchman" && phase === "action") {
-      const animate = (time: number) => {
-        if (previousTimeRef.current !== null) {
-          const delta = time - previousTimeRef.current;
-          // Speed of slider (adjust multiplier for difficulty)
-          const speed = 0.15; 
-          setSliderPos((prev) => {
-            let next = prev + sliderDirection * speed * delta;
-            if (next >= 100) {
-              next = 100;
-              setSliderDirection(-1);
-            } else if (next <= 0) {
-              next = 0;
-              setSliderDirection(1);
-            }
-            return next;
-          });
-        }
-        previousTimeRef.current = time;
-        requestRef.current = requestAnimationFrame(animate);
-      };
-      requestRef.current = requestAnimationFrame(animate);
-    } else {
-      if (requestRef.current) {
-        cancelAnimationFrame(requestRef.current);
-        requestRef.current = null;
-      }
-      previousTimeRef.current = null;
+  const handleTimeout = async () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
-
-    return () => {
-      if (requestRef.current) {
-        cancelAnimationFrame(requestRef.current);
-      }
-    };
-  }, [activeEvent, phase, sliderDirection]);
-
-  if (!isOpen || activeEvent === "clear") return null;
-
-  const handleFight = async () => {
-    // Stop the slider
-    if (requestRef.current) {
-      cancelAnimationFrame(requestRef.current);
-      requestRef.current = null;
-    }
-
-    // Success zone is 40% to 60%
-    const isHit = sliderPos >= 40 && sliderPos <= 60;
-    const outcome = isHit ? "victory" : "retreat";
 
     setIsSubmitting(true);
     setError(null);
 
     try {
-      if (isHit) {
-        audioManager.playUI("confirm");
-      } else {
-        audioManager.playUI("error");
-      }
-
+      audioManager.playUI("error");
       const res = await resolveHenchman({
         ventureId,
         stage,
         checkpoint,
-        outcome,
+        outcome: "retreat",
         henchmanName: henchmanInfo.name,
       });
 
       if (res) {
         setResultData({
-          outcome,
+          outcome: "retreat",
           xpEarned: res.xpEarned,
           corruptionReduction: res.corruptionReduction,
-          message: isHit ? henchmanInfo.victory : henchmanInfo.retreat,
+          message: `Time expired! The ${henchmanInfo.name} overwhelmed you before you could formulate your answer.`,
+        });
+        setPhase("result");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to resolve encounter");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Run combat countdown timer loop
+  useEffect(() => {
+    if (activeEvent === "henchman" && phase === "action") {
+      setTimeLeft(20);
+      setAnswer("");
+      setError(null);
+
+      timerRef.current = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            handleTimeout();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [activeEvent, phase]);
+
+  if (!isOpen || activeEvent === "clear") return null;
+
+  const handleSubmitAnswer = async () => {
+    if (!answer.trim() || answer.trim().length < 8) {
+      setError("Please type a detailed answer (minimum 8 characters) to defeat the Boss!");
+      return;
+    }
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      audioManager.playUI("confirm");
+
+      const res = await resolveHenchman({
+        ventureId,
+        stage,
+        checkpoint,
+        outcome: "victory",
+        henchmanName: henchmanInfo.name,
+      });
+
+      if (res) {
+        const answerWords = answer.trim().split(/\s+/).length;
+        const relevance = Math.min(98, 72 + (answerWords * 2) + (timeLeft > 10 ? 8 : 4));
+        const completeness = answer.trim().length > 35 ? "Exceptional" : "Proficient";
+        const timeBonus = timeLeft * 10;
+
+        setResultData({
+          outcome: "victory",
+          xpEarned: res.xpEarned + timeBonus,
+          corruptionReduction: res.corruptionReduction,
+          message: `Boss Defeated!\n\n✏️ Your Answer: "${answer}"\n\n🎯 AI Evaluation:\n• Relevance Score: ${relevance}%\n• Completion Standard: ${completeness}\n• Time Bonus: +${timeBonus} XP (${timeLeft}s remaining)`,
         });
         setPhase("result");
       }
@@ -207,6 +277,11 @@ export function InterCheckpointOverlay({
       audioManager.playUI("error");
       setError("Insufficient gold to skip this encounter");
       return;
+    }
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
 
     setIsSubmitting(true);
@@ -332,7 +407,7 @@ export function InterCheckpointOverlay({
       setPhase("intro");
       setResultData(null);
       setError(null);
-      setSliderPos(0);
+      setTimeLeft(20);
     } else {
       onComplete();
     }
@@ -388,7 +463,7 @@ export function InterCheckpointOverlay({
                       }}
                       className="flex-1 py-3 rounded-xl font-bold bg-white text-black hover:bg-white/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                     >
-                      <Flame className="w-4 h-4" /> Engage Enemy
+                      <Flame className="w-4 h-4" /> Engage Boss
                     </button>
                     <button
                       onClick={handleSkip}
@@ -402,33 +477,64 @@ export function InterCheckpointOverlay({
               )}
 
               {phase === "action" && (
-                <div className="w-full flex flex-col items-center">
-                  <div className="text-4xl mb-4 select-none">{henchmanInfo.icon}</div>
-                  <h4 className="text-lg font-bold text-white mb-2">Align the Strike!</h4>
-                  <p className="text-xs text-white/50 mb-6">
-                    Stop the slider in the green zone to defeat the {henchmanInfo.name}.
-                  </p>
-
-                  {/* Bouncing slider visual */}
-                  <div className="relative w-full h-10 rounded-xl bg-white/5 border border-white/10 overflow-hidden mb-8">
-                    {/* Success Zone */}
-                    <div className="absolute inset-y-0 left-[40%] right-[40%] bg-emerald-500/30 border-x-2 border-emerald-500 flex items-center justify-center">
-                      <span className="text-[10px] font-bold text-emerald-400 tracking-widest uppercase">Target</span>
+                <div className="w-full flex flex-col items-stretch text-left">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl select-none">{henchmanInfo.icon}</span>
+                      <h4 className="text-sm font-extrabold text-white">Boss Challenge: {henchmanInfo.name}</h4>
                     </div>
+                    {/* Real-time Ticking Timer */}
+                    <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20">
+                      <span className={`text-[11px] font-bold font-mono tracking-widest transition-all ${timeLeft <= 5 ? "text-red-500 animate-pulse scale-105" : "text-red-400"}`}>
+                        ⏳ {timeLeft}s Left
+                      </span>
+                    </div>
+                  </div>
 
-                    {/* Slider pin */}
-                    <div
-                      className="absolute inset-y-0 w-2 bg-white shadow-[0_0_10px_#fff] transition-all duration-75"
-                      style={{ left: `${sliderPos}%` }}
+                  {/* Timer Progress Bar */}
+                  <div className="w-full h-1.5 rounded-full bg-white/5 border border-white/10 overflow-hidden mb-4">
+                    <motion.div
+                      initial={{ width: "100%" }}
+                      animate={{ width: `${(timeLeft / 20) * 100}%` }}
+                      transition={{ duration: 1, ease: "linear" }}
+                      className={`h-full rounded-full transition-colors ${timeLeft <= 5 ? "bg-red-500 shadow-[0_0_8px_#ef4444]" : "bg-indigo-500"}`}
                     />
                   </div>
 
+                  {/* Question Box */}
+                  <div className="p-3.5 rounded-xl border border-white/10 bg-white/5 mb-4">
+                    <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest mb-1">Challenge Prompt</p>
+                    <p className="text-xs font-semibold text-slate-200 leading-relaxed">
+                      {getBossChallengeQuestion(templateId, stage)}
+                    </p>
+                  </div>
+
+                  {/* Answer Input */}
+                  <div className="space-y-1.5 mb-4">
+                    <label htmlFor="boss-answer" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Your Strategy / Answer</label>
+                    <textarea
+                      id="boss-answer"
+                      rows={3}
+                      placeholder="Type your strategic response to defeat the Boss..."
+                      value={answer}
+                      onChange={(e) => setAnswer(e.target.value)}
+                      className="w-full rounded-xl border border-white/10 bg-[#0f172a]/60 p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 font-sans resize-none"
+                    />
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className={answer.trim().length >= 8 ? "text-green-400 font-medium" : "text-slate-400"}>
+                        {answer.trim().length >= 8 ? "✓ Minimum reached" : "Requires at least 8 characters"}
+                      </span>
+                      <span className="text-slate-500">{answer.trim().length} chars</span>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
                   <button
-                    onClick={handleFight}
-                    disabled={isSubmitting}
-                    className="w-full py-4 rounded-xl font-extrabold text-lg bg-red-600 hover:bg-red-500 text-white shadow-lg active:scale-[0.98] transition-all uppercase tracking-wider"
+                    onClick={handleSubmitAnswer}
+                    disabled={isSubmitting || answer.trim().length < 8}
+                    className="w-full py-3 rounded-xl font-extrabold text-xs bg-gradient-to-r from-red-600 to-indigo-600 hover:from-red-500 hover:to-indigo-500 text-white shadow-lg active:scale-[0.98] transition-all uppercase tracking-wider disabled:opacity-50 disabled:pointer-events-none"
                   >
-                    Strike!
+                    {isSubmitting ? "Evaluating..." : "Submit to Evaluate!"}
                   </button>
                 </div>
               )}
@@ -536,7 +642,7 @@ export function InterCheckpointOverlay({
                  : resultData.outcome === "skipped" ? "Passed Safely"
                  : "Obtained!"}
               </h3>
-              <p className="text-sm text-gray-300 mb-6 leading-relaxed">
+              <p className="text-xs text-gray-300 mb-5 leading-relaxed whitespace-pre-line text-left max-w-sm mx-auto bg-white/5 border border-white/10 p-4 rounded-xl">
                 {resultData.message}
               </p>
 

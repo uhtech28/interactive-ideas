@@ -9,8 +9,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertCircle } from "lucide-react";
-import { X } from "lucide-react";
+import { AlertCircle, Loader2, X } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
@@ -87,6 +86,7 @@ export function TaskSubmissionModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
+  const [animationFinished, setAnimationFinished] = useState(false);
   const submitTask = useMutation(api.worldMap.submitTaskContent);
 
   const draftKey = useMemo(
@@ -111,6 +111,9 @@ export function TaskSubmissionModal({
     if (isOpen) {
       setError(null);
       setIsSubmitting(false);
+      setAnimationFinished(false);
+    } else {
+      setAnimationFinished(false);
     }
   }, [isOpen, task]);
 
@@ -184,6 +187,7 @@ export function TaskSubmissionModal({
             prompt={task.description}
             isSubmitting={isSubmitting}
             onSubmit={handleToolSubmit}
+            layout="compact"
           />
         );
 
@@ -303,34 +307,39 @@ export function TaskSubmissionModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm cursor-pointer"
+            className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm cursor-pointer"
           />
 
           {/* Modal - Compact responsive */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed inset-0 z-[101] overflow-y-auto sm:grid sm:place-items-center sm:p-4 pt-12 sm:pt-4"
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            onAnimationComplete={() => {
+              if (isOpen) {
+                setAnimationFinished(true);
+              }
+            }}
+            className="fixed inset-0 z-[101] flex items-center justify-center p-2 sm:p-4 overflow-hidden pointer-events-none"
           >
-            <div className="bg-[#111827] border-0 sm:border-2 border-white/10 rounded-none sm:rounded-xl shadow-2xl flex min-h-full flex-col sm:min-h-0 sm:w-[min(92vw,800px)] sm:max-h-[calc(100vh-2rem)] sm:overflow-hidden mt-12 sm:mt-0">
+            <div className="bg-[#111827] border border-white/10 rounded-xl shadow-2xl flex flex-col w-[96vw] sm:w-[min(92vw,860px)] h-auto max-h-[min(90vh,760px)] overflow-hidden pointer-events-auto">
               {/* Header - Compact */}
-              <div className="p-3 sm:px-4 sm:py-3 pt-16 sm:pt-20 md:pt-6 border-b border-white/10 bg-gradient-to-r from-[#6366F1]/20 to-[#8B5CF6]/20 flex-shrink-0 safe-top">
-                <div className="flex items-start justify-between gap-3">
+              <div className="p-3 sm:px-5 sm:py-3.5 border-b border-white/10 bg-gradient-to-r from-[#6366F1]/15 to-[#8B5CF6]/15 flex-shrink-0">
+                <div className="flex items-center justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <h2 className="text-base sm:text-lg font-bold text-white mb-1 truncate sm:whitespace-normal">
+                    <h2 className="text-base sm:text-lg font-bold text-white mb-0.5 truncate">
                       {task.title}
                     </h2>
-                    <p className="text-xs text-gray-400 line-clamp-1 sm:line-clamp-2 mb-2">
-                      {task.description}
-                    </p>
-                    <div className="flex items-center gap-3 flex-wrap text-xs">
-                      <span className="text-indigo-400 font-semibold uppercase tracking-wide">
+                    <div className="flex items-center gap-2 flex-wrap text-[11px] sm:text-xs">
+                      <span className="text-indigo-400 font-semibold uppercase tracking-wider text-[10px]">
                         {task.toolType.replace(/_/g, " ")}
                       </span>
-                      <span className="text-gray-400">
+                      <span className="text-gray-500">•</span>
+                      <span className="text-gray-300">
                         {getMinRequirementLabel(task.toolType)}
                       </span>
+                      <span className="text-gray-500">•</span>
                       <span className="text-[#6366F1] font-bold">
                         +{task.points} pts
                       </span>
@@ -341,32 +350,46 @@ export function TaskSubmissionModal({
                       audioManager.playUI("click");
                       onClose();
                     }}
-                    className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/40 active:bg-red-500/60 border border-red-500/30 transition-all flex-shrink-0 touch-manipulation group"
+                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/15 border border-white/10 transition-all flex-shrink-0 touch-manipulation group"
                     aria-label="Close modal"
                   >
-                    <X className="w-5 h-5 text-red-400 group-hover:text-red-300" />
+                    <X className="w-4 h-4 text-gray-400 group-hover:text-white" />
                   </button>
                 </div>
               </div>
 
-              {/* Content Area - Compact */}
-              <div className="flex-1 overflow-y-auto p-3 sm:p-4 min-h-0 safe-bottom">
+              {/* Content Area - Compact responsive with hidden scrollbar */}
+              <div 
+                className="flex-1 overflow-y-auto p-3 sm:p-5 min-h-0 safe-bottom [&>div]:border-0 [&>div]:bg-transparent [&>div]:shadow-none [&>div>div:first-child]:hidden [&>div>div:last-child]:p-0"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              >
+                <style dangerouslySetInnerHTML={{__html: `
+                  .flex-1::-webkit-scrollbar {
+                    display: none !important;
+                  }
+                `}} />
                 {!isOnline && (
-                  <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
-                    Offline mode detected. Your draft will stay on this device
-                    until you reconnect.
+                  <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs sm:text-sm text-amber-200">
+                    Offline mode detected. Your draft will stay on this device until you reconnect.
                   </div>
                 )}
 
-                {/* Tool Component */}
-                {renderTool()}
+                {/* Delayed Tool Component for Buttery Smooth Opening */}
+                {animationFinished ? (
+                  renderTool()
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full min-h-[250px] gap-2">
+                    <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                    <span className="text-[11px] text-slate-400 animate-pulse">Initializing tool...</span>
+                  </div>
+                )}
 
                 {/* Error Message */}
                 {error && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mt-4 p-4 bg-red-500/10 border-2 border-red-500/30 rounded-xl flex items-center gap-3"
+                    className="mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3"
                   >
                     <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
                     <p className="text-red-400 text-sm">{error}</p>

@@ -269,6 +269,10 @@ export class WorldMapScene extends Phaser.Scene {
   private currentSuperBossName: string | null = null;
   private lastSuperBossDefeatStatus: "active" | "retreated" | "slain" | null =
     null;
+  private lastEmitTime = 0;
+  private lastEmitX = 0;
+  private lastEmitY = 0;
+  private lastEmitVisible = false;
 
   // Scene layers
   private map!: Phaser.Tilemaps.Tilemap;
@@ -4347,26 +4351,26 @@ export class WorldMapScene extends Phaser.Scene {
    * Creates atmospheric particles and ambient effects for premium feel
    */
   private createAtmosphericEffects(): void {
-    // Floating dust motes across the map
+    // Floating dust motes across the map - Throttled frequency to save performance
     const dustParticles = this.add.particles(0, 0, "white", {
       x: { min: 0, max: this.MAP_WIDTH },
       y: { min: 0, max: this.MAP_HEIGHT * 0.7 },
-      speedX: { min: -10, max: 10 },
-      speedY: { min: -20, max: -5 },
-      scale: { start: 0.1, end: 0 },
-      alpha: { start: 0.3, end: 0 },
-      lifespan: 4000,
-      frequency: 200,
+      speedX: { min: -5, max: 5 },
+      speedY: { min: -10, max: -3 },
+      scale: { start: 0.08, end: 0 },
+      alpha: { start: 0.25, end: 0 },
+      lifespan: 5000,
+      frequency: 2000,
       blendMode: "ADD",
       tint: 0xffffff,
     });
     this.backgroundLayer.add(dustParticles);
 
-    // Light rays from top (god rays effect)
-    for (let i = 0; i < 8; i++) {
-      const rayX = (i * this.MAP_WIDTH) / 8 + Math.random() * 200;
+    // Light rays from top (god rays effect) - static high performance
+    for (let i = 0; i < 3; i++) {
+      const rayX = (i * this.MAP_WIDTH) / 3 + Math.random() * 200;
       const rayGraphics = this.add.graphics();
-      rayGraphics.fillStyle(0xffffff, 0.08);
+      rayGraphics.fillStyle(0xffffff, 0.06);
       rayGraphics.fillTriangle(
         rayX,
         0,
@@ -4376,42 +4380,19 @@ export class WorldMapScene extends Phaser.Scene {
         this.MAP_HEIGHT * 0.5,
       );
       this.backgroundLayer.add(rayGraphics);
-
-      // Animate light rays slowly
-      this.tweens.add({
-        targets: rayGraphics,
-        alpha: { from: 0.08, to: 0.15 },
-        duration: 3000 + Math.random() * 2000,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
     }
 
-    // Ambient glow orbs floating in background
-    for (let i = 0; i < 12; i++) {
+    // Ambient glow orbs floating in background - static orbs
+    for (let i = 0; i < 4; i++) {
       const orbX = Math.random() * this.MAP_WIDTH;
       const orbY = Math.random() * (this.MAP_HEIGHT * 0.6);
-      const orb = this.add.circle(orbX, orbY, 3, 0x6366f1, 0.4);
+      const orb = this.add.circle(orbX, orbY, 3, 0x6366f1, 0.3);
       this.backgroundLayer.add(orb);
-
-      // Float animation
-      this.tweens.add({
-        targets: orb,
-        y: orbY + (Math.random() * 60 - 30),
-        x: orbX + (Math.random() * 40 - 20),
-        alpha: { from: 0.2, to: 0.6 },
-        scale: { from: 0.8, to: 1.2 },
-        duration: 3000 + Math.random() * 2000,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-        delay: Math.random() * 2000,
-      });
     }
 
-    // Biome-specific particle systems
+    // Biome-specific particle systems - Only active for current stage to save massive performance
     this.activeBiomeConfigs.forEach((biome, index) => {
+      if (biome.id !== this.currentStage) return; // ONLY render active stage particles!
       const biomeX = index * this.BIOME_WIDTH;
 
       let particleConfig: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig | null =
@@ -4427,7 +4408,7 @@ export class WorldMapScene extends Phaser.Scene {
             scale: { start: 0.15, end: 0.05 },
             alpha: { start: 0.6, end: 0 },
             lifespan: 12000,
-            frequency: 150,
+            frequency: 450,
             tint: [biome.colors.accent2, biome.colors.accent1, 0xffffff],
             rotate: { min: 0, max: 360 },
           };
@@ -4441,7 +4422,7 @@ export class WorldMapScene extends Phaser.Scene {
             scale: { start: 0.12, end: 0 },
             alpha: { start: 0.72, end: 0 },
             lifespan: 2600,
-            frequency: 130,
+            frequency: 380,
             tint: [biome.colors.accent1, biome.colors.accent2, 0xffd37a],
             blendMode: "ADD",
           };
@@ -4455,7 +4436,7 @@ export class WorldMapScene extends Phaser.Scene {
             scale: { start: 0.11, end: 0.02 },
             alpha: { start: 0.42, end: 0 },
             lifespan: 4200,
-            frequency: 170,
+            frequency: 500,
             tint: [biome.colors.accent1, biome.colors.accent2, 0xffffff],
             blendMode: "ADD",
           };
@@ -4469,7 +4450,7 @@ export class WorldMapScene extends Phaser.Scene {
             scale: { start: 0.1, end: 0 },
             alpha: { start: 0.8, end: 0 },
             lifespan: 3000,
-            frequency: 100,
+            frequency: 300,
             tint: [biome.colors.accent1, biome.colors.accent2, 0xffd37a],
             blendMode: "ADD",
           };
@@ -4483,7 +4464,7 @@ export class WorldMapScene extends Phaser.Scene {
             scale: { start: 0.2, end: 0.1 },
             alpha: { start: 0.4, end: 0 },
             lifespan: 5000,
-            frequency: 120,
+            frequency: 360,
             tint: [0xffffff, biome.colors.accent1, biome.colors.accent2],
             blendMode: "ADD",
           };
@@ -4497,24 +4478,26 @@ export class WorldMapScene extends Phaser.Scene {
       }
     });
 
-    // Shimmering stars in the distance (top sky area)
+    // Shimmering stars in the distance (top sky area) - mostly static, twinkle only 3 stars to avoid rendering overhead
     for (let i = 0; i < 30; i++) {
       const starX = Math.random() * this.MAP_WIDTH;
       const starY = Math.random() * (this.MAP_HEIGHT * 0.3);
-      const star = this.add.circle(starX, starY, 1, 0xffffff, 0.8);
+      const star = this.add.circle(starX, starY, 1, 0xffffff, 0.7);
       this.backgroundLayer.add(star);
 
-      // Twinkle effect
-      this.tweens.add({
-        targets: star,
-        alpha: { from: 0.3, to: 1.0 },
-        scale: { from: 0.5, to: 1.5 },
-        duration: 1000 + Math.random() * 2000,
-        yoyo: true,
-        repeat: -1,
-        ease: "Quad.easeInOut",
-        delay: Math.random() * 3000,
-      });
+      if (i < 3) {
+        // Twinkle only 3 stars for atmospheric feel without the performance cost of 30 active tweens
+        this.tweens.add({
+          targets: star,
+          alpha: { from: 0.2, to: 0.9 },
+          scale: { from: 0.5, to: 1.4 },
+          duration: 1200 + Math.random() * 2000,
+          yoyo: true,
+          repeat: -1,
+          ease: "Quad.easeInOut",
+          delay: Math.random() * 3000,
+        });
+      }
     }
   }
 
@@ -4522,13 +4505,13 @@ export class WorldMapScene extends Phaser.Scene {
    * Creates animated water ripples around biome edges and islands
    */
   private createWaterRipples(): void {
-    const rippleCount = 20;
+    const rippleCount = 4; // reduced from 20 to 4
     for (let i = 0; i < rippleCount; i++) {
       const x = Math.random() * this.MAP_WIDTH;
       const y = Math.random() * this.MAP_HEIGHT;
 
       const ripple = this.add.graphics();
-      ripple.lineStyle(2, 0xffffff, 0.2);
+      ripple.lineStyle(2, 0xffffff, 0.15);
       ripple.strokeCircle(0, 0, 10);
       ripple.x = x;
       ripple.y = y;
@@ -4537,9 +4520,9 @@ export class WorldMapScene extends Phaser.Scene {
 
       this.tweens.add({
         targets: ripple,
-        scale: { from: 0.5, to: 4.0 },
-        alpha: { from: 0.3, to: 0 },
-        duration: 2000 + Math.random() * 2000,
+        scale: { from: 0.5, to: 3.5 },
+        alpha: { from: 0.2, to: 0 },
+        duration: 3000 + Math.random() * 2000,
         repeat: -1,
         ease: "Cubic.easeOut",
         delay: Math.random() * 4000,
@@ -4551,15 +4534,26 @@ export class WorldMapScene extends Phaser.Scene {
    * Creates animated foam rings at the base of every island (checkpoint)
    */
   private createShorelineFoam(): void {
-    // We'll get positions after path generation or hardcoded/procedural
-    // For now, let's add them based on the snake path positions
     const positions = this.getSnakePathPositions();
 
     positions.forEach((pos, i) => {
-      // Draw 2-3 rings per island
+      // Find which stage this globalIndex belongs to:
+      let tempIndex = 0;
+      let targetStageId = 1;
+      for (const stage of this.activeStages) {
+        if (i >= tempIndex && i < tempIndex + stage.checkpoints) {
+          targetStageId = stage.id;
+          break;
+        }
+        tempIndex += stage.checkpoints;
+      }
+
+      // ONLY draw shoreline foam for checkpoints in the current active stage! Saves 70+ tweens!
+      if (targetStageId !== this.currentStage) return;
+
       for (let r = 0; r < 2; r++) {
         const ripple = this.add.graphics();
-        ripple.lineStyle(2, 0xffffff, 0.4);
+        ripple.lineStyle(2, 0xffffff, 0.3);
         ripple.strokeCircle(0, 0, 42); // Just outside the checkpoint radius
         ripple.x = pos.x;
         ripple.y = pos.y;
@@ -4569,8 +4563,8 @@ export class WorldMapScene extends Phaser.Scene {
         this.tweens.add({
           targets: ripple,
           scale: { from: 1.0, to: 1.15 },
-          alpha: { from: 0.4, to: 0.1 },
-          duration: 3000 + Math.random() * 2000,
+          alpha: { from: 0.3, to: 0.05 },
+          duration: 3500 + Math.random() * 2000,
           repeat: -1,
           yoyo: true,
           ease: "Sine.easeInOut",
@@ -4584,42 +4578,26 @@ export class WorldMapScene extends Phaser.Scene {
    * Creates angled cinematic 'God Rays' that drift across the screen
    */
   private createVolumetricLighting(): void {
-    const rayCount = 6;
+    const rayCount = 2; // reduced from 6 to 2
     for (let i = 0; i < rayCount; i++) {
-      const x = Math.random() * this.MAP_WIDTH;
+      const x = (i * this.MAP_WIDTH) / 2 + Math.random() * 400;
       const ray = this.add.graphics();
-
       this.backgroundLayer.add(ray);
 
-      const updateRay = () => {
-        ray.clear();
-        // Modern palette: Use biome-specific colors or a safe premium white-gold
-        ray.fillStyle(0xffffff, 0.05);
+      // Modern palette: Use biome-specific colors or a safe premium white-gold
+      ray.fillStyle(0xffffff, 0.035);
 
-        const width = 100 + Math.random() * 200;
-        const height = 1500;
-        const angle = 0.2; // slight tilt
+      const width = 120 + Math.random() * 200;
+      const height = 1500;
+      const angle = 0.2; // slight tilt
 
-        ray.beginPath();
-        ray.moveTo(x, -200);
-        ray.lineTo(x + width, -200);
-        ray.lineTo(x + width - height * angle, height);
-        ray.lineTo(x - height * angle, height);
-        ray.closePath();
-        ray.fillPath();
-      };
-
-      updateRay();
-
-      this.tweens.add({
-        targets: ray,
-        alpha: { from: 0.02, to: 0.08 },
-        x: "+=50",
-        duration: 8000 + Math.random() * 4000,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
+      ray.beginPath();
+      ray.moveTo(x, -200);
+      ray.lineTo(x + width, -200);
+      ray.lineTo(x + width - height * angle, height);
+      ray.lineTo(x - height * angle, height);
+      ray.closePath();
+      ray.fillPath();
     }
   }
   private createClouds(): void {
@@ -6184,22 +6162,44 @@ export class WorldMapScene extends Phaser.Scene {
     this.emitTutorialPulsePosition();
   }
 
-  /**
-   * Emit the current screen position of Stage 1, Checkpoint 1 to React
-   */
   private emitTutorialPulsePosition(): void {
     const firstNode = this.checkpointNodes.get("1-1");
     if (!firstNode) return;
+
+    // Check if Stage 1 Checkpoint 1 pulse is active
+    const isPulseActive = this.currentStage === 1 && firstNode.status === "active";
+    if (!isPulseActive && !this.lastEmitVisible) {
+      return;
+    }
+
+    const now = this.time.now;
+    if (now - this.lastEmitTime < 100) {
+      return;
+    }
+    this.lastEmitTime = now;
 
     const camera = this.cameras.main;
     const screenX = (firstNode.x - camera.worldView.x) * camera.zoom;
     const screenY = (firstNode.y - camera.worldView.y) * camera.zoom;
 
+    // Only dispatch if coordinates or visibility actually changed
+    if (
+      Math.abs(screenX - this.lastEmitX) < 1 &&
+      Math.abs(screenY - this.lastEmitY) < 1 &&
+      isPulseActive === this.lastEmitVisible
+    ) {
+      return;
+    }
+
+    this.lastEmitX = screenX;
+    this.lastEmitY = screenY;
+    this.lastEmitVisible = isPulseActive;
+
     eventBridge.dispatchToReact({
       type: "TUTORIAL_PULSE_POSITION",
       x: screenX,
       y: screenY,
-      visible: this.currentStage === 1 && firstNode.status === "active",
+      visible: isPulseActive,
     });
   }
 

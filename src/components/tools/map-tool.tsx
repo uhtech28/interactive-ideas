@@ -69,6 +69,7 @@ interface MapToolProps {
   onSubmit: (content: { elements: CanvasElement[] }) => void;
   initialContent?: { elements: CanvasElement[] };
   isSubmitting?: boolean;
+  layout?: "compact" | "wide";
 }
 
 const COLORS = [
@@ -112,6 +113,7 @@ export function MapTool({
   onSubmit,
   initialContent,
   isSubmitting,
+  layout = "wide",
 }: MapToolProps) {
   const [elements, setElements] = useState<CanvasElement[]>(
     initialContent?.elements || [],
@@ -123,10 +125,11 @@ export function MapTool({
     }
   }, [initialContent]);
 
-  const [selectedTool, setSelectedTool] = useState<Tool>("select");
+  const [selectedTool, setSelectedTool] = useState<Tool>("postit");
   const [selectedColor, setSelectedColor] = useState<string>(COLORS[0]);
   const [dragging, setDragging] = useState<string | null>(null);
   const [resizing, setResizing] = useState<string | null>(null);
+  const [hoveredArrowId, setHoveredArrowId] = useState<string | null>(null);
   const [drawingArrow, setDrawingArrow] = useState<{
     x: number;
     y: number;
@@ -139,13 +142,14 @@ export function MapTool({
   } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasRectRef = useRef<DOMRect | null>(null);
 
   const addPostIt = () => {
     const newPostIt: PostIt = {
       id: `postit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: "postit",
-      x: 150 + Math.random() * 150,
-      y: 100 + Math.random() * 150,
+      x: 30 + Math.random() * 80,
+      y: 30 + Math.random() * 80,
       text: "New note",
       color: POSTIT_COLORS[elements.length % POSTIT_COLORS.length],
     };
@@ -156,10 +160,10 @@ export function MapTool({
     const newShape: Shape = {
       id: `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type,
-      x: 200 + Math.random() * 100,
-      y: 150 + Math.random() * 100,
-      width: type === "line" ? 100 : 80,
-      height: type === "line" ? 2 : 80,
+      x: 30 + Math.random() * 80,
+      y: 30 + Math.random() * 80,
+      width: type === "line" ? 80 : 70,
+      height: type === "line" ? 2 : 70,
       color: selectedColor,
     };
     setElements([...elements, newShape]);
@@ -209,6 +213,9 @@ export function MapTool({
   ) => {
     e.preventDefault();
     e.stopPropagation();
+    if (canvasRef.current) {
+      canvasRectRef.current = canvasRef.current.getBoundingClientRect();
+    }
     if (isResize) {
       setResizing(id);
     } else {
@@ -217,8 +224,11 @@ export function MapTool({
   };
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    if (selectedTool === "arrow" && canvasRef.current) {
-      const rect = canvasRef.current.getBoundingClientRect();
+    if (canvasRef.current) {
+      canvasRectRef.current = canvasRef.current.getBoundingClientRect();
+    }
+    if (selectedTool === "arrow" && canvasRectRef.current) {
+      const rect = canvasRectRef.current;
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       setDrawingArrow({ x, y });
@@ -228,17 +238,16 @@ export function MapTool({
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
-      if (!canvasRef.current) return;
-      const rect = canvasRef.current.getBoundingClientRect();
+      if (!canvasRectRef.current) return;
+      const rect = canvasRectRef.current;
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
       if (dragging) {
-        setElements(
-          elements.map((el) => {
+        setElements((currentElements) =>
+          currentElements.map((el) => {
             if (el.id === dragging) {
               if (el.type === "arrow") {
-                // For arrows, update both endpoints
                 return { ...el, x1: x, x2: x + (el.x2 - el.x1) };
               } else {
                 return { ...el, x, y };
@@ -248,8 +257,8 @@ export function MapTool({
           }),
         );
       } else if (resizing) {
-        setElements(
-          elements.map((el) => {
+        setElements((currentElements) =>
+          currentElements.map((el) => {
             if (
               el.id === resizing &&
               el.type !== "postit" &&
@@ -266,26 +275,33 @@ export function MapTool({
         setTempArrow({ x1: drawingArrow.x, y1: drawingArrow.y, x2: x, y2: y });
       }
     },
-    [dragging, resizing, drawingArrow, elements],
+    [dragging, resizing, drawingArrow],
   );
 
   const handleMouseUp = (e: React.MouseEvent) => {
-    if (drawingArrow && tempArrow && canvasRef.current) {
-      const newArrow: Arrow = {
-        id: `arrow-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        type: "arrow",
-        x1: tempArrow.x1,
-        y1: tempArrow.y1,
-        x2: tempArrow.x2,
-        y2: tempArrow.y2,
-        color: selectedColor,
-      };
-      setElements([...elements, newArrow]);
+    if (drawingArrow && tempArrow) {
+      const dx = tempArrow.x2 - tempArrow.x1;
+      const dy = tempArrow.y2 - tempArrow.y1;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance > 10) {
+        const newArrow: Arrow = {
+          id: `arrow-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          type: "arrow",
+          x1: tempArrow.x1,
+          y1: tempArrow.y1,
+          x2: tempArrow.x2,
+          y2: tempArrow.y2,
+          color: selectedColor,
+        };
+        setElements((current) => [...current, newArrow]);
+      }
       setDrawingArrow(null);
       setTempArrow(null);
     }
     setDragging(null);
     setResizing(null);
+    canvasRectRef.current = null;
   };
 
   const handleSubmit = () => {
@@ -325,19 +341,12 @@ export function MapTool({
         </div>
         <CardDescription>{prompt}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className={layout === "compact" ? "space-y-2.5" : "space-y-4"}>
         {/* Toolbar */}
-        <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Label className="text-xs font-semibold">Tools:</Label>
-            <Button
-              variant={selectedTool === "select" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedTool("select")}
-              className="h-8"
-            >
-              Select
-            </Button>
+        <div className={`p-2 border rounded-lg bg-muted/30 ${layout === "compact" ? "space-y-1.5" : "space-y-3"}`}>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Label className="text-[11px] sm:text-xs font-semibold mr-1">Tools:</Label>
+
             <Button
               variant={selectedTool === "postit" ? "default" : "outline"}
               size="sm"
@@ -345,7 +354,7 @@ export function MapTool({
                 setSelectedTool("postit");
                 addPostIt();
               }}
-              className="h-8"
+              className={layout === "compact" ? "h-7 text-xs px-2" : "h-8"}
             >
               <StickyNote className="h-3 w-3 mr-1" />
               Post-it
@@ -357,7 +366,7 @@ export function MapTool({
                 setSelectedTool("rectangle");
                 addShape("rectangle");
               }}
-              className="h-8"
+              className={layout === "compact" ? "h-7 text-xs px-2" : "h-8"}
             >
               <Square className="h-3 w-3 mr-1" />
               Rectangle
@@ -369,7 +378,7 @@ export function MapTool({
                 setSelectedTool("circle");
                 addShape("circle");
               }}
-              className="h-8"
+              className={layout === "compact" ? "h-7 text-xs px-2" : "h-8"}
             >
               <Circle className="h-3 w-3 mr-1" />
               Circle
@@ -381,7 +390,7 @@ export function MapTool({
                 setSelectedTool("triangle");
                 addShape("triangle");
               }}
-              className="h-8"
+              className={layout === "compact" ? "h-7 text-xs px-2" : "h-8"}
             >
               <Triangle className="h-3 w-3 mr-1" />
               Triangle
@@ -390,7 +399,7 @@ export function MapTool({
               variant={selectedTool === "arrow" ? "default" : "outline"}
               size="sm"
               onClick={() => setSelectedTool("arrow")}
-              className="h-8"
+              className={layout === "compact" ? "h-7 text-xs px-2" : "h-8"}
             >
               <ArrowRight className="h-3 w-3 mr-1" />
               Arrow
@@ -399,7 +408,7 @@ export function MapTool({
               variant="outline"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              className="h-8"
+              className={layout === "compact" ? "h-7 text-xs px-2" : "h-8"}
             >
               <ImageIcon className="h-3 w-3 mr-1" />
               Image
@@ -411,15 +420,28 @@ export function MapTool({
               className="hidden"
               onChange={handleImageUpload}
             />
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (window.confirm("Clear all items from the canvas?")) {
+                  setElements([]);
+                }
+              }}
+              className={`h-7 text-xs px-2 ml-auto text-red-400 hover:text-red-300 border-red-500/20 hover:border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:bg-red-500/30 transition-all`}
+            >
+              Clear Canvas
+            </Button>
           </div>
 
           <div className="flex items-center gap-2">
-            <Label className="text-xs font-semibold">Color:</Label>
+            <Label className="text-[11px] sm:text-xs font-semibold">Color:</Label>
             <div className="flex gap-1 flex-wrap">
               {COLORS.map((color) => (
                 <button
                   key={color}
-                  className={`w-6 h-6 rounded border-2 ${
+                  className={`${layout === "compact" ? "w-5 h-5" : "w-6 h-6"} rounded border-2 ${
                     selectedColor === color
                       ? "border-foreground scale-110"
                       : "border-transparent"
@@ -434,10 +456,12 @@ export function MapTool({
         </div>
 
         {/* Canvas */}
-        <div className="w-full overflow-x-auto border-2 rounded-lg bg-white dark:bg-slate-950 scrollbar-thin">
+        <div className="w-full border-2 rounded-lg bg-white dark:bg-slate-950">
           <div
             ref={canvasRef}
-            className="relative w-[800px] h-[400px] overflow-hidden cursor-crosshair select-none"
+            className={`relative w-full overflow-hidden cursor-crosshair select-none ${
+              layout === "compact" ? "h-[270px]" : "h-[400px]"
+            }`}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
@@ -448,8 +472,26 @@ export function MapTool({
             {/* Render arrows */}
             {elements.map((el) => {
               if (el.type === "arrow") {
+                const dx = el.x2 - el.x1;
+                const dy = el.y2 - el.y1;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist <= 10) return null; // Skip rendering any corrupt zero-length arrows!
+
                 return (
                   <g key={el.id}>
+                    {/* Hover area (thick invisible line with pointer-events stroke) */}
+                    <line
+                      x1={el.x1}
+                      y1={el.y1}
+                      x2={el.x2}
+                      y2={el.y2}
+                      stroke="transparent"
+                      strokeWidth="24"
+                      style={{ pointerEvents: "stroke", cursor: "pointer" }}
+                      onMouseEnter={() => setHoveredArrowId(el.id)}
+                      onMouseLeave={() => setHoveredArrowId(null)}
+                    />
+                    {/* Visible arrow line */}
                     <line
                       x1={el.x1}
                       y1={el.y1}
@@ -466,7 +508,7 @@ export function MapTool({
             })}
 
             {/* Temporary arrow while drawing */}
-            {tempArrow && (
+            {tempArrow && Math.sqrt((tempArrow.x2 - tempArrow.x1)**2 + (tempArrow.y2 - tempArrow.y1)**2) > 8 && (
               <g>
                 <line
                   x1={tempArrow.x1}
@@ -550,6 +592,40 @@ export function MapTool({
               return null;
             })}
           </svg>
+
+          {/* Render Arrow Delete Buttons (HTML overlay) */}
+          {elements.map((el) => {
+            if (el.type === "arrow" && hoveredArrowId === el.id) {
+              const midX = (el.x1 + el.x2) / 2;
+              const midY = (el.y1 + el.y2) / 2;
+              return (
+                <div
+                  key={`delete-${el.id}`}
+                  className="absolute z-30 pointer-events-auto"
+                  style={{
+                    left: midX - 12,
+                    top: midY - 12,
+                  }}
+                  onMouseEnter={() => setHoveredArrowId(el.id)}
+                  onMouseLeave={() => setHoveredArrowId(null)}
+                >
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="h-6 w-6 rounded-full shadow-lg bg-red-500 hover:bg-red-600 border border-red-600 text-white flex items-center justify-center cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeElement(el.id);
+                      setHoveredArrowId(null);
+                    }}
+                  >
+                    <Trash2 className="h-3 w-3 text-white" />
+                  </Button>
+                </div>
+              );
+            }
+            return null;
+          })}
 
           {/* Post-its and Images (HTML elements) */}
           {elements.map((el) => {
@@ -661,20 +737,24 @@ export function MapTool({
       </div>
 
         {/* Instructions */}
-        <div className="text-xs text-muted-foreground space-y-1 p-2 bg-muted/30 rounded">
-          <p>• Click tools to add post-its, shapes, or images</p>
-          <p>• Select "Arrow" and click-drag on canvas to draw arrows</p>
-          <p>• Drag elements to move them, drag corner to resize</p>
-          <p>• Hover over elements to see delete button</p>
-        </div>
+        {layout !== "compact" && (
+          <div className="text-xs text-muted-foreground space-y-1 p-2 bg-muted/30 rounded">
+            <p>• Click tools to add post-its, shapes, or images</p>
+            <p>• Select "Arrow" and click-drag on canvas to draw arrows</p>
+            <p>• Drag elements to move them, drag corner to resize</p>
+            <p>• Hover over elements to see delete button</p>
+          </div>
+        )}
 
         {/* Summary */}
-        <div className="flex items-center justify-between text-sm border-t pt-3">
-          <span className="text-muted-foreground">
-            {elements.length} {elements.length === 1 ? "element" : "elements"}{" "}
-            on canvas
-          </span>
-        </div>
+        {layout !== "compact" && (
+          <div className="flex items-center justify-between text-sm border-t pt-3">
+            <span className="text-muted-foreground">
+              {elements.length} {elements.length === 1 ? "element" : "elements"}{" "}
+              on canvas
+            </span>
+          </div>
+        )}
 
         {/* Submit Button */}
         <Button
@@ -690,13 +770,16 @@ export function MapTool({
           ) : (
             <>
               <Check className="mr-2 h-4 w-4" />
-              Submit Canvas ({elements.length}{" "}
-              {elements.length === 1 ? "element" : "elements"})
+              {elements.length === 0
+                ? "Add at least one element to submit"
+                : `Submit Canvas (${elements.length} ${
+                    elements.length === 1 ? "element" : "elements"
+                  })`}
             </>
           )}
         </Button>
 
-        {elements.length === 0 && (
+        {layout !== "compact" && elements.length === 0 && (
           <p className="text-xs text-center text-muted-foreground">
             Add at least one element to submit
           </p>
