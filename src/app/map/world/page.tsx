@@ -17,37 +17,32 @@ import {
   useMemo,
   Suspense,
 } from "react";
-import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
-import { useAtom, useSetAtom, useAtomValue } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { audioManager } from "@/lib/audio/audioManager";
 import { api } from "@convex/_generated/api";
 import { LEVEL_DEFINITIONS } from "@convex/ventureConstants";
 import type { Id } from "@convex/_generated/dataModel";
 import { eventBridge } from "@/lib/phaser/utils/event-bridge";
 import type { CheckpointState } from "@/lib/phaser/utils/event-bridge";
-import { CommentsSection } from "@/components/comments/CommentsSection";
-import { MessageSquare, X } from "lucide-react";
-import { QuestList, BossHPBar, StageInfo, CheckpointProgress, LevelDisplay, XPBar, AudioControls } from "@/components/hud";
+import { QuestList, BossHPBar } from "@/components/hud";
 import { InterCheckpointOverlay } from "@/components/map/InterCheckpointOverlay";
+import { LiveActivityFeed } from "@/components/map/LiveActivityFeed";
 import { getTemplate, type TemplateId } from "@/config/templates";
+import { LevelUpSequence } from "@/components/animations/LevelUpSequence";
+import { BadgeAwardSequence } from "@/components/animations/BadgeAwardSequence";
 import { getVentureBadgeEmoji } from "@/components/badges/BadgeCard";
 import { FirstCheckpointPulse } from "@/components/map/FirstCheckpointPulse";
 import { GoldCheckpointPopup } from "@/components/notifications/GoldCheckpointPopup";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { TaskSubmissionModal } from "@/components/map/TaskSubmissionModal";
+import { StageClearModal } from "@/components/map/StageClearModal";
+import { WorldMapTour } from "@/components/map/WorldMapTour";
 import { LeftSidebar } from "@/components/map/LeftSidebar";
 import { ToolsPanel } from "@/components/map/ToolsPanel";
-import { IdeaForgeNavbar } from "@/components/ideaforge/navbar";
-
-// Dynamic/lazy loaded overlay components for faster page loading performance
-const LevelUpSequence = dynamic(() => import("@/components/animations/LevelUpSequence").then(mod => mod.LevelUpSequence), { ssr: false });
-const BadgeAwardSequence = dynamic(() => import("@/components/animations/BadgeAwardSequence").then(mod => mod.BadgeAwardSequence), { ssr: false });
-const TaskSubmissionModal = dynamic(() => import("@/components/map/TaskSubmissionModal").then(mod => mod.TaskSubmissionModal), { ssr: false });
-const StageClearModal = dynamic(() => import("@/components/map/StageClearModal").then(mod => mod.StageClearModal), { ssr: false });
-const WorldMapTour = dynamic(() => import("@/components/map/WorldMapTour").then(mod => mod.WorldMapTour), { ssr: false });
-const ChatThread = dynamic(() => import("@/components/chat/ChatThread"), { ssr: false });
+import { MapNavbar } from "@/components/map/MapNavbar";
 import {
   activeVentureAtom,
   userProgressAtom,
@@ -371,14 +366,14 @@ function StageStrip({
                     ? st.glow
                     : "rgba(255,255,255,0.06)",
                 border: `1.5px solid ${isDone
-                  ? "#6366f1"
-                  : isCurrent
-                    ? st.glow
-                    : "rgba(255,255,255,0.12)"
+                    ? "#6366f1"
+                    : isCurrent
+                      ? st.glow
+                      : "rgba(255,255,255,0.12)"
                   }`,
-                boxShadow: isCurrent
-                  ? `0 0 20px ${st.glow}, 0 0 40px ${st.glow}40`
-                  : isDone
+                boxShadow: isCurrent 
+                  ? `0 0 20px ${st.glow}, 0 0 40px ${st.glow}40` 
+                  : isDone 
                     ? "0 0 10px rgba(99, 102, 241, 0.5)"
                     : "none",
                 cursor: isUnlocked ? "pointer" : "not-allowed",
@@ -399,7 +394,7 @@ function StageStrip({
                   }}
                 />
               )}
-
+              
               {/* Completion checkmark */}
               {isDone && (
                 <motion.div
@@ -423,8 +418,8 @@ function StageStrip({
                   color: "#e2e8f0",
                   background: "rgba(15, 23, 42, 0.95)",
                   borderColor: isCurrent ? st.glow : "rgba(99, 102, 241, 0.3)",
-                  boxShadow: isCurrent
-                    ? `0 0 20px ${st.glow}40`
+                  boxShadow: isCurrent 
+                    ? `0 0 20px ${st.glow}40` 
                     : "0 10px 30px rgba(0, 0, 0, 0.5)",
                 }}
               >
@@ -1024,19 +1019,23 @@ function LoadingScreen() {
       className="absolute inset-0 z-[60] flex flex-col items-center justify-center"
       style={{ background: "#050810", fontFamily: "var(--font-sans)" }}
     >
-      <div
+      <motion.div
+        animate={{ opacity: [0.4, 1, 0.4] }}
+        transition={{ duration: 2, repeat: Infinity }}
         className="text-xs tracking-[0.3em] uppercase font-black"
         style={{ color: "#6366f1" }}
       >
         Entering the World…
-      </div>
+      </motion.div>
       <div
         className="mt-6 h-[3px] w-40 rounded-full overflow-hidden"
         style={{ background: "rgba(255,255,255,0.05)" }}
       >
-        <div
-          className="h-full w-1/2 rounded-full"
+        <motion.div
+          className="h-full"
           style={{ background: "linear-gradient(90deg, #4f46e5, #818cf8)" }}
+          animate={{ x: ["-100%", "100%"] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
         />
       </div>
     </div>
@@ -1075,32 +1074,6 @@ interface BadgePayload {
 function MapPageInner() {
   const { containerRef, phaserReady } = useMapGame();
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const paramCheckpointId = searchParams.get("checkpointId");
-  const paramPanel = searchParams.get("panel");
-  const paramTab = searchParams.get("tab");
-
-  const updateUrlParams = useCallback(
-    (newParams: Record<string, string | null>, replace = false) => {
-      const params = new URLSearchParams(searchParams.toString());
-      Object.entries(newParams).forEach(([key, value]) => {
-        if (value === null) {
-          params.delete(key);
-        } else {
-          params.set(key, value);
-        }
-      });
-      const newUrl = `${pathname}?${params.toString()}`;
-      if (replace) {
-        router.replace(newUrl);
-      } else {
-        router.push(newUrl);
-      }
-    },
-    [searchParams, pathname, router],
-  );
 
   // ── Read gender + stage from localStorage (set by /map and /map/stages) ──
   const [selectedGender, setSelectedGender] = useState<"male" | "female">(
@@ -1144,23 +1117,6 @@ function MapPageInner() {
       document.body.removeAttribute("data-page");
     };
   }, []);
-
-  // Intercept browser back button and redirect to /my-ideas route
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    // Push a dummy state so that when the user clicks browser back, popstate fires
-    window.history.pushState(null, "", window.location.href);
-
-    const handlePopState = () => {
-      router.push("/my-ideas");
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, [router]);
 
   // ── Audio unlock on first interaction ─────────────────────────────────────
   // audioManager already attaches window listeners for click/keydown/touchstart
@@ -1235,13 +1191,6 @@ function MapPageInner() {
     api.worldMap.getWorldMapData,
     activeVenture ? { ventureId: activeVenture._id } : "skip",
   );
-
-  // Fetch chat channels for Group Chat popup modal integration
-  const chatChannels = useQuery(
-    api.communities.getChannels,
-    activeVenture?.ideaId ? { ideaId: activeVenture.ideaId } : "skip",
-  );
-  const activeConversationId = chatChannels?.[0]?._id;
 
   // currentUser needed for level + streak + badge lookups
   const currentUser = useQuery(api.users.getCurrentUser);
@@ -1330,9 +1279,6 @@ function MapPageInner() {
     unlockedTools: [],
   });
 
-  // Group chat popup modal state
-  const [isGroupChatOpen, setIsGroupChatOpen] = useState(false);
-
   // Badge queue — pop-and-show one at a time
   const [badgeQueue, setBadgeQueue] = useState<BadgePayload[]>([]);
   const activeBadge = badgeQueue[0] ?? null;
@@ -1398,6 +1344,8 @@ function MapPageInner() {
   const prevLevelRef = useRef<number | null>(null);
   const prevStageRef = useRef<number>(1);
   const structureEnsuredForRef = useRef<string | null>(null);
+  const overlayHistoryActiveRef = useRef(false);
+  const suppressOverlayPopRef = useRef(false);
 
   // ── Debug: Track badge queue state ────────────────────────────────────────
   useEffect(() => {
@@ -1608,30 +1556,45 @@ function MapPageInner() {
     }
   }, [selectedDetail, checkpoints, buildCheckpointDetail]);
 
-  // ── Sync URL Query Parameters to React state ───────────────────────────────
   useEffect(() => {
-    // 1. Sync Checkpoint detail panel state
-    if (paramCheckpointId) {
-      const cp = checkpoints.find((c) => c._id === paramCheckpointId);
-      if (cp) {
-        setSelectedDetail(buildCheckpointDetail(cp));
-      } else {
-        setSelectedDetail(null);
-      }
-    } else {
-      setSelectedDetail(null);
+    if (typeof window === "undefined") return;
+
+    const hasOverlay = !!selectedDetail || isToolsPanelOpen;
+    if (hasOverlay && !overlayHistoryActiveRef.current) {
+      window.history.pushState(
+        { ...(window.history.state ?? {}), mapOverlay: true },
+        "",
+      );
+      overlayHistoryActiveRef.current = true;
+      return;
     }
 
-    // 2. Sync Tools panel state
-    if (paramPanel === "tools") {
-      setIsToolsPanelOpen(true);
-      if (paramTab) {
-        setActiveToolsTab(paramTab as any);
-      }
-    } else {
-      setIsToolsPanelOpen(false);
+    if (!hasOverlay && overlayHistoryActiveRef.current) {
+      suppressOverlayPopRef.current = true;
+      overlayHistoryActiveRef.current = false;
+      window.history.back();
     }
-  }, [paramCheckpointId, paramPanel, paramTab, checkpoints, buildCheckpointDetail]);
+  }, [selectedDetail, isToolsPanelOpen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handlePopState = () => {
+      if (suppressOverlayPopRef.current) {
+        suppressOverlayPopRef.current = false;
+        return;
+      }
+
+      if (selectedDetail || isToolsPanelOpen) {
+        overlayHistoryActiveRef.current = false;
+        setSelectedDetail(null);
+        setIsToolsPanelOpen(false);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [selectedDetail, isToolsPanelOpen]);
 
   useEffect(() => {
     const previousActive = previousActiveRef.current;
@@ -1654,7 +1617,7 @@ function MapPageInner() {
             (cp) => cp.stage === activeStage && cp.checkpoint === activeCP,
           );
           if (nextActiveCheckpoint) {
-            updateUrlParams({ checkpointId: nextActiveCheckpoint._id }, true);
+            setSelectedDetail(buildCheckpointDetail(nextActiveCheckpoint));
           }
         }
       } else if (stageChanged) {
@@ -1664,7 +1627,8 @@ function MapPageInner() {
           (cp) => cp.stage === activeStage && cp.checkpoint === activeCP,
         );
         if (newActiveCheckpoint) {
-          updateUrlParams({ checkpointId: newActiveCheckpoint._id }, true);
+          const detail = buildCheckpointDetail(newActiveCheckpoint);
+          setSelectedDetail(detail);
           eventBridge.dispatchToPhaser({
             type: "SCROLL_TO_CHECKPOINT",
             checkpointId: newActiveCheckpoint._id,
@@ -1682,7 +1646,7 @@ function MapPageInner() {
     activeCP,
     checkpoints,
     selectedDetail,
-    updateUrlParams,
+    buildCheckpointDetail,
   ]);
 
   // ── Persist gender to DB whenever venture + gender are known ─────────────
@@ -1851,8 +1815,6 @@ function MapPageInner() {
   // ── Detect level-up → trigger LevelUpSequence + fanfare ──────────────────
   // Handles multi-level progression (XP overflow) - shows all levels gained in one animation
   useEffect(() => {
-    if (levelData === undefined) return;
-
     if (prevLevelRef.current !== null && level > prevLevelRef.current) {
       const levelsGained = level - prevLevelRef.current;
       const isMultiLevel = levelsGained > 1;
@@ -1880,7 +1842,7 @@ function MapPageInner() {
       }
     }
     prevLevelRef.current = level;
-  }, [level, levelPhase, levelData]);
+  }, [level, levelPhase]);
 
   // ── Sync Convex data → Jotai HUD atoms ────────────────────────────────────
   useEffect(() => {
@@ -2155,7 +2117,7 @@ function MapPageInner() {
         };
 
         console.log("[React] Opening CheckpointPanel with detail:", detail);
-        updateUrlParams({ checkpointId: cp._id, panel: null, tab: null });
+        setSelectedDetail(detail);
       }
     };
 
@@ -2168,7 +2130,6 @@ function MapPageInner() {
     activeVenture,
     showFirstCheckpointPulse,
     buildCheckpointDetail,
-    updateUrlParams,
   ]);
 
   // ── Task toggle → Convex mutation ─────────────────────────────────────────
@@ -2761,11 +2722,6 @@ function MapPageInner() {
     }
   }, [selectedStageId, checkpoints, phaserReady, handleStageSelect]);
 
-  // ── Read HUD atom values ───────────────────────────────────────────────────
-  const stageInfo = useAtomValue(stageInfoAtom);
-  const checkpointProgress = useAtomValue(checkpointProgressAtom);
-  const userProgress = useAtomValue(userProgressAtom);
-
   // ── Loading / no-venture guard ─────────────────────────────────────────────
   // worldMapData is "skip"ped while intro is showing, so only check it after
   const isLoading =
@@ -2786,61 +2742,9 @@ function MapPageInner() {
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
       `}</style>
 
-      {/* IdeaForge Navbar at top */}
-      <IdeaForgeNavbar 
-        currentUser={currentUser}
-        searchQuery=""
-        onSearchChange={() => {}}
-        onOpenComposer={() => {}}
-        backHref="/my-ideas"
-      />
-
-      {/* HUD at bottom - Stage Info, Progress, Level, XP */}
-      <div className="absolute inset-x-0 bottom-4 z-[70] pointer-events-none flex justify-center">
-        <div className="pointer-events-auto flex items-center gap-3 md:gap-4 rounded-xl border border-white/5 bg-[#0A0D12]/92 backdrop-blur-xl px-3 py-2 md:px-4 md:py-2.5 shadow-2xl">
-          <div className="shrink-0">
-            <StageInfo
-              stageName={stageInfo.stageName}
-              stageIcon={stageInfo.stageIcon}
-              biomeName={stageInfo.biomeName}
-              stage={stageInfo.stage}
-              currentCheckpoint={stageInfo.currentCheckpoint}
-              totalCheckpointsInStage={stageInfo.totalCheckpointsInStage}
-              compact={true}
-            />
-          </div>
-
-          <div className="h-5 w-px bg-white/10 shrink-0" />
-
-          <div className="shrink-0">
-            <CheckpointProgress
-              completed={checkpointProgress.completed}
-              total={checkpointProgress.total}
-              goldCount={checkpointProgress.goldCount}
-              compact={true}
-            />
-          </div>
-
-          <div className="shrink-0">
-            <LevelDisplay
-              level={userProgress.level}
-              phase={userProgress.phase}
-              compact={true}
-            />
-          </div>
-
-          <div className="shrink-0 hidden md:block">
-            <XPBar
-              currentXP={userProgress.xp}
-              maxXP={userProgress.xpToNextLevel}
-              compact={true}
-            />
-          </div>
-
-          <div className="shrink-0">
-            <AudioControls />
-          </div>
-        </div>
+      {/* ── Custom Map Navbar ─────────────────────────────────────────────────── */}
+      <div className="absolute inset-x-0 top-0 z-[70] pointer-events-auto">
+        <MapNavbar />
       </div>
 
       {/* Phaser canvas - Fully responsive */}
@@ -2900,7 +2804,7 @@ function MapPageInner() {
                       ? 0.26
                       : corruptionPhase === "creeping"
                         ? 0.16
-                        : 0,
+                        : 0.06,
               background:
                 corruptionPhase === "critical"
                   ? "radial-gradient(circle at center, rgba(140, 40, 40, 0.05), rgba(76, 0, 94, 0.52))"
@@ -2929,7 +2833,17 @@ function MapPageInner() {
           {/* Boss HP Bar - shows when corruption > 60% */}
           <BossHPBar />
 
-          {/* Stage navigation strip removed */}
+          {/* Real-time Presence & Activity Feed Overlay */}
+          <LiveActivityFeed />
+
+          {/* Stage navigation strip — bottom pill buttons */}
+          <StageStrip
+            activeStage={activeStage}
+            onSelect={handleStageSelect}
+            stages={templateStages}
+          />
+
+
 
           {/* World Map Tour Walkthrough */}
           <WorldMapTour
@@ -2995,32 +2909,33 @@ function MapPageInner() {
             />
           )}
 
-          {/* Left Sidebar & Floating Popup Tools Panel Wrapper */}
-          <div className="absolute left-2 top-1/2 -translate-y-1/2 z-50 sm:left-3 md:left-4 lg:left-5 flex items-center gap-3">
+          {/* Left Sidebar Trigger — responsive positioning */}
+          <div className="absolute left-2 top-1/2 -translate-y-1/2 z-50 sm:left-3 md:left-4 lg:left-5">
             <LeftSidebar
               ventureName={ideaTitle}
               onOpenPanel={(tab) => {
-                updateUrlParams({ panel: "tools", tab, checkpointId: null });
+                setActiveToolsTab(tab);
+                setIsToolsPanelOpen(true);
+                setSelectedDetail(null); // Close right panel if opening left
               }}
             />
-
-            {/* Tools Panel (Left - Floating Popup next to sidebar) */}
-            <ToolsPanel
-              isOpen={isToolsPanelOpen}
-              onClose={() => updateUrlParams({ panel: null, tab: null })}
-              activeTab={activeToolsTab}
-              onTabChange={(tab) => updateUrlParams({ panel: "tools", tab })}
-              activeVentureId={activeVenture?._id}
-              onOpenGroupChat={() => setIsGroupChatOpen(true)}
-            />
           </div>
+
+          {/* Tools Panel (Left) */}
+          <ToolsPanel
+            isOpen={isToolsPanelOpen}
+            onClose={() => setIsToolsPanelOpen(false)}
+            activeTab={activeToolsTab}
+            onTabChange={setActiveToolsTab}
+            activeVentureId={activeVenture?._id}
+          />
 
           {/* Checkpoint detail panel */}
           <AnimatePresence>
             {selectedDetail && (
               <CheckpointPanel
                 detail={selectedDetail}
-                onClose={() => updateUrlParams({ checkpointId: null })}
+                onClose={() => setSelectedDetail(null)}
                 onAdvance={handleAdvance}
                 onTaskToggle={handleTaskToggle}
                 evaluationSummary={checkpointEvaluationSummary ?? undefined}
@@ -3036,7 +2951,7 @@ function MapPageInner() {
             <div
               className="absolute inset-0 z-[55] hidden sm:block"
               style={{ right: "min(92vw, 360px)" }}
-              onClick={() => updateUrlParams({ checkpointId: null })}
+              onClick={() => setSelectedDetail(null)}
             />
           )}
 
@@ -3045,7 +2960,7 @@ function MapPageInner() {
             <div
               className="absolute inset-0 z-[55]"
               style={{ left: "min(92vw, 420px)" }}
-              onClick={() => updateUrlParams({ panel: null, tab: null })}
+              onClick={() => setIsToolsPanelOpen(false)}
             />
           )}
 
@@ -3083,64 +2998,6 @@ function MapPageInner() {
               setStageClearModal({ ...stageClearModal, show: false })
             }
           />
-
-          {/* Real-time Group Chat Popup Modal */}
-          <AnimatePresence>
-            {isGroupChatOpen && (
-              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                {/* Backdrop with elegant blur */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setIsGroupChatOpen(false)}
-                  className="absolute inset-0 bg-black/60 backdrop-blur-md"
-                />
-
-                {/* Floating Chat Container */}
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                  transition={{ type: "spring", duration: 0.5 }}
-                  className="relative w-full max-w-[550px] h-[650px] max-h-[85vh] rounded-3xl border border-white/10 overflow-hidden shadow-2xl z-10 flex flex-col"
-                  style={{
-                    background: "linear-gradient(180deg, rgba(16, 20, 35, 0.95), rgba(10, 12, 22, 0.98))",
-                    boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.7)",
-                  }}
-                >
-                  {/* Embedded Comments/Chat Thread Component */}
-                  {activeVenture?.ideaId ? (
-                    <div className="flex-1 h-full min-h-0 flex flex-col p-5">
-                      {/* Header bar mirroring feed style but floating and clean */}
-                      <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-white/10 shrink-0">
-                        <h2 className="text-md font-bold text-white flex items-center gap-2">
-                          <MessageSquare className="w-5 h-5 text-indigo-400" />
-                          Group Chat & Discussion
-                        </h2>
-                        <button
-                          onClick={() => setIsGroupChatOpen(false)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-                      <div className="flex-1 min-h-0">
-                        <CommentsSection ideaId={activeVenture.ideaId} commentCount={0} />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center flex-1 text-center p-6 space-y-4">
-                      <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center animate-spin">
-                        <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full" />
-                      </div>
-                      <p className="text-slate-400 text-sm font-semibold">Initializing group chat...</p>
-                    </div>
-                  )}
-                </motion.div>
-              </div>
-            )}
-          </AnimatePresence>
         </>
       )}
     </div>
@@ -3155,12 +3012,14 @@ export default function MapPage() {
           className="absolute inset-0 z-[60] flex flex-col items-center justify-center"
           style={{ background: "#050810", fontFamily: "var(--font-sans)" }}
         >
-          <div
+          <motion.div
+            animate={{ opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 2, repeat: Infinity }}
             className="text-xs tracking-[0.3em] uppercase font-black"
             style={{ color: "#6366f1" }}
           >
             Entering the World…
-          </div>
+          </motion.div>
         </div>
       }
     >

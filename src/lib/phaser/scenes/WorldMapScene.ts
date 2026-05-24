@@ -253,6 +253,8 @@ export class WorldMapScene extends Phaser.Scene {
   // Core entities
   private checkpointNodes: Map<string, CheckpointNode>;
   private persona: Persona | null;
+  private selectedCheckpointIndex = 0;
+  private selectionGlow: Phaser.GameObjects.Arc | null = null;
   private bosses: Map<string, BossSilhouette>;
   private miniBosses: Map<number, MiniBoss>;
   /** Stages whose mini-boss has already played the retreat animation this session */
@@ -404,10 +406,13 @@ export class WorldMapScene extends Phaser.Scene {
     this.createSuperBoss();
     this.createMiniBosses();
     this.createAtmosphericEffects();
-    // Fog overlays removed - all stages visible
+    this.createStageFogOverlays();
+    this.updateStageVisibility(this.currentStage, false);
   }
 
   private rebuildWorldForTemplate(): void {
+    this.selectionGlow?.destroy();
+    this.selectionGlow = null;
     this.currentAnimation = null;
     this.persona = null;
 
@@ -433,6 +438,7 @@ export class WorldMapScene extends Phaser.Scene {
     this.initializeWorldLayers();
     this.buildWorldForCurrentTemplate();
     this.applyResponsiveCamera(true);
+    this.updateGamepadSelection();
   }
 
   preload(): void {
@@ -458,11 +464,16 @@ export class WorldMapScene extends Phaser.Scene {
     // Build world for current template (defaults to Venture until venture data arrives)
     this.buildWorldForCurrentTemplate();
 
+    this.setupGamepadListeners();
+
+    // Initial selection
+    this.updateGamepadSelection();
+
     // Set up event listeners
     this.setupEventListeners();
 
-    // Apply full brightness (100%) - no darkness
-    this.updateBrightnessFilter(100);
+    // Apply initial brightness (0%)
+    this.updateBrightnessFilter(0);
 
     // Camera setup with responsive zoom
     this.cameras.main.roundPixels = true;
@@ -4763,7 +4774,7 @@ export class WorldMapScene extends Phaser.Scene {
       // Venture stages 3 and 4 use bespoke plaza layouts, so skip the generic
       // wooden connector there. Stage 7 Crossroads does not need the wooden plank overlay.
       const shouldSkipGenericConnector =
-        (this.currentTemplateId === "venture" && [1, 3, 4].includes(stage.id)) || stage.id === 1 || stage.id === 7;
+        (this.currentTemplateId === "venture" && [3, 4].includes(stage.id)) || stage.id === 7;
       if (!shouldSkipGenericConnector && stagePositions.length > 1 && biome) {
         this.drawStagePathConnector(stagePositions, biome.colors.path, 0.9);
       }
@@ -5024,15 +5035,87 @@ export class WorldMapScene extends Phaser.Scene {
     color: number,
     alpha = 0.55,
   ): void {
-    // Clean, subtle, thin path connecting the nodes instead of a bulky trackpad
-    const path = this.add.graphics();
-    path.lineStyle(4, color, 0.65 * alpha);
-    path.beginPath();
-    path.moveTo(points[0].x, points[0].y);
-    points.slice(1).forEach((point) => path.lineTo(point.x, point.y));
-    path.strokePath();
-    path.setDepth(2.5);
-    this.midgroundLayer.add(path);
+    // Keep wooden style, but make each stage subtly distinct using its biome tint.
+    const baseWood = Phaser.Display.Color.IntegerToColor(0x8b6f47);
+    const biomeTint = Phaser.Display.Color.IntegerToColor(color);
+
+    const mix = 0.18;
+    const woodColor = Phaser.Display.Color.GetColor(
+      Math.round(Phaser.Math.Linear(baseWood.red, biomeTint.red, mix)),
+      Math.round(Phaser.Math.Linear(baseWood.green, biomeTint.green, mix)),
+      Math.round(Phaser.Math.Linear(baseWood.blue, biomeTint.blue, mix)),
+    );
+    const darkWood = Phaser.Display.Color.GetColor(
+      Math.max(0, Math.round(baseWood.red * 0.68)),
+      Math.max(0, Math.round(baseWood.green * 0.62)),
+      Math.max(0, Math.round(baseWood.blue * 0.56)),
+    );
+
+    const plankWidth = 28;
+    const plankHeight = 7;
+    const spacing = 16;
+
+    // Shadow
+    const shadow = this.add.graphics();
+    shadow.lineStyle(plankWidth + 6, 0x000000, 0.08 * alpha);
+    shadow.beginPath();
+    shadow.moveTo(points[0].x + 2, points[0].y + 4);
+    points.slice(1).forEach((point) => shadow.lineTo(point.x + 2, point.y + 4));
+    shadow.strokePath();
+    shadow.setDepth(2.4);
+    this.midgroundLayer.add(shadow);
+
+    // Support rails underneath the planks
+    const rails = this.add.graphics();
+    rails.lineStyle(plankWidth, darkWood, 0.8 * alpha + 0.1);
+    rails.beginPath();
+    rails.moveTo(points[0].x, points[0].y);
+    points.slice(1).forEach((point) => rails.lineTo(point.x, point.y));
+    rails.strokePath();
+    rails.setDepth(2.5);
+    this.midgroundLayer.add(rails);
+
+    // Optional rope details
+    const rope = this.add.graphics();
+    const edgeOffset = plankWidth * 0.42;
+    rope.lineStyle(1.5, 0xd6b16c, 0.5 * alpha);
+    this.drawOffsetPolyline(rope, points, -edgeOffset);
+    this.drawOffsetPolyline(rope, points, edgeOffset);
+    rope.setDepth(2.8);
+    this.midgroundLayer.add(rope);
+
+    // Sample the path to place planks
+    const sampled = this.samplePolyline(points, spacing);
+    const plankPalette = [woodColor, woodColor, darkWood];
+
+    sampled.forEach((sample, index) => {
+      const plank = this.add.rectangle(
+        sample.x,
+        sample.y,
+        plankWidth + ((index % 3) - 1) * 3,
+        plankHeight,
+        plankPalette[index % plankPalette.length],
+        1,
+      );
+      plank.setRotation(sample.angle + (index % 2 === 0 ? 0.04 : -0.03));
+      plank.setStrokeStyle(1, 0x3a2412, 0.5 * alpha);
+      plank.setAlpha(0.92);
+      plank.setDepth(2.6 + index * 0.0001);
+      this.midgroundLayer.add(plank);
+
+      const grain = this.add.rectangle(
+        sample.x,
+        sample.y - 2,
+        plankWidth * 0.68,
+        1.5,
+        0xd5a15f,
+        0.18 * alpha,
+      );
+      grain.setRotation(plank.rotation);
+      grain.setDepth(plank.depth + 0.01);
+      grain.setAlpha(0.6);
+      this.midgroundLayer.add(grain);
+    });
   }
 
   /**
@@ -5072,9 +5155,9 @@ export class WorldMapScene extends Phaser.Scene {
     const biomeOffsetX = (stageId - 1) * this.BIOME_WIDTH + panelOffsetX;
 
     const stageOneVillageAnchors = [
-      { x: 80, y: 160 },
-      { x: 270, y: 230 },
-      { x: 460, y: 236 },
+      { x: 154, y: 438 },
+      { x: 286, y: 318 },
+      { x: 486, y: 286 },
       { x: 532, y: 420 },
     ];
     if (stageId === 1) {
@@ -5343,11 +5426,37 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   /**
-   * Handles brightness updates - DISABLED (always full brightness)
+   * Handles brightness updates using PRD two-layer formula
+   * Accumulated base = completed stages × 8.57%, capped at 60%
+   * Stage layer = (current stage tasks done / current stage tasks total) × 40%
+   * World brightness = accumulated base + stage layer (0% to 100%)
    */
   private handleUpdateBrightness(event?: { brightness: number }): void {
-    // Always keep full brightness - no darkness overlay
-    this.updateBrightnessFilter(100);
+    if (typeof event?.brightness === "number") {
+      this.interpolateBrightnessTo(event.brightness);
+      return;
+    }
+
+    // Calculate accumulated base brightness from completed stages (7 stages max = 60%)
+    const accumulatedBase = Math.min(this.completedStages * 8.57, 60);
+
+    // Calculate stage layer brightness (current stage progress = 0-40%)
+    const stageLayer =
+      this.stageTasksTotal > 0
+        ? (this.stageTasksCompleted / this.stageTasksTotal) * 40
+        : 0;
+
+    // Total world brightness
+    const worldBrightness = accumulatedBase + stageLayer;
+
+    // Clamp to 0-100%
+    const finalBrightness = Math.max(0, Math.min(100, worldBrightness));
+
+    this.interpolateBrightnessTo(finalBrightness);
+
+    console.log(
+      `[WorldMapScene] Brightness: ${finalBrightness.toFixed(2)}% (Base: ${accumulatedBase.toFixed(2)}% + Stage: ${stageLayer.toFixed(2)}%)`,
+    );
   }
 
   /**
@@ -5435,8 +5544,7 @@ export class WorldMapScene extends Phaser.Scene {
         );
       }
 
-      // Fog overlays removed - all stages visible
-      // this.updateStageVisibility(this.currentStage, stageChanged);
+      this.updateStageVisibility(this.currentStage, stageChanged);
       this.updateCameraBoundsForStage(this.currentStage);
 
       // Count completed stages (all stages before current)
@@ -5673,8 +5781,7 @@ export class WorldMapScene extends Phaser.Scene {
       // Update current stage if provided
       if (event.currentStage) {
         this.currentStage = event.currentStage;
-        // Fog overlays removed - all stages visible
-        // this.updateStageVisibility(event.currentStage, !ventureChanged);
+        this.updateStageVisibility(event.currentStage, !ventureChanged);
         this.updateCameraBoundsForStage(event.currentStage);
 
         // Play ambience for the current stage + template
@@ -5801,7 +5908,7 @@ export class WorldMapScene extends Phaser.Scene {
    *    (still highest-index only), and ultimately the very first node.
    */
   private positionPersonaOnActiveCheckpoint(): void {
-    if (!this.persona || !this.persona.scene) return;
+    if (!this.persona) return;
 
     const allNodes = Array.from(this.checkpointNodes.values());
 
@@ -6015,9 +6122,6 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   private updateCameraBoundsForStage(stageId: number): void {
-    if (!this.cameras || !this.cameras.main || !this.physics || !this.physics.world) {
-      return; // Scene not fully initialized or being destroyed
-    }
     const stageStartX = (stageId - 1) * this.BIOME_WIDTH;
     this.cameras.main.setBounds(stageStartX, 0, this.BIOME_WIDTH, this.MAP_HEIGHT + 160);
     this.physics.world.setBounds(stageStartX, 0, this.BIOME_WIDTH, this.MAP_HEIGHT + 160);
@@ -6064,7 +6168,7 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   private getPersonaMoveDuration(targetX: number, targetY: number): number {
-    if (!this.persona || !this.persona.scene) return 2000;
+    if (!this.persona) return 800;
 
     const distance = Phaser.Math.Distance.Between(
       this.persona.x,
@@ -6073,9 +6177,7 @@ export class WorldMapScene extends Phaser.Scene {
       targetY,
     );
 
-    // Slower, more organic human walking pace: ~125 pixels per second (8ms per pixel)
-    // Clamped between 1500ms (minimum to show legs swinging) and 6000ms
-    return Phaser.Math.Clamp(distance * 8.0, 1500, 6000);
+    return Phaser.Math.Clamp(distance * 2.2, 650, 1800);
   }
 
   /**
@@ -6262,6 +6364,96 @@ export class WorldMapScene extends Phaser.Scene {
     );
     this.updateHandlers = [];
     this.boundHandlers = {};
+  }
+
+  /**
+   * Listens for CustomEvents from the VirtualGamepad component
+   */
+  private setupGamepadListeners(): void {
+    if (typeof window === "undefined") return;
+
+    window.addEventListener("phaser-input", (e: Event) => {
+      const customEvent = e as CustomEvent<{ type: string }>;
+      const { type } = customEvent.detail;
+
+      switch (type) {
+        case "DIR_LEFT":
+          this.changeSelection(-1);
+          break;
+        case "DIR_RIGHT":
+          this.changeSelection(1);
+          break;
+        case "ACTION_A": // Select
+          this.handleGamepadConfirm();
+          break;
+        case "ACTION_Y": // Interact
+          this.showCheckpointInfo(this.selectedCheckpointIndex);
+          break;
+      }
+    });
+
+    // Create selection highlight
+    this.selectionGlow = this.add.arc(0, 0, 65, 0, 360, false, 0xffffff, 0);
+    this.selectionGlow.setStrokeStyle(4, 0x6366f1, 0.6);
+    this.animationLayer.add(this.selectionGlow);
+
+    this.tweens.add({
+      targets: this.selectionGlow,
+      alpha: { from: 0.2, to: 0.6 },
+      scale: 1.1,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+    });
+  }
+
+  private changeSelection(delta: number): void {
+    const newIndex = Phaser.Math.Clamp(
+      this.selectedCheckpointIndex + delta,
+      0,
+      this.TOTAL_CHECKPOINTS - 1,
+    );
+    if (newIndex !== this.selectedCheckpointIndex) {
+      this.selectedCheckpointIndex = newIndex;
+      this.updateGamepadSelection();
+      audioManager.playUI("hover");
+    }
+  }
+
+  private updateGamepadSelection(): void {
+    const cp = this.getCheckpointByIndex(this.selectedCheckpointIndex);
+    if (cp && this.selectionGlow) {
+      this.selectionGlow.setPosition(cp.x, cp.y);
+      this.cameras.main.pan(cp.x, cp.y, 500, "Power2");
+    }
+  }
+
+  private getCheckpointByIndex(index: number): CheckpointNode | null {
+    for (const node of this.checkpointNodes.values()) {
+      if (node.globalIndex === index + 1) {
+        return node;
+      }
+    }
+    return null;
+  }
+
+  private handleGamepadConfirm(): void {
+    const node = this.getCheckpointByIndex(this.selectedCheckpointIndex);
+    if (node && node.status !== "locked") {
+      audioManager.playUI("click");
+      this.events.emit("checkpoint_clicked", {
+        id: node.checkpointId,
+        stage: node.stage,
+        checkpoint: node.checkpoint,
+      });
+      return;
+    }
+
+    audioManager.playUI("error");
+  }
+
+  private showCheckpointInfo(index: number): void {
+    console.log("Showing info for checkpoint", index);
   }
 
   /**
