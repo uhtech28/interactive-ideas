@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+# Opt into Node.js 24 for all actions (avoids Node 20 deprecation warnings)
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 # Cancel in-progress deploys if a new push arrives
 concurrency:
   group: deploy
@@ -15,7 +19,7 @@ jobs:
   build-verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -52,6 +56,7 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
+            set -e
             cd /var/www/interactiveideas
             git pull origin main
             bun install --frozen-lockfile
