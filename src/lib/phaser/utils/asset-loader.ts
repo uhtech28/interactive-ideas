@@ -1286,31 +1286,31 @@ export class AssetLoader {
 
     // --- Tropical Medieval City Tileset (Stage 8) ---
     const tropicalPath = "/assets/tropical-city";
-    
+
     // Load buildings
     for (let i = 1; i <= 18; i++) {
       scene.load.image(`tropical_building_${i}`, `${tropicalPath}/buildings/building_${i}/building_1.png`);
     }
-    
+
     // Load decorations
     for (let i = 1; i <= 18; i++) {
       scene.load.image(`tropical_decor_${i}`, `${tropicalPath}/decor/decor_${i}.png`);
     }
-    
+
     // Load greenery
     for (let i = 1; i <= 5; i++) {
       scene.load.image(`tropical_greenery_${i}`, `${tropicalPath}/decor/greenery_${i}.png`);
     }
-    
+
     // Load trees
     scene.load.image("tropical_tree_1", `${tropicalPath}/decor/tree_1.png`);
     scene.load.image("tropical_tree_2", `${tropicalPath}/decor/tree_2.png`);
-    
+
     // Load land tiles
     for (let i = 1; i <= 26; i++) {
       scene.load.image(`tropical_land_${i}`, `${tropicalPath}/land/land_${i}.png`);
     }
-    
+
     // Load road tiles
     for (let i = 1; i <= 17; i++) {
       scene.load.image(`tropical_road_${i}`, `${tropicalPath}/road/road_${i}.png`);
@@ -1327,10 +1327,10 @@ export class AssetLoader {
   static createPersonaSpriteSheets(scene: Phaser.Scene): void {
     const FW = 32, FH = 48;
     const sheets = [
-      { key: 'persona_male_idle_sheet',   frames: 4, gender: 'male',   isWalk: false },
-      { key: 'persona_male_walk_sheet',   frames: 8, gender: 'male',   isWalk: true  },
+      { key: 'persona_male_idle_sheet', frames: 4, gender: 'male', isWalk: false },
+      { key: 'persona_male_walk_sheet', frames: 8, gender: 'male', isWalk: true },
       { key: 'persona_female_idle_sheet', frames: 4, gender: 'female', isWalk: false },
-      { key: 'persona_female_walk_sheet', frames: 8, gender: 'female', isWalk: true  },
+      { key: 'persona_female_walk_sheet', frames: 8, gender: 'female', isWalk: true },
     ];
     for (const sheet of sheets) {
       const pending = (scene.load.list as any)?.some?.((f: any) => f.key === sheet.key);
@@ -1338,115 +1338,191 @@ export class AssetLoader {
       const male = sheet.gender === 'male';
       const W = FW * sheet.frames;
       const gfx = scene.add.graphics();
-      const SKIN = 0xF5C9A0, SKIN_SH = 0xD9975E, SKIN_HL = 0xFFF0DC;
-      const HAIR = male ? 0x3B1F6E : 0x7B3415;
-      const HMID = male ? 0x5C3499 : 0xA0522D;
-      const HHL  = male ? 0x8B62CC : 0xC87941;
-      const EW = 0xFFFFFF, EP = male ? 0x3B1F6E : 0x5C3499;
-      const ESH = 0x111111, ESHINE = 0xFFFFFF;
-      const SHIRT = male ? 0x4A90D9 : 0xE06BA8;
-      const SSH   = male ? 0x2B5F9E : 0xA83E77;
-      const SHL   = male ? 0x82BBEF : 0xF09BC8;
-      const COL = 0xF0F0F0, BELT = 0x3B2A1A, BK = 0xF0C040;
-      const PANTS = male ? 0x2C3E60 : 0x7B4F9E;
-      const PSH   = male ? 0x1A2540 : 0x5B2F7E;
-      const PHL   = male ? 0x4A6080 : 0x9B6FBE;
-      const SHOE = 0x2A1A0A, SHO = 0x4A3020, SOLE = 0x1A0A00;
-      const OUT = 0x0A0408, BLUSH = 0xFF8090;
+      
+      // RPG Colors
+      const SKIN = 0xFFD4A3, SKIN_SH = 0xE8A87C, SKIN_HL = 0xFFF5E6;
+      const EW = 0xFFFFFF, ESH = 0x1A1A2E, ESHINE = 0xFFFFFF, COL = 0xFFFFFF;
+      const OUT = 0x0A0A18, BLUSH = 0xFF90A0;
+      
       const p = (c: number, a: number, x: number, y: number, w = 1, h = 1) => {
-        const rx=Math.round(x),ry=Math.round(y),rw=Math.max(1,Math.round(w)),rh=Math.max(1,Math.round(h));
-        if(rx<0||ry<0||rx+rw>W||ry+rh>FH) return;
-        gfx.fillStyle(c,a); gfx.fillRect(rx,ry,rw,rh);
+        const rx = Math.round(x), ry = Math.round(y), rw = Math.max(1, Math.round(w)), rh = Math.max(1, Math.round(h));
+        if (rx < 0 || ry < 0 || rx + rw > W || ry + rh > FH) return;
+        gfx.fillStyle(c, a); gfx.fillRect(rx, ry, rw, rh);
       };
+
       for (let fi = 0; fi < sheet.frames; fi++) {
         const ox = fi * FW, t = fi / sheet.frames;
-        let bob=0,llY=0,rlY=0,llX=0,rlX=0,lA=0,rA=0,lF=0,rF=0;
+        let bob = 0, llY = 0, rlY = 0, llX = 0, rlX = 0, lA = 0, rA = 0, lF = 0, rF = 0;
         if (!sheet.isWalk) {
-          bob = Math.round(Math.sin((fi/4)*Math.PI*2)*0.8);
+          bob = Math.round(Math.sin((fi / 4) * Math.PI * 2) * 0.8);
         } else {
-          const ph = t*Math.PI*2;
-          bob=Math.round(Math.abs(Math.sin(ph*2))*-1.5);
-          llY=Math.round(Math.sin(ph)*4);   rlY=Math.round(-Math.sin(ph)*4);
-          llX=Math.round(Math.sin(ph)*1);   rlX=Math.round(-Math.sin(ph)*1);
-          lA =Math.round(-Math.sin(ph)*2);  rA =Math.round(Math.sin(ph)*2);
-          lF =Math.round(Math.sin(ph)*1);   rF =Math.round(-Math.sin(ph)*1);
+          const ph = t * Math.PI * 2;
+          bob = Math.round(Math.abs(Math.sin(ph * 2)) * -1.5);
+          llY = Math.round(Math.sin(ph) * 4); rlY = Math.round(-Math.sin(ph) * 4);
+          llX = Math.round(Math.sin(ph) * 1); rlX = Math.round(-Math.sin(ph) * 1);
+          lA = Math.round(-Math.sin(ph) * 2); rA = Math.round(Math.sin(ph) * 2);
+          lF = Math.round(Math.sin(ph) * 1); rF = Math.round(-Math.sin(ph) * 1);
         }
-        const ht=3+bob;
-        // Hair (curly)
-        p(OUT,1,ox+8,ht-1,16,1); p(HAIR,1,ox+9,ht-1,14,1);
-        p(OUT,1,ox+6,ht,2,1);   p(OUT,1,ox+24,ht,2,1);
-        p(HAIR,1,ox+7,ht,18,5); p(HMID,1,ox+10,ht,8,2); p(HHL,0.8,ox+12,ht,4,2);
-        p(HAIR,1,ox+7,ht-3,4,3); p(HAIR,1,ox+13,ht-4,6,4); p(HAIR,1,ox+21,ht-3,4,3);
-        p(HMID,1,ox+14,ht-3,4,2); p(HHL,0.7,ox+15,ht-3,2,1);
-        p(HAIR,1,ox+7,ht+5,2,4); p(HAIR,1,ox+23,ht+5,2,4);
-        // Head
-        const hy=ht+5;
-        p(OUT,1,ox+8,hy,16,1); p(OUT,1,ox+7,hy+1,1,9); p(OUT,1,ox+24,hy+1,1,9); p(OUT,1,ox+8,hy+10,16,1);
-        p(SKIN,1,ox+8,hy+1,16,9); p(SKIN_SH,0.4,ox+8,hy+1,2,8); p(SKIN_SH,0.4,ox+22,hy+1,2,8);
-        p(SKIN_HL,0.4,ox+11,hy+1,9,3);
-        // Eyes
-        const ey=hy+3;
-        p(OUT,1,ox+9,ey-1,6,1); p(OUT,1,ox+9,ey+3,6,1); p(OUT,1,ox+9,ey,1,3); p(OUT,1,ox+14,ey,1,3);
-        p(EW,1,ox+10,ey,4,3); p(EP,1,ox+11,ey+1,2,2); p(ESH,1,ox+11,ey+1,1,1); p(ESHINE,0.9,ox+12,ey+1,1,1);
-        p(OUT,1,ox+17,ey-1,6,1); p(OUT,1,ox+17,ey+3,6,1); p(OUT,1,ox+17,ey,1,3); p(OUT,1,ox+22,ey,1,3);
-        p(EW,1,ox+18,ey,4,3); p(EP,1,ox+19,ey+1,2,2); p(ESH,1,ox+19,ey+1,1,1); p(ESHINE,0.9,ox+20,ey+1,1,1);
-        p(BLUSH,0.3,ox+9,ey+4,3,2); p(BLUSH,0.3,ox+20,ey+4,3,2);
-        p(SKIN_SH,0.55,ox+15,ey+5,2,1);
-        p(SKIN_SH,0.7,ox+12,ey+7,1,1); p(SKIN_SH,0.7,ox+13,ey+8,4,1); p(SKIN_SH,0.7,ox+17,ey+7,1,1);
-        // Neck
-        const ny=hy+11;
-        p(OUT,1,ox+12,ny,1,3); p(OUT,1,ox+19,ny,1,3);
-        p(SKIN,1,ox+13,ny,6,3); p(SKIN_SH,0.4,ox+13,ny+2,6,1);
-        // Torso
-        const ty=ny+3;
-        p(COL,1,ox+12,ty,8,2); p(COL,1,ox+14,ty+1,4,1);
-        p(SHIRT,1,ox+8,ty+2,16,9); p(SSH,1,ox+8,ty+2,3,9); p(SSH,1,ox+21,ty+2,3,9);
-        p(SHL,0.5,ox+13,ty+2,5,4); p(OUT,1,ox+7,ty+2,1,9); p(OUT,1,ox+24,ty+2,1,9); p(OUT,1,ox+8,ty+11,16,1);
+        const ht = 3 + bob;
+        
+        // ── HEAD AND HAIR/HOOD ────────────────────────────────────────────────
+        if (male) {
+          // Male: Blonde spiky anime hair
+          const HAIR = 0xDF9F00, HMID = 0xFAC744, HHL = 0xFDFFB6, HDARK = 0x825E00;
+          p(OUT, 1, ox + 8, ht - 2, 16, 1); p(HAIR, 1, ox + 9, ht - 2, 14, 1);
+          p(OUT, 1, ox + 6, ht - 1, 2, 1); p(OUT, 1, ox + 24, ht - 1, 2, 1);
+          p(HAIR, 1, ox + 7, ht - 1, 18, 6); 
+          p(HDARK, 0.6, ox + 7, ht - 1, 2, 6); p(HDARK, 0.6, ox + 23, ht - 1, 2, 6);
+          p(HMID, 1, ox + 10, ht, 10, 3); p(HHL, 0.9, ox + 13, ht, 5, 2);
+          p(HAIR, 1, ox + 7, ht - 4, 5, 4); p(HAIR, 1, ox + 13, ht - 5, 7, 5); p(HAIR, 1, ox + 20, ht - 4, 5, 4);
+          p(HMID, 1, ox + 14, ht - 4, 5, 3); p(HHL, 0.8, ox + 15, ht - 4, 3, 2);
+          p(HAIR, 1, ox + 7, ht + 5, 2, 5); p(HAIR, 1, ox + 23, ht + 5, 2, 5);
+        } else {
+          // Female: Crimson Hood and Silver peeking fringe
+          const HOOD = 0x5A0C25, HMID_HOOD = 0x8B1E3F, HHL_HOOD = 0xB23B5A;
+          // Hood back cape background
+          p(HOOD, 1, ox + 5, ht + 10, 22, 12);
+          p(HMID_HOOD, 1, ox + 6, ht + 10, 20, 11);
+          // Large curved outer hood
+          p(OUT, 1, ox + 7, ht - 2, 18, 1);
+          p(HMID_HOOD, 1, ox + 8, ht - 2, 16, 2);
+          p(HHL_HOOD, 1, ox + 10, ht - 2, 12, 1);
+          p(HMID_HOOD, 1, ox + 6, ht, 3, 11); p(OUT, 1, ox + 5, ht, 1, 11);
+          p(HMID_HOOD, 1, ox + 23, ht, 3, 11); p(OUT, 1, ox + 26, ht, 1, 11);
+          // Spiky silver/grey hair peeking from under hood
+          p(0x9E9E9E, 1, ox + 9, ht + 3, 14, 2);
+          p(0xE0E0E0, 1, ox + 10, ht + 3, 12, 1);
+          p(0xFFFFFF, 1, ox + 12, ht + 3, 6, 1);
+        }
+        
+        // Head Face base (Inside hair/hood overlay)
+        const hy = ht + 5;
+        p(OUT, 1, ox + 8, hy, 16, 1); p(OUT, 1, ox + 7, hy + 1, 1, 10); p(OUT, 1, ox + 24, hy + 1, 1, 10); p(OUT, 1, ox + 8, hy + 11, 16, 1);
+        p(SKIN, 1, ox + 8, hy + 1, 16, 10); 
+        p(SKIN_SH, 0.5, ox + 8, hy + 1, 2, 9); p(SKIN_SH, 0.5, ox + 22, hy + 1, 2, 9);
+        p(SKIN_HL, 0.5, ox + 11, hy + 1, 10, 4);
+        
+        // Anime Sparkle Eyes
+        const ey = hy + 3;
+        const EP = male ? 0x2A3D66 : 0x8B1E3F;
+        // Left Eye
+        p(OUT, 1, ox + 9, ey - 1, 6, 1); p(OUT, 1, ox + 9, ey + 4, 6, 1); p(OUT, 1, ox + 9, ey, 1, 4); p(OUT, 1, ox + 14, ey, 1, 4);
+        p(EW, 1, ox + 10, ey, 4, 4); p(EP, 1, ox + 11, ey + 1, 2, 2); p(ESH, 1, ox + 11, ey + 2, 2, 1); p(ESHINE, 1, ox + 12, ey + 1, 1, 1);
+        // Right Eye
+        p(OUT, 1, ox + 17, ey - 1, 6, 1); p(OUT, 1, ox + 17, ey + 4, 6, 1); p(OUT, 1, ox + 17, ey, 1, 4); p(OUT, 1, ox + 22, ey, 1, 4);
+        p(EW, 1, ox + 18, ey, 4, 4); p(EP, 1, ox + 19, ey + 1, 2, 2); p(ESH, 1, ox + 19, ey + 2, 2, 1); p(ESHINE, 1, ox + 20, ey + 1, 1, 1);
+        
+        p(BLUSH, 0.35, ox + 9, ey + 5, 3, 2); p(BLUSH, 0.35, ox + 20, ey + 5, 3, 2);
+        p(SKIN_SH, 0.6, ox + 15, ey + 6, 2, 1);
+        
+        // Neck and Collar
+        const ny = hy + 11;
+        p(OUT, 1, ox + 12, ny, 1, 4); p(OUT, 1, ox + 19, ny, 1, 4);
+        p(SKIN, 1, ox + 13, ny, 6, 4); p(SKIN_SH, 0.5, ox + 13, ny + 2, 6, 2);
+        
+        // ── TORSO AND CLOTHING ────────────────────────────────────────────────
+        const ty = ny + 4;
+        p(COL, 1, ox + 12, ty, 8, 2);
+        if (male) {
+          // Male: Blue steel knight plate armor and dark wrap-around scarf
+          const SHIRT = 0x2A3D66, SSH = 0x192231, SHL = 0x4F7CAC;
+          p(SHIRT, 1, ox + 8, ty + 2, 16, 10);
+          p(SSH, 1, ox + 8, ty + 2, 3, 10); p(SSH, 1, ox + 21, ty + 2, 3, 10);
+          p(SHL, 0.6, ox + 13, ty + 2, 6, 5);
+          p(OUT, 1, ox + 7, ty + 2, 1, 10); p(OUT, 1, ox + 24, ty + 2, 1, 10); p(OUT, 1, ox + 8, ty + 12, 16, 1);
+          
+          // Wrap-around neck scarf crossing chest
+          const SCARF = 0x0A0F1D, SCARF_HL = 0x1F2A44;
+          p(SCARF, 1, ox + 10, ny + 1, 12, 3);
+          p(SCARF_HL, 1, ox + 12, ny + 1, 8, 1);
+          p(SCARF, 1, ox + 8, ty, 3, 5); // Hanging scarf tail
+        } else {
+          // Female: Crimson archer tunic
+          const SHIRT = 0x8B1E3F, SSH = 0x5A0C25, SHL = 0xB23B5A;
+          p(SHIRT, 1, ox + 8, ty + 2, 16, 10);
+          p(SSH, 1, ox + 8, ty + 2, 3, 10); p(SSH, 1, ox + 21, ty + 2, 3, 10);
+          p(SHL, 0.6, ox + 13, ty + 2, 6, 5);
+          p(OUT, 1, ox + 7, ty + 2, 1, 10); p(OUT, 1, ox + 24, ty + 2, 1, 10); p(OUT, 1, ox + 8, ty + 12, 16, 1);
+          
+          // Gold buckled archery cross strap
+          p(0x3E2723, 1, ox + 10, ty + 2, 4, 8); // brown leather strap
+          p(0xFFD700, 1, ox + 11, ty + 5, 2, 2); // gold strap buckle
+        }
+        
         // Arms
-        const ay=ty+2;
-        const lax=ox+5+lA; p(SSH,1,lax,ay,3,7); p(SKIN,1,lax,ay+7,3,3); p(OUT,1,lax-1,ay,1,10); p(OUT,1,lax+3,ay,1,10);
-        const rax=ox+24+rA; p(SSH,1,rax,ay,3,7); p(SKIN,1,rax,ay+7,3,3); p(OUT,1,rax-1,ay,1,10); p(OUT,1,rax+3,ay,1,10);
+        const ay = ty + 2;
+        const lax = ox + 5 + lA;
+        const rax = ox + 24 + rA;
+        const ARM_COLOR = male ? 0x2A3D66 : 0x8B1E3F;
+        const ARM_SHADOW = male ? 0x192231 : 0x5A0C25;
+        
+        // Left arm
+        p(ARM_COLOR, 1, lax, ay, 3, 8); p(ARM_SHADOW, 0.5, lax, ay, 1, 8);
+        p(SKIN, 1, lax, ay + 8, 3, 3); p(OUT, 1, lax - 1, ay, 1, 11); p(OUT, 1, lax + 3, ay, 1, 11);
+        
+        // Right arm
+        p(ARM_COLOR, 1, rax, ay, 3, 8); p(ARM_SHADOW, 0.5, rax + 2, ay, 1, 8);
+        p(SKIN, 1, rax, ay + 8, 3, 3); p(OUT, 1, rax - 1, ay, 1, 11); p(OUT, 1, rax + 3, ay, 1, 11);
+        
+        // Archer Bow (Only for female)
+        if (!male) {
+          const bowX = ox + 2 + lA;
+          p(0x8D6E63, 1, bowX, ty, 1, 12); // Wooden frame of bow
+          p(0x8D6E63, 1, bowX - 1, ty - 1, 2, 1);
+          p(0x8D6E63, 1, bowX - 1, ty + 12, 2, 1);
+          p(0xE0E0E0, 1, bowX + 1, ty, 1, 12); // Bow string
+        }
+        
         // Belt
-        const bly=ty+11;
-        p(OUT,1,ox+7,bly,18,1); p(BELT,1,ox+8,bly+1,16,2); p(BK,1,ox+14,bly+1,4,2); p(OUT,1,ox+7,bly+3,18,1);
-        // Legs
-        const lgt=bly+3;
-        const llx=ox+9+llX, lll=Math.max(3,9+llY);
-        p(PANTS,1,llx,lgt,6,lll); p(PSH,1,llx,lgt,2,lll); p(PHL,0.5,llx+3,lgt+1,2,4);
-        p(OUT,1,llx-1,lgt,1,lll); p(OUT,1,llx+6,lgt,1,lll);
-        const rlx=ox+17+rlX, rll=Math.max(3,9+rlY);
-        p(PANTS,1,rlx,lgt,6,rll); p(PSH,1,rlx,lgt,2,rll); p(PHL,0.5,rlx+3,lgt+1,2,4);
-        p(OUT,1,rlx-1,lgt,1,rll); p(OUT,1,rlx+6,lgt,1,rll);
-        p(OUT,1,ox+15,lgt,2,5);
+        const bly = ty + 12;
+        p(OUT, 1, ox + 7, bly, 18, 1); 
+        p(0x3E2723, 1, ox + 8, bly + 1, 16, 3); 
+        p(0xFFD700, 1, ox + 14, bly + 1, 4, 3); 
+        p(OUT, 1, ox + 7, bly + 4, 18, 1);
+        
+        // Legs (charcoal trousers vs Midnight Purple trousers)
+        const lgt = bly + 4;
+        const llx = ox + 9 + llX, lll = Math.max(3, 9 + llY);
+        const PANTS = male ? 0x212121 : 0x4A148C;
+        const PSH = male ? 0x0A0A0A : 0x311B92;
+        p(PANTS, 1, llx, lgt, 6, lll); p(PSH, 1, llx, lgt, 2, lll);
+        p(OUT, 1, llx - 1, lgt, 1, lll); p(OUT, 1, llx + 6, lgt, 1, lll);
+        
+        const rlx = ox + 17 + rlX, rll = Math.max(3, 9 + rlY);
+        p(PANTS, 1, rlx, lgt, 6, rll); p(PSH, 1, rlx, lgt, 2, rll);
+        p(OUT, 1, rlx - 1, lgt, 1, rll); p(OUT, 1, rlx + 6, lgt, 1, rll);
+        p(OUT, 1, ox + 15, lgt, 2, 5);
+        
         // Shoes
-        const sby=lgt+9;
-        const lsx=ox+8+llX+lF, lsy=sby+llY;
-        p(SHOE,1,lsx,lsy,8,3); p(SHO,0.6,lsx+1,lsy,4,1); p(SOLE,1,lsx,lsy+3,8,1);
-        p(OUT,1,lsx-1,lsy,1,4); p(OUT,1,lsx+8,lsy,1,4); p(OUT,1,lsx,lsy-1,8,1); p(OUT,1,lsx,lsy+4,8,1);
-        const rsx=ox+16+rlX+rF, rsy=sby+rlY;
-        p(SHOE,1,rsx,rsy,8,3); p(SHO,0.6,rsx+1,rsy,4,1); p(SOLE,1,rsx,rsy+3,8,1);
-        p(OUT,1,rsx-1,rsy,1,4); p(OUT,1,rsx+8,rsy,1,4); p(OUT,1,rsx,rsy-1,8,1); p(OUT,1,rsx,rsy+4,8,1);
+        const sby = lgt + 9;
+        const lsx = ox + 8 + llX + lF, lsy = sby + llY;
+        p(0x3E2723, 1, lsx, lsy, 8, 4); p(0x1A0A00, 1, lsx, lsy + 4, 8, 1);
+        p(OUT, 1, lsx - 1, lsy, 1, 5); p(OUT, 1, lsx + 8, lsy, 1, 5); p(OUT, 1, lsx, lsy - 1, 8, 1); p(OUT, 1, lsx, lsy + 5, 8, 1);
+        
+        const rsx = ox + 16 + rlX + rF, rsy = sby + rlY;
+        p(0x3E2723, 1, rsx, rsy, 8, 4); p(0x1A0A00, 1, rsx, rsy + 4, 8, 1);
+        p(OUT, 1, rsx - 1, rsy, 1, 5); p(OUT, 1, rsx + 8, rsy, 1, 5); p(OUT, 1, rsx, rsy - 1, 8, 1); p(OUT, 1, rsx, rsy + 5, 8, 1);
       }
       gfx.generateTexture(sheet.key, W, FH);
       gfx.destroy();
       const tex = scene.textures.get(sheet.key);
-      for (let f = 0; f < sheet.frames; f++) tex.add(f, 0, f*FW, 0, FW, FH);
+      for (let f = 0; f < sheet.frames; f++) tex.add(f, 0, f * FW, 0, FW, FH);
     }
     AssetLoader.createPersonaAnimations(scene);
   }
 
   static createPersonaAnimations(scene: Phaser.Scene): void {
     const anims = [
-      { key: 'persona_male_idle',   sheet: 'persona_male_idle_sheet',   frames: 4, fps: 5  },
-      { key: 'persona_male_walk',   sheet: 'persona_male_walk_sheet',   frames: 8, fps: 10 },
-      { key: 'persona_female_idle', sheet: 'persona_female_idle_sheet', frames: 4, fps: 5  },
-      { key: 'persona_female_walk', sheet: 'persona_female_walk_sheet', frames: 8, fps: 10 },
+      { key: 'persona_male_idle', sheet: 'persona_male_idle_sheet', frames: 4, fps: 5 },
+      { key: 'persona_male_walk', sheet: 'persona_male_walk_sheet', frames: 8, fps: 6 },
+      { key: 'persona_female_idle', sheet: 'persona_female_idle_sheet', frames: 4, fps: 5 },
+      { key: 'persona_female_walk', sheet: 'persona_female_walk_sheet', frames: 8, fps: 6 },
     ];
     for (const anim of anims) {
       if (scene.anims.exists(anim.key) || !scene.textures.exists(anim.sheet)) continue;
       scene.anims.create({
         key: anim.key,
-        frames: scene.anims.generateFrameNumbers(anim.sheet, { start: 0, end: anim.frames-1 }),
+        frames: scene.anims.generateFrameNumbers(anim.sheet, { start: 0, end: anim.frames - 1 }),
         frameRate: anim.fps,
         repeat: -1,
       });
@@ -1765,136 +1841,228 @@ export class AssetLoader {
   }
 
   // ── Male persona ──────────────────────────────────────────────────────────
-  //  Updated to dark-tech palette: indigo shirt, dark pants, cyan highlights
+  //  Enhanced with better shading, detail, and modern pixel art techniques
 
   private static drawMalePersona(gfx: Phaser.GameObjects.Graphics): void {
-    const HAIR = 0x1e1b4b;
-    const HAIR_HL = 0x6366f1;
-    const SKIN = 0xffdcab;
-    const SKIN_SH = 0xd4a373;
-    const EYE = 0x111827;
-    const EYE_SH = 0xf8fafc;
-    const SHIRT = 0x4338ca; // Dark indigo shirt
-    const SHIRT_SH = 0x312e81;
-    const SHIRT_DT = 0x818cf8;
-    const BELT = 0x1e293b;
-    const BUCKLE = 0x06b6d4; // Cyan buckle
-    const PANTS = 0x0f172a; // Near-black navy
-    const PANTS_HL = 0x1e3a5f;
-    const BOOT = 0x1e293b;
-    const SOLE = 0x0f172a;
-    const OUTLINE = 0x060612;
+    const HAIR = 0x4A2C6E;
+    const HAIR_HL = 0x9B7FD4;
+    const HAIR_DK = 0x2A1A4E;
+    const SKIN = 0xFFD4A3;
+    const SKIN_SH = 0xE8A87C;
+    const SKIN_HL = 0xFFF5E6;
+    const SKIN_DK = 0xC88A5C;
+    const EYE = 0x1A1A2E;
+    const EYE_SH = 0xFFFFFF;
+    const ELID = 0xE8A87C;
+    const SHIRT = 0x5AA0E9;
+    const SHIRT_SH = 0x3B7FBE;
+    const SHIRT_DT = 0x8CCBFF;
+    const SHIRT_MID = 0x4A90D9;
+    const BELT = 0x4B3A2A;
+    const BUCKLE = 0xFFD060;
+    const BUCKLE_SH = 0xD4A040;
+    const PANTS = 0x3C4E70;
+    const PANTS_HL = 0x5A7090;
+    const PANTS_SH = 0x2A3550;
+    const BOOT = 0x3A2A1A;
+    const BOOT_HL = 0x6A5040;
+    const SOLE = 0x2A1A10;
+    const OUTLINE = 0x0A0A18;
 
-    B(gfx, HAIR, 8, 0, 16, 7);
-    B(gfx, HAIR_HL, 12, 0, 3, 5);
-    B(gfx, SKIN, 9, 4, 14, 11);
-    B(gfx, SKIN_SH, 9, 8, 2, 6);
-    B(gfx, SKIN_SH, 21, 8, 2, 6);
-    B(gfx, SKIN_SH, 8, 7, 1, 4);
-    B(gfx, SKIN_SH, 23, 7, 1, 4);
-    B(gfx, EYE, 11, 7, 2, 2);
-    B(gfx, EYE, 19, 7, 2, 2);
-    P(gfx, EYE_SH, 12, 7);
-    P(gfx, EYE_SH, 20, 7);
-    P(gfx, SKIN_SH, 16, 10);
-    B(gfx, SKIN_SH, 14, 12, 4, 1);
-    B(gfx, SKIN, 13, 15, 6, 2);
-    B(gfx, SHIRT_DT, 7, 15, 18, 1);
-    B(gfx, SHIRT, 7, 16, 18, 10);
-    B(gfx, SHIRT_SH, 7, 16, 3, 10);
-    B(gfx, SHIRT_SH, 22, 16, 3, 10);
-    B(gfx, SHIRT_SH, 5, 17, 2, 9);
-    B(gfx, SHIRT_SH, 25, 17, 2, 9);
-    P(gfx, 0xffffff, 15, 16);
-    P(gfx, 0xffffff, 16, 16);
-    P(gfx, 0xffffff, 14, 17);
-    P(gfx, 0xffffff, 17, 17);
-    B(gfx, BELT, 7, 26, 18, 3);
-    B(gfx, BUCKLE, 14, 26, 4, 3);
-    B(gfx, PANTS, 8, 29, 7, 12);
-    B(gfx, PANTS, 17, 29, 7, 12);
-    B(gfx, OUTLINE, 15, 29, 2, 12);
-    B(gfx, PANTS_HL, 11, 35, 2, 3);
-    B(gfx, PANTS_HL, 19, 35, 2, 3);
-    B(gfx, BOOT, 7, 41, 8, 6);
-    B(gfx, BOOT, 17, 41, 8, 6);
-    B(gfx, SOLE, 7, 47, 8, 1);
-    B(gfx, SOLE, 17, 47, 8, 1);
-    B(gfx, OUTLINE, 6, 16, 1, 32);
-    B(gfx, OUTLINE, 25, 16, 1, 32);
-    B(gfx, OUTLINE, 8, 0, 1, 7);
-    B(gfx, OUTLINE, 23, 0, 1, 7);
-    B(gfx, OUTLINE, 9, 3, 14, 1);
+    // Enhanced hair with volume
+    B(gfx, HAIR, 8, 0, 16, 8);
+    B(gfx, HAIR_DK, 8, 0, 2, 7);
+    B(gfx, HAIR_DK, 22, 0, 2, 7);
+    B(gfx, HAIR_HL, 12, 0, 6, 5);
+    P(gfx, HAIR_HL, 14, 1);
+    P(gfx, HAIR_HL, 15, 1);
+    
+    // Enhanced skin with better shading
+    B(gfx, SKIN, 9, 5, 14, 12);
+    B(gfx, SKIN_SH, 9, 9, 2, 7);
+    B(gfx, SKIN_SH, 21, 9, 2, 7);
+    B(gfx, SKIN_DK, 9, 12, 1, 4);
+    B(gfx, SKIN_DK, 22, 12, 1, 4);
+    B(gfx, SKIN_SH, 8, 8, 1, 5);
+    B(gfx, SKIN_SH, 23, 8, 1, 5);
+    B(gfx, SKIN_HL, 11, 5, 10, 4);
+    B(gfx, SKIN_HL, 13, 6, 6, 2);
+    
+    // Enhanced eyes with detail
+    B(gfx, ELID, 11, 7, 2, 1);
+    B(gfx, ELID, 19, 7, 2, 1);
+    B(gfx, EYE, 11, 8, 2, 2);
+    B(gfx, EYE, 19, 8, 2, 2);
+    P(gfx, EYE_SH, 12, 8);
+    P(gfx, EYE_SH, 20, 8);
+    P(gfx, SKIN_SH, 16, 11);
+    B(gfx, SKIN_SH, 14, 13, 4, 1);
+    
+    // Enhanced neck
+    B(gfx, SKIN, 13, 17, 6, 3);
+    B(gfx, SKIN_SH, 13, 18, 6, 2);
+    B(gfx, SKIN_HL, 14, 17, 4, 1);
+    
+    // Enhanced shirt with better shading
+    B(gfx, SHIRT_DT, 7, 18, 18, 1);
+    B(gfx, SHIRT, 7, 19, 18, 11);
+    B(gfx, SHIRT_SH, 7, 19, 3, 11);
+    B(gfx, SHIRT_SH, 22, 19, 3, 11);
+    B(gfx, SHIRT_MID, 10, 20, 12, 9);
+    B(gfx, SHIRT_SH, 5, 20, 2, 10);
+    B(gfx, SHIRT_SH, 25, 20, 2, 10);
+    B(gfx, SHIRT_DT, 13, 19, 6, 6);
+    B(gfx, SHIRT_DT, 14, 20, 4, 4);
+    P(gfx, 0xffffff, 15, 19);
+    P(gfx, 0xffffff, 16, 19);
+    P(gfx, 0xffffff, 14, 20);
+    P(gfx, 0xffffff, 17, 20);
+    
+    // Enhanced belt
+    B(gfx, BELT, 7, 30, 18, 4);
+    B(gfx, BUCKLE, 14, 30, 4, 4);
+    B(gfx, BUCKLE_SH, 14, 32, 4, 2);
+    
+    // Enhanced pants
+    B(gfx, PANTS, 8, 34, 7, 13);
+    B(gfx, PANTS, 17, 34, 7, 13);
+    B(gfx, OUTLINE, 15, 34, 2, 13);
+    B(gfx, PANTS_SH, 8, 34, 2, 13);
+    B(gfx, PANTS_SH, 17, 34, 2, 13);
+    B(gfx, PANTS_HL, 12, 38, 2, 5);
+    B(gfx, PANTS_HL, 20, 38, 2, 5);
+    
+    // Enhanced boots
+    B(gfx, BOOT, 7, 47, 8, 1);
+    B(gfx, BOOT, 17, 47, 8, 1);
+    B(gfx, BOOT_HL, 8, 47, 5, 1);
+    B(gfx, BOOT_HL, 18, 47, 5, 1);
+    B(gfx, SOLE, 7, 48, 8, 0);
+    B(gfx, SOLE, 17, 48, 8, 0);
+    
+    // Enhanced outlines
+    B(gfx, OUTLINE, 6, 19, 1, 29);
+    B(gfx, OUTLINE, 25, 19, 1, 29);
+    B(gfx, OUTLINE, 8, 0, 1, 8);
+    B(gfx, OUTLINE, 23, 0, 1, 8);
+    B(gfx, OUTLINE, 9, 4, 14, 1);
   }
 
   // ── Female persona ────────────────────────────────────────────────────────
-  //  Purple top / dark navy pants / cyan accessories
+  //  Enhanced with better shading, detail, and modern pixel art techniques
 
   private static drawFemalePersona(gfx: Phaser.GameObjects.Graphics): void {
-    const HAIR = 0x7c3aed; // Deep purple hair
-    const HAIR_HL = 0xa78bfa;
-    const HAIR_ACC = 0x06b6d4; // Cyan accessory
-    const SKIN = 0xffdcab;
-    const SKIN_SH = 0xd4a373;
-    const EYE = 0x111827;
-    const EYE_SH = 0xf8fafc;
-    const BROW = 0x8b5cf6;
-    const TOP = 0x8b5cf6; // Purple top
-    const TOP_SH = 0x6d28d9;
-    const TOP_AC = 0xc4b5fd;
-    const BELT = 0x1e293b;
-    const BUCKLE = 0x06b6d4;
-    const PANTS = 0x1e1b4b;
-    const PANTS_HL = 0x3730a3;
-    const BOOT = 0x0f172a;
-    const SOLE = 0x060612;
-    const OUTLINE = 0x060612;
+    const HAIR = 0x8B4513;
+    const HAIR_HL = 0xD4955F;
+    const HAIR_MID = 0xB8733D;
+    const HAIR_ACC = 0xFFD060;
+    const SKIN = 0xFFD4A3;
+    const SKIN_SH = 0xE8A87C;
+    const SKIN_HL = 0xFFF5E6;
+    const SKIN_DK = 0xC88A5C;
+    const EYE = 0x1A1A2E;
+    const EYE_SH = 0xFFFFFF;
+    const BROW = 0xB8733D;
+    const ELID = 0xE8A87C;
+    const TOP = 0xF07BB8;
+    const TOP_SH = 0xC85A97;
+    const TOP_AC = 0xFFABD8;
+    const TOP_MID = 0xE06BA8;
+    const BELT = 0x4B3A2A;
+    const BUCKLE = 0xFFD060;
+    const BUCKLE_SH = 0xD4A040;
+    const PANTS = 0x8B5FAE;
+    const PANTS_HL = 0xAB7FCE;
+    const PANTS_SH = 0x6B3F8E;
+    const BOOT = 0x3A2A1A;
+    const BOOT_HL = 0x6A5040;
+    const SOLE = 0x2A1A10;
+    const OUTLINE = 0x0A0A18;
 
-    B(gfx, HAIR, 8, 0, 16, 9);
-    B(gfx, HAIR_HL, 19, 0, 4, 8);
-    B(gfx, HAIR, 8, 9, 3, 4);
-    B(gfx, HAIR, 21, 9, 3, 4);
+    // Enhanced hair with volume and flow
+    B(gfx, HAIR, 8, 0, 16, 10);
+    B(gfx, HAIR_MID, 10, 1, 12, 8);
+    B(gfx, HAIR_HL, 19, 0, 4, 9);
+    B(gfx, HAIR_HL, 13, 1, 5, 4);
+    B(gfx, HAIR, 8, 10, 3, 5);
+    B(gfx, HAIR, 21, 10, 3, 5);
+    B(gfx, HAIR_MID, 9, 11, 1, 3);
+    B(gfx, HAIR_MID, 22, 11, 1, 3);
     P(gfx, HAIR_ACC, 22, 2);
-    B(gfx, SKIN, 9, 6, 14, 11);
-    B(gfx, SKIN_SH, 9, 10, 2, 6);
-    B(gfx, SKIN_SH, 21, 10, 2, 6);
-    B(gfx, SKIN_SH, 8, 9, 1, 4);
-    B(gfx, SKIN_SH, 23, 9, 1, 4);
-    B(gfx, BROW, 11, 8, 2, 1);
-    B(gfx, BROW, 19, 8, 2, 1);
-    B(gfx, EYE, 11, 9, 2, 2);
-    B(gfx, EYE, 19, 9, 2, 2);
-    P(gfx, EYE_SH, 12, 9);
-    P(gfx, EYE_SH, 20, 9);
-    P(gfx, SKIN_SH, 16, 12);
-    B(gfx, SKIN_SH, 14, 14, 4, 1);
-    B(gfx, SKIN, 13, 17, 6, 2);
-    B(gfx, TOP_AC, 7, 17, 18, 1);
-    B(gfx, TOP, 7, 18, 18, 10);
-    B(gfx, TOP_SH, 7, 18, 3, 10);
-    B(gfx, TOP_SH, 22, 18, 3, 10);
-    B(gfx, TOP_SH, 5, 19, 2, 9);
-    B(gfx, TOP_SH, 25, 19, 2, 9);
-    P(gfx, SKIN, 15, 18);
-    P(gfx, SKIN, 16, 18);
-    P(gfx, SKIN, 14, 19);
-    P(gfx, SKIN, 17, 19);
-    B(gfx, BELT, 7, 28, 18, 3);
-    B(gfx, BUCKLE, 14, 28, 4, 3);
-    B(gfx, PANTS, 8, 31, 7, 11);
-    B(gfx, PANTS, 17, 31, 7, 11);
-    B(gfx, OUTLINE, 15, 31, 2, 11);
-    B(gfx, PANTS_HL, 11, 37, 2, 3);
-    B(gfx, PANTS_HL, 19, 37, 2, 3);
-    B(gfx, BOOT, 7, 42, 8, 5);
-    B(gfx, BOOT, 17, 42, 8, 5);
-    B(gfx, SOLE, 7, 47, 8, 1);
-    B(gfx, SOLE, 17, 47, 8, 1);
-    B(gfx, OUTLINE, 6, 18, 1, 30);
-    B(gfx, OUTLINE, 25, 18, 1, 30);
-    B(gfx, OUTLINE, 8, 0, 1, 9);
-    B(gfx, OUTLINE, 23, 0, 1, 9);
-    B(gfx, OUTLINE, 9, 5, 14, 1);
+    P(gfx, HAIR_ACC, 23, 2);
+    P(gfx, HAIR_ACC, 22, 3);
+    
+    // Enhanced skin with better shading
+    B(gfx, SKIN, 9, 7, 14, 12);
+    B(gfx, SKIN_SH, 9, 11, 2, 7);
+    B(gfx, SKIN_SH, 21, 11, 2, 7);
+    B(gfx, SKIN_DK, 9, 14, 1, 4);
+    B(gfx, SKIN_DK, 22, 14, 1, 4);
+    B(gfx, SKIN_SH, 8, 10, 1, 5);
+    B(gfx, SKIN_SH, 23, 10, 1, 5);
+    B(gfx, SKIN_HL, 11, 7, 10, 4);
+    B(gfx, SKIN_HL, 13, 8, 6, 2);
+    
+    // Enhanced eyebrows and eyes
+    B(gfx, BROW, 11, 9, 2, 1);
+    B(gfx, BROW, 19, 9, 2, 1);
+    B(gfx, ELID, 11, 10, 2, 1);
+    B(gfx, ELID, 19, 10, 2, 1);
+    B(gfx, EYE, 11, 11, 2, 2);
+    B(gfx, EYE, 19, 11, 2, 2);
+    P(gfx, EYE_SH, 12, 11);
+    P(gfx, EYE_SH, 20, 11);
+    P(gfx, SKIN_SH, 16, 14);
+    B(gfx, SKIN_SH, 14, 16, 4, 1);
+    
+    // Enhanced neck
+    B(gfx, SKIN, 13, 19, 6, 3);
+    B(gfx, SKIN_SH, 13, 20, 6, 2);
+    B(gfx, SKIN_HL, 14, 19, 4, 1);
+    
+    // Enhanced top with better shading
+    B(gfx, TOP_AC, 7, 20, 18, 1);
+    B(gfx, TOP, 7, 21, 18, 11);
+    B(gfx, TOP_SH, 7, 21, 3, 11);
+    B(gfx, TOP_SH, 22, 21, 3, 11);
+    B(gfx, TOP_MID, 10, 22, 12, 9);
+    B(gfx, TOP_SH, 5, 22, 2, 10);
+    B(gfx, TOP_SH, 25, 22, 2, 10);
+    B(gfx, TOP_AC, 13, 21, 6, 6);
+    B(gfx, TOP_AC, 14, 22, 4, 4);
+    P(gfx, SKIN, 15, 21);
+    P(gfx, SKIN, 16, 21);
+    P(gfx, SKIN, 14, 22);
+    P(gfx, SKIN, 17, 22);
+    
+    // Enhanced belt
+    B(gfx, BELT, 7, 32, 18, 4);
+    B(gfx, BUCKLE, 14, 32, 4, 4);
+    B(gfx, BUCKLE_SH, 14, 34, 4, 2);
+    
+    // Enhanced pants
+    B(gfx, PANTS, 8, 36, 7, 12);
+    B(gfx, PANTS, 17, 36, 7, 12);
+    B(gfx, OUTLINE, 15, 36, 2, 12);
+    B(gfx, PANTS_SH, 8, 36, 2, 12);
+    B(gfx, PANTS_SH, 17, 36, 2, 12);
+    B(gfx, PANTS_HL, 12, 40, 2, 5);
+    B(gfx, PANTS_HL, 20, 40, 2, 5);
+    
+    // Enhanced boots
+    B(gfx, BOOT, 7, 48, 8, 0);
+    B(gfx, BOOT, 17, 48, 8, 0);
+    B(gfx, BOOT_HL, 8, 48, 5, 0);
+    B(gfx, BOOT_HL, 18, 48, 5, 0);
+    B(gfx, SOLE, 7, 48, 8, 0);
+    B(gfx, SOLE, 17, 48, 8, 0);
+    
+    // Enhanced outlines
+    B(gfx, OUTLINE, 6, 21, 1, 27);
+    B(gfx, OUTLINE, 25, 21, 1, 27);
+    B(gfx, OUTLINE, 8, 0, 1, 10);
+    B(gfx, OUTLINE, 23, 0, 1, 10);
+    B(gfx, OUTLINE, 9, 6, 14, 1);
   }
 
   // ── Decoration ────────────────────────────────────────────────────────────

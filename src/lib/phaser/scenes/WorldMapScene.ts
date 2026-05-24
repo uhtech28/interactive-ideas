@@ -5072,7 +5072,7 @@ export class WorldMapScene extends Phaser.Scene {
     const biomeOffsetX = (stageId - 1) * this.BIOME_WIDTH + panelOffsetX;
 
     const stageOneVillageAnchors = [
-      { x: 80,y: 160 },
+      { x: 80, y: 160 },
       { x: 270, y: 230 },
       { x: 460, y: 236 },
       { x: 532, y: 420 },
@@ -6064,7 +6064,7 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   private getPersonaMoveDuration(targetX: number, targetY: number): number {
-    if (!this.persona || !this.persona.scene) return 800;
+    if (!this.persona || !this.persona.scene) return 2000;
 
     const distance = Phaser.Math.Distance.Between(
       this.persona.x,
@@ -6073,7 +6073,9 @@ export class WorldMapScene extends Phaser.Scene {
       targetY,
     );
 
-    return Phaser.Math.Clamp(distance * 2.2, 650, 1800);
+    // Slower, more organic human walking pace: ~125 pixels per second (8ms per pixel)
+    // Clamped between 1500ms (minimum to show legs swinging) and 6000ms
+    return Phaser.Math.Clamp(distance * 8.0, 1500, 6000);
   }
 
   /**

@@ -3120,15 +3120,25 @@ function MapPageInner() {
                     boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.7)",
                   }}
                 >
-                  {/* Embedded Chat Thread Component */}
+                  {/* Embedded Comments/Chat Thread Component */}
                   {activeVenture?.ideaId ? (
-                    <div className="flex-1 h-full min-h-0">
-                      <ChatThread
-                        ideaId={activeVenture.ideaId}
-                        conversationId={(activeConversationId as Id<"conversations">) || null}
-                        onClose={() => setIsGroupChatOpen(false)}
-                        onBack={() => setIsGroupChatOpen(false)}
-                      />
+                    <div className="flex-1 h-full min-h-0 flex flex-col p-5">
+                      {/* Header bar mirroring feed style but floating and clean */}
+                      <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-white/10 shrink-0">
+                        <h2 className="text-md font-bold text-white flex items-center gap-2">
+                          <MessageSquare className="w-5 h-5 text-indigo-455 text-indigo-400" />
+                          Group Chat & Discussion
+                        </h2>
+                        <button
+                          onClick={() => setIsGroupChatOpen(false)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <div className="flex-1 min-h-0">
+                        <CommentsSection ideaId={activeVenture.ideaId} commentCount={0} />
+                      </div>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center flex-1 text-center p-6 space-y-4">
