@@ -2577,21 +2577,21 @@ export class WorldMapScene extends Phaser.Scene {
         lawn: { minR: 27, maxR: 31, minC: 5, maxC: 9 },
         walkway: [[30, 7], [31, 7], [32, 7]]
       },
-      // House 6: Moved back from the road so the trees behind it are fully visible
+      // House 6: Perfectly positioned near the checkpoints with visible background trees
       {
-        houseRow: 16, houseCol: 15,
-        trees: [[13, 14], [13, 16]],
-        lawn: { minR: 14, maxR: 18, minC: 13, maxC: 17 },
-        walkway: [[17, 15], [18, 15], [19, 15], [20, 15], [21, 15], [22, 15], [22, 16], [22, 17], [22, 18], [22, 19]]
+        houseRow: 19, houseCol: 15,
+        trees: [[16, 14], [16, 16]],
+        lawn: { minR: 17, maxR: 21, minC: 13, maxC: 17 },
+        walkway: [[20, 15], [21, 15], [22, 15]]
       },
       
       // --- BOTTOM-RIGHT QUADRANT (2 houses) ---
-      // House 7: Moved back from the road so the trees behind it are fully visible
+      // House 7: Perfectly positioned near the checkpoints with visible background trees
       {
-        houseRow: 16, houseCol: 27,
-        trees: [[13, 26], [13, 28]],
-        lawn: { minR: 14, maxR: 18, minC: 25, maxC: 29 },
-        walkway: [[17, 27], [18, 27], [19, 27], [20, 27], [21, 27], [22, 27]]
+        houseRow: 19, houseCol: 27,
+        trees: [[16, 26], [16, 28]],
+        lawn: { minR: 17, maxR: 21, minC: 25, maxC: 29 },
+        walkway: [[20, 27], [21, 27], [22, 27]]
       },
       // House 8: Moved left to col 33 so Checkpoint 4 is completely visible and the house does not overlap
       {
@@ -4756,9 +4756,9 @@ export class WorldMapScene extends Phaser.Scene {
 
       // Strict per-stage path only: do NOT draw connectors to another stage.
       // Venture stages 3 and 4 use bespoke plaza layouts, so skip the generic
-      // wooden connector there. Other templates should still get connectors.
+      // wooden connector there. Stage 7 Crossroads does not need the wooden plank overlay.
       const shouldSkipGenericConnector =
-        this.currentTemplateId === "venture" && [3, 4].includes(stage.id);
+        (this.currentTemplateId === "venture" && [3, 4].includes(stage.id)) || stage.id === 7;
       if (!shouldSkipGenericConnector && stagePositions.length > 1 && biome) {
         this.drawStagePathConnector(stagePositions, biome.colors.path, 0.9);
       }
