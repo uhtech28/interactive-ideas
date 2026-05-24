@@ -10,7 +10,7 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
-  // Ignore generated/build directories
+  // Ignore generated/build directories and asset folders containing non-JS files
   {
     ignores: [
       ".next/**",
@@ -22,6 +22,8 @@ const eslintConfig = [
       "next-env.d.ts",
       "public/assets/fan-tasy/**",
       "The Fan-tasy Tileset (Free) 1.5.7/**",
+      "kenney_sketchdesert/**",
+      "public/assets/kenney_sketchdesert/**",
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),

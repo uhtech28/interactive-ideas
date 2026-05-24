@@ -112,7 +112,7 @@ export const PremiumIcon: React.FC<PremiumIconProps> = ({
   if (!name) return fallback;
 
   // 1. Resolve from emoji mapping if it's an emoji
-  let resolvedName = EMOJI_TO_LUCIDE_NAME[name] || name;
+  const resolvedName = EMOJI_TO_LUCIDE_NAME[name] || name;
 
   // 2. Normalize casing to match Lucide export (e.g. "lightbulb" -> "Lightbulb")
   const keys = Object.keys(LucideIcons);
