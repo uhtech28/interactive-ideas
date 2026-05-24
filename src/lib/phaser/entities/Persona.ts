@@ -44,13 +44,19 @@ export class Persona extends Phaser.GameObjects.Container {
 
   // ── Private state ─────────────────────────────────────────────────────────
 
-  private sprite: Phaser.GameObjects.Sprite;
+  private sprite: Phaser.GameObjects.Sprite | null = null;
   private shadowEllipse: Phaser.GameObjects.Ellipse;
   private shadowTween: Phaser.Tweens.Tween | null = null;
   private walkTween: Phaser.Tweens.Tween | null = null;
   private currentAnimation: "idle" | "walk" | null = null;
   private isWalking = false;
   private idleFacingRight = true;
+  
+  // User avatar and speech bubble
+  private userAvatar: Phaser.GameObjects.Image | null = null;
+  private speechBubble: Phaser.GameObjects.Container | null = null;
+  private userName: string = "";
+  private userImageUrl: string = "";
 
   /**
    * True while the persona is actively walking to a destination.
@@ -67,21 +73,24 @@ export class Persona extends Phaser.GameObjects.Container {
    * @param x      Initial world X position.
    * @param y      Initial world Y position.
    * @param gender Gender variant ('male' or 'female').
+   * @param userName Optional user name for speech bubble.
+   * @param userImageUrl Optional user profile image URL.
    */
   constructor(
     scene: Phaser.Scene,
     x: number,
     y: number,
     gender: PersonaGender,
+    userName?: string,
+    userImageUrl?: string,
   ) {
     super(scene, x, y);
 
     this.gender = gender;
+    this.userName = userName || "";
+    this.userImageUrl = userImageUrl || "";
 
     // ── Shadow ellipse (below persona feet) ─────────────────────────────────
-    // 48×14 ellipse, black with 25% opacity, positioned at (0, 66) relative
-    // to container origin (which is at persona's feet when sprite origin is
-    // bottom-center)
     this.shadowEllipse = new Phaser.GameObjects.Ellipse(
       scene,
       0,
@@ -92,22 +101,83 @@ export class Persona extends Phaser.GameObjects.Container {
       0.25,
     );
 
-    // ── Sprite ──────────────────────────────────────────────────────────────
-    // Use sprite sheets for frame-based animations
-    // The sprite sheets are 32×48px per frame, rendered at 3× scale (96×144px)
-    // Origin Y is set to 40 / 48 so that the visual feet row (at Y=40) aligns at y=0
-    const spriteSheetKey =
-      gender === "male"
-        ? "persona_male_idle_sheet"
-        : "persona_female_idle_sheet";
+    // ── User Avatar (Real profile picture) ─────────────────────────────────
+    if (this.userImageUrl) {
+      // Create full-body character avatar with modern styling
+      const avatarSize = 128; // Larger for full body
+      const avatarContainer = scene.add.container(0, -100); // Adjusted position
+      
+      // Outer glow/shadow
+      const outerGlow = scene.add.ellipse(0, avatarSize / 2, avatarSize / 2 + 6, 20, 0x000000, 0.15);
+      avatarContainer.add(outerGlow);
+      
+      // Add loading placeholder
+      const placeholder = scene.add.rectangle(0, 0, avatarSize, avatarSize, 0xE0E0E0, 0.3);
+      placeholder.setOrigin(0.5, 0);
+      avatarContainer.add(placeholder);
+      
+      // Load avatar image with CORS handling
+      const avatarKey = `user_avatar_${Date.now()}`;
+      
+      // Use HTML Image element to bypass CORS for display
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          // Create texture from loaded image
+          if (!scene.textures.exists(avatarKey)) {
+            scene.textures.addImage(avatarKey, img);
+          }
+          
+          this.userAvatar = scene.add.image(0, 0, avatarKey);
+          this.userAvatar.setDisplaySize(avatarSize, avatarSize);
+          this.userAvatar.setOrigin(0.5, 0); // Origin at top center for full body
+          
+          // Remove placeholder
+          placeholder.destroy();
+          
+          avatarContainer.add(this.userAvatar);
+          
+          // Add subtle pulse animation to avatar
+          scene.tweens.add({
+            targets: avatarContainer,
+            scale: { from: 1, to: 1.03 },
+            duration: 2000,
+            ease: 'Sine.easeInOut',
+            yoyo: true,
+            repeat: -1,
+          });
+        } catch (error) {
+          console.warn('[Persona] Failed to create avatar texture:', error);
+          this.createFallbackAvatar(scene, placeholder, avatarContainer);
+        }
+      };
+      
+      img.onerror = () => {
+        console.warn('[Persona] Failed to load avatar image, using fallback');
+        this.createFallbackAvatar(scene, placeholder, avatarContainer);
+      };
+      
+      // Start loading
+      img.src = this.userImageUrl;
+      
+      this.add(avatarContainer);
+    } else {
+      // ── Fallback Sprite (if no user image) ─────────────────────────────────
+      const spriteSheetKey =
+        gender === "male"
+          ? "persona_male_idle_sheet"
+          : "persona_female_idle_sheet";
 
-    this.sprite = new Phaser.GameObjects.Sprite(scene, 0, 0, spriteSheetKey, 0);
-    this.sprite.setOrigin(0.5, 40 / 48);
-    this.sprite.setScale(3); // 32x48px -> 96x144px (3× nearest-neighbour, per PRD §3.1)
+      this.sprite = new Phaser.GameObjects.Sprite(scene, 0, 0, spriteSheetKey, 0);
+      this.sprite.setOrigin(0.5, 40 / 48);
+      this.sprite.setScale(3);
+      this.add(this.sprite);
+    }
 
     // ── Assemble container ──────────────────────────────────────────────────
-    // Shadow is added first so it renders behind the sprite
-    this.add([this.shadowEllipse, this.sprite]);
+    this.add(this.shadowEllipse);
+    this.sendToBack(this.shadowEllipse);
 
     // Register with scene
     scene.add.existing(this);
@@ -166,6 +236,9 @@ export class Persona extends Phaser.GameObjects.Container {
   }
 
   moveAlongPath(points: { x: number; y: number }[], duration = 1200): void {
+    // Hide speech bubble when walking
+    this.hideSpeechBubble();
+    
     const route = points.filter((point) => {
       if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return false;
       return (
@@ -191,9 +264,11 @@ export class Persona extends Phaser.GameObjects.Container {
       this.shadowTween = null;
     }
 
-    const walkAnimKey =
-      this.gender === "male" ? "persona_male_walk" : "persona_female_walk";
-    this.playSpriteAnimation(walkAnimKey);
+    if (this.sprite) {
+      const walkAnimKey =
+        this.gender === "male" ? "persona_male_walk" : "persona_female_walk";
+      this.playSpriteAnimation(walkAnimKey);
+    }
     this.startWalkShadowPulse();
 
     const segmentDuration = Math.max(120, duration / route.length);
@@ -202,6 +277,8 @@ export class Persona extends Phaser.GameObjects.Container {
     const walkNextSegment = () => {
       const point = route[index];
       if (!point) {
+        // Reached end of path - ensure we're in idle state
+        this.isWalking = false;
         this.currentAnimation = "idle";
         this.playIdle();
         return;
@@ -216,9 +293,8 @@ export class Persona extends Phaser.GameObjects.Container {
         return;
       }
 
-      // Flip sprite based on movement direction
-      // Default sprite faces left, so flipX=true when moving right, flipX=false when moving left
-      if (point.x !== this.x) {
+      // Flip sprite based on movement direction (only if using sprite)
+      if (this.sprite && point.x !== this.x) {
         const facingRight = point.x > this.x;
         this.sprite.setFlipX(facingRight);
         this.idleFacingRight = facingRight;
@@ -229,7 +305,7 @@ export class Persona extends Phaser.GameObjects.Container {
         x: point.x,
         y: point.y,
         duration: segmentDuration,
-        ease: "Quad.easeOut", // Quad easeOut for smooth path segments
+        ease: "Quad.easeOut",
         onComplete: () => {
           index += 1;
           walkNextSegment();
@@ -242,9 +318,9 @@ export class Persona extends Phaser.GameObjects.Container {
 
   /**
    * Resume idle state — persona stands perfectly still at current checkpoint.
-   * All movement and floating tweens are stopped; sprite plays idle animation
-   * loop (breathing/blinking frames if available) but the container does NOT
-   * drift or translate.
+   * All movement and floating tweens are stopped; sprite shows static frame 0
+   * with NO animation cycling, creating a completely still standing position.
+   * Shows speech bubble with greeting when idle.
    */
   playIdle(): void {
     this.currentAnimation = "idle";
@@ -264,14 +340,166 @@ export class Persona extends Phaser.GameObjects.Container {
     // Reset shadow to its natural scale (no drift)
     this.shadowEllipse.setScale(1, 1);
 
-    // ── Play idle sprite animation (visual only, no container movement) ──────
-    const idleAnimKey =
-      this.gender === "male" ? "persona_male_idle" : "persona_female_idle";
-    this.playSpriteAnimation(idleAnimKey);
+    // ── Stop any playing animation and show static frame 0 ──────────────────
+    // This prevents the "glitchy" appearance from animation frame cycling
+    if (this.sprite && this.sprite.anims) {
+      this.sprite.anims.stop();
+      
+      // Set to frame 0 of the idle sprite sheet for true static idle
+      const spriteSheetKey =
+        this.gender === "male"
+          ? "persona_male_idle_sheet"
+          : "persona_female_idle_sheet";
+      this.sprite.setTexture(spriteSheetKey, 0);
+    }
 
     // Keep stable configured facing direction while idle
     if (this.sprite) {
       this.sprite.setFlipX(this.idleFacingRight);
+    }
+    
+    // Show speech bubble with greeting
+    this.showSpeechBubble();
+  }
+
+  /**
+   * Show a speech bubble with "Hi [Username]!" message
+   */
+  private showSpeechBubble(): void {
+    // Remove existing speech bubble
+    if (this.speechBubble) {
+      this.speechBubble.destroy();
+      this.speechBubble = null;
+    }
+
+    if (!this.userName) return;
+
+    const message = `Hi ${this.userName}!`;
+    const bubbleWidth = Math.max(140, message.length * 9 + 40);
+    const bubbleHeight = 48;
+    const bubbleX = 0;
+    const bubbleY = this.userImageUrl ? -140 : -160; // Adjusted for full body character
+
+    // Create speech bubble container
+    this.speechBubble = this.scene.add.container(bubbleX, bubbleY);
+
+    // Outer shadow (larger, more diffused)
+    const outerShadow = this.scene.add.graphics();
+    outerShadow.fillStyle(0x000000, 0.08);
+    outerShadow.fillRoundedRect(-bubbleWidth / 2 - 2, -2, bubbleWidth + 4, bubbleHeight + 4, 16);
+    this.speechBubble.add(outerShadow);
+
+    // Inner shadow (closer, darker)
+    const innerShadow = this.scene.add.graphics();
+    innerShadow.fillStyle(0x000000, 0.12);
+    innerShadow.fillRoundedRect(-bubbleWidth / 2 + 1, 1, bubbleWidth, bubbleHeight, 14);
+    this.speechBubble.add(innerShadow);
+
+    // Main bubble background (white with subtle gradient effect)
+    const bubble = this.scene.add.graphics();
+    bubble.fillStyle(0xFFFFFF, 1);
+    bubble.fillRoundedRect(-bubbleWidth / 2, 0, bubbleWidth, bubbleHeight, 14);
+    
+    // Subtle inner highlight for depth
+    bubble.fillStyle(0xFFFFFF, 0.5);
+    bubble.fillRoundedRect(-bubbleWidth / 2 + 4, 4, bubbleWidth - 8, 12, 8);
+    
+    // Bubble border (very subtle)
+    bubble.lineStyle(1.5, 0xE8E8E8, 1);
+    bubble.strokeRoundedRect(-bubbleWidth / 2, 0, bubbleWidth, bubbleHeight, 14);
+    
+    this.speechBubble.add(bubble);
+
+    // Speech bubble tail (pointing down to avatar)
+    const tail = this.scene.add.graphics();
+    tail.fillStyle(0xFFFFFF, 1);
+    tail.beginPath();
+    tail.moveTo(-10, bubbleHeight);
+    tail.lineTo(10, bubbleHeight);
+    tail.lineTo(0, bubbleHeight + 12);
+    tail.closePath();
+    tail.fillPath();
+    
+    // Tail border
+    tail.lineStyle(1.5, 0xE8E8E8, 1);
+    tail.beginPath();
+    tail.moveTo(-10, bubbleHeight);
+    tail.lineTo(0, bubbleHeight + 12);
+    tail.lineTo(10, bubbleHeight);
+    tail.strokePath();
+    
+    this.speechBubble.add(tail);
+
+    // Message text with better styling
+    const text = this.scene.add.text(-10, bubbleHeight / 2, message, {
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
+      fontSize: '18px',
+      color: '#1A1A1A',
+      fontStyle: '600',
+      align: 'center',
+    });
+    text.setOrigin(0.5);
+    this.speechBubble.add(text);
+
+    // Wave emoji with slight animation
+    const wave = this.scene.add.text(bubbleWidth / 2 - 24, bubbleHeight / 2, '👋', {
+      fontSize: '22px',
+    });
+    wave.setOrigin(0.5);
+    this.speechBubble.add(wave);
+    
+    // Animate wave emoji
+    this.scene.tweens.add({
+      targets: wave,
+      angle: { from: -15, to: 15 },
+      duration: 400,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: 2,
+      delay: 300,
+    });
+
+    // Add to persona container
+    this.add(this.speechBubble);
+
+    // Animate bubble entrance with bounce
+    this.speechBubble.setScale(0);
+    this.speechBubble.setAlpha(0);
+    this.scene.tweens.add({
+      targets: this.speechBubble,
+      scale: 1,
+      alpha: 1,
+      duration: 400,
+      ease: 'Back.easeOut',
+    });
+
+    // Auto-hide after 5 seconds with fade
+    this.scene.time.delayedCall(5000, () => {
+      if (this.speechBubble) {
+        this.scene.tweens.add({
+          targets: this.speechBubble,
+          alpha: 0,
+          y: this.speechBubble.y - 10,
+          duration: 300,
+          ease: 'Sine.easeIn',
+          onComplete: () => {
+            if (this.speechBubble) {
+              this.speechBubble.destroy();
+              this.speechBubble = null;
+            }
+          },
+        });
+      }
+    });
+  }
+
+  /**
+   * Hide the speech bubble
+   */
+  hideSpeechBubble(): void {
+    if (this.speechBubble) {
+      this.speechBubble.destroy();
+      this.speechBubble = null;
     }
   }
 
@@ -284,6 +512,9 @@ export class Persona extends Phaser.GameObjects.Container {
    * @param duration Movement duration in milliseconds (default: 1000ms).
    */
   playWalk(targetX: number, targetY: number, duration = 1000): void {
+    // Hide speech bubble when walking
+    this.hideSpeechBubble();
+    
     if (
       Phaser.Math.Distance.Between(this.x, this.y, targetX, targetY) <=
       Persona.ARRIVAL_EPSILON
@@ -308,14 +539,16 @@ export class Persona extends Phaser.GameObjects.Container {
       this.shadowTween = null;
     }
 
-    // Play walk sprite animation
-    const walkAnimKey =
-      this.gender === "male" ? "persona_male_walk" : "persona_female_walk";
-    this.playSpriteAnimation(walkAnimKey);
+    // Play walk sprite animation (only if using sprite)
+    if (this.sprite) {
+      const walkAnimKey =
+        this.gender === "male" ? "persona_male_walk" : "persona_female_walk";
+      this.playSpriteAnimation(walkAnimKey);
+    }
     this.startWalkShadowPulse();
 
-    // Flip sprite based on movement direction
-    if (targetX !== this.x) {
+    // Flip sprite based on movement direction (only if using sprite)
+    if (this.sprite && targetX !== this.x) {
       const facingRight = targetX > this.x;
       this.sprite.setFlipX(facingRight);
       this.idleFacingRight = facingRight;
@@ -361,7 +594,7 @@ export class Persona extends Phaser.GameObjects.Container {
   }
 
   private playSpriteAnimation(animationKey: string): void {
-    if (!this.sprite.active) return;
+    if (!this.sprite || !this.sprite.active) return;
 
     const animState = this.sprite.anims;
     if (!animState) return;
@@ -373,5 +606,49 @@ export class Persona extends Phaser.GameObjects.Container {
     if (!animationExists) return;
 
     this.sprite.play(animationKey, true);
+  }
+
+  /**
+   * Create a fallback avatar when image loading fails
+   */
+  private createFallbackAvatar(
+    scene: Phaser.Scene,
+    placeholder: Phaser.GameObjects.Shape,
+    container: Phaser.GameObjects.Container
+  ): void {
+    // Use a nice gradient color based on first letter
+    const colors = [
+      0x4A90E2, // Blue
+      0xE94B9C, // Pink
+      0x50C878, // Green
+      0xF59E0B, // Orange
+      0x8B5CF6, // Purple
+      0xEC4899, // Rose
+      0x06B6D4, // Cyan
+      0xF97316, // Amber
+    ];
+    const charCode = this.userName.charCodeAt(0) || 65;
+    const colorIndex = charCode % colors.length;
+    
+    placeholder.setFillStyle(colors[colorIndex]);
+    
+    const fallbackText = scene.add.text(0, 0, this.userName.charAt(0).toUpperCase(), {
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
+      fontSize: '48px',
+      color: '#FFFFFF',
+      fontStyle: 'bold',
+    });
+    fallbackText.setOrigin(0.5);
+    container.add(fallbackText);
+    
+    // Add pulse animation to fallback too
+    scene.tweens.add({
+      targets: container,
+      scale: { from: 1, to: 1.05 },
+      duration: 2000,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1,
+    });
   }
 }

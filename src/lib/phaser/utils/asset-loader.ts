@@ -1440,8 +1440,113 @@ export class AssetLoader {
       { frameWidth: 16, frameHeight: 16 }
     );
 
+    // --- Kenney Sketch Desert Assets ---
+    const desertPath = "/assets/kenney_sketchdesert/Tiles";
+    const desertDirections = ["N", "E", "S", "W"] as const;
+    const desertTileGroups = [
+      "building_center",
+      "building_dark_center",
+      "building_dark_center_door",
+      "building_dark_center_windows",
+      "building_dark_sides",
+      "building_dark_sides_door",
+      "building_dark_sides_windows",
+      "building_sides",
+      "dirt_center",
+      "dirt_low",
+      "dome",
+      "dome_small",
+      "grass_center",
+      "grass_corner",
+      "grass_path",
+      "grass_pathBend",
+      "grass_pathCorner",
+      "grass_pathCrossing",
+      "grass_pathEnd",
+      "grass_pathEndSquare",
+      "grass_pathSlope",
+      "grass_pathSplit",
+      "grass_river",
+      "grass_riverBend",
+      "grass_riverBridge",
+      "grass_riverCorner",
+      "grass_riverCrossing",
+      "grass_riverEnd",
+      "grass_riverEndSquare",
+      "grass_riverSlope",
+      "grass_riverSplit",
+      "grass_slope",
+      "grass_slopeConcave",
+      "grass_slopeConvex",
+      "grass_water",
+      "grass_waterConcave",
+      "grass_waterConvex",
+      "grass_waterRiver",
+      "overhang",
+      "overhang_small",
+      "rocks",
+      "stairs_full",
+      "stairs_left",
+      "stairs_right",
+      "structure_tent",
+      "structure_tentSlant",
+      "tiles",
+      "tiles_crumbled",
+      "tiles_decorated",
+      "tiles_steps",
+      "tree",
+      "trees",
+      "walls_broken",
+      "walls_corner",
+      "walls_end",
+      "walls_left",
+      "walls_right",
+      "walls_sides",
+      "walls_square",
+      "water_center",
+      "water_fall",
+    ];
+    const desertTiles = desertTileGroups.flatMap((tile) =>
+      desertDirections.map((direction) => `${tile}_${direction}`),
+    );
+    desertTiles.forEach(tile => {
+      scene.load.image(`desert_${tile}`, `${desertPath}/${tile}.png`);
+    });
+
     // Load main Tilemap (JSON with embedded tilesets)
     scene.load.tilemapTiledJSON("beginning_fields", `${fanTasyPath}/Beginning Fields.tmj`);
+
+    // --- Tropical Medieval City Tileset (Stage 8) ---
+    const tropicalPath = "/assets/tropical-city";
+    
+    // Load buildings
+    for (let i = 1; i <= 18; i++) {
+      scene.load.image(`tropical_building_${i}`, `${tropicalPath}/buildings/building_${i}/building_1.png`);
+    }
+    
+    // Load decorations
+    for (let i = 1; i <= 18; i++) {
+      scene.load.image(`tropical_decor_${i}`, `${tropicalPath}/decor/decor_${i}.png`);
+    }
+    
+    // Load greenery
+    for (let i = 1; i <= 5; i++) {
+      scene.load.image(`tropical_greenery_${i}`, `${tropicalPath}/decor/greenery_${i}.png`);
+    }
+    
+    // Load trees
+    scene.load.image("tropical_tree_1", `${tropicalPath}/decor/tree_1.png`);
+    scene.load.image("tropical_tree_2", `${tropicalPath}/decor/tree_2.png`);
+    
+    // Load land tiles
+    for (let i = 1; i <= 26; i++) {
+      scene.load.image(`tropical_land_${i}`, `${tropicalPath}/land/land_${i}.png`);
+    }
+    
+    // Load road tiles
+    for (let i = 1; i <= 17; i++) {
+      scene.load.image(`tropical_road_${i}`, `${tropicalPath}/road/road_${i}.png`);
+    }
   }
 
   // ── Persona sprite sheets ─────────────────────────────────────────────────
@@ -1451,10 +1556,30 @@ export class AssetLoader {
     const FRAME_HEIGHT = 48;
 
     const sheets = [
-      { key: "persona_male_idle_sheet", frames: 4, color: C.indigo },
-      { key: "persona_male_walk_sheet", frames: 6, color: C.indigo },
-      { key: "persona_female_idle_sheet", frames: 4, color: C.purple },
-      { key: "persona_female_walk_sheet", frames: 6, color: C.purple },
+      { 
+        key: "persona_male_idle_sheet", 
+        frames: 4, 
+        gender: "male",
+        isWalk: false
+      },
+      { 
+        key: "persona_male_walk_sheet", 
+        frames: 6, 
+        gender: "male",
+        isWalk: true
+      },
+      { 
+        key: "persona_female_idle_sheet", 
+        frames: 4, 
+        gender: "female",
+        isWalk: false
+      },
+      { 
+        key: "persona_female_walk_sheet", 
+        frames: 6, 
+        gender: "female",
+        isWalk: true
+      },
     ];
 
     for (const sheet of sheets) {
@@ -1465,24 +1590,158 @@ export class AssetLoader {
       const width = FRAME_WIDTH * sheet.frames;
       const gfx = scene.add.graphics();
 
+      // Apple Memoji-style colors
+      const isMale = sheet.gender === "male";
+      const skinTone = 0xFFDFC4;
+      const skinShadow = 0xF0C9A8;
+      const skinHighlight = 0xFFF5E8;
+      const hairColor = isMale ? 0x3D2817 : 0x8B4513;
+      const hairHighlight = isMale ? 0x5C4033 : 0xA0522D;
+      const shirtColor = isMale ? 0x4A90E2 : 0xE94B9C;
+      const shirtShadow = isMale ? 0x357ABD : 0xC93A7D;
+      const shirtHighlight = isMale ? 0x6BA3E8 : 0xF06BA8;
+      const pantsColor = isMale ? 0x2C3E50 : 0x8E44AD;
+      const eyeColor = 0x2C3E50;
+      const eyeShine = 0xFFFFFF;
+
       for (let i = 0; i < sheet.frames; i++) {
         const x = i * FRAME_WIDTH;
-        gfx.fillStyle(sheet.color, 1);
-        gfx.fillRoundedRect(x + 2, 2, FRAME_WIDTH - 4, FRAME_HEIGHT - 4, 4);
-        gfx.lineStyle(1, C.cyanLight, 0.5);
-        gfx.strokeRoundedRect(x + 2, 2, FRAME_WIDTH - 4, FRAME_HEIGHT - 4, 4);
+        const centerX = x + FRAME_WIDTH / 2;
+        
+        // Animation offsets for smooth movement
+        const bobOffset = sheet.isWalk 
+          ? Math.sin((i / sheet.frames) * Math.PI * 2) * 1.5
+          : Math.sin((i / sheet.frames) * Math.PI * 2) * 0.5;
+        
+        const legOffset = sheet.isWalk
+          ? Math.sin((i / sheet.frames) * Math.PI * 2) * 3
+          : 0;
 
-        const headX = x + FRAME_WIDTH / 2;
-        gfx.fillStyle(0xffd4a3, 1);
-        gfx.fillCircle(headX, 12, 6);
+        // ── HAIR (Apple Memoji style - rounded, smooth) ──────────────────
+        const hairY = 8 + bobOffset;
+        
+        // Hair shadow (depth)
+        gfx.fillStyle(hairColor, 0.3);
+        gfx.fillEllipse(centerX + 1, hairY + 1, 7, 8);
+        
+        // Main hair
+        gfx.fillStyle(hairColor, 1);
+        gfx.fillEllipse(centerX, hairY, 7, 8);
+        
+        // Hair highlight (glossy effect)
+        gfx.fillStyle(hairHighlight, 0.6);
+        gfx.fillEllipse(centerX - 2, hairY - 2, 3, 4);
 
-        const legOffset =
-          sheet.frames === 6
-            ? Math.sin((i / sheet.frames) * Math.PI * 2) * 2
-            : 0;
-        gfx.fillStyle(C.bg, 1);
-        gfx.fillRect(x + FRAME_WIDTH / 2 - 3, 34, 2, 8 + legOffset);
-        gfx.fillRect(x + FRAME_WIDTH / 2 + 1, 34, 2, 8 - legOffset);
+        // ── HEAD (Large, rounded - Memoji proportions) ──────────────────
+        const headY = 14 + bobOffset;
+        
+        // Head shadow
+        gfx.fillStyle(skinShadow, 0.4);
+        gfx.fillCircle(centerX + 0.5, headY + 0.5, 7);
+        
+        // Main head
+        gfx.fillStyle(skinTone, 1);
+        gfx.fillCircle(centerX, headY, 7);
+        
+        // Face highlight (3D effect)
+        gfx.fillStyle(skinHighlight, 0.5);
+        gfx.fillCircle(centerX - 2, headY - 2, 3);
+        
+        // Cheek blush (Apple style)
+        gfx.fillStyle(0xFFB6C1, 0.3);
+        gfx.fillCircle(centerX - 4, headY + 2, 2);
+        gfx.fillCircle(centerX + 4, headY + 2, 2);
+
+        // ── EYES (Simple, expressive) ────────────────────────────────────
+        const eyeY = headY;
+        
+        // Left eye
+        gfx.fillStyle(eyeColor, 1);
+        gfx.fillCircle(centerX - 3, eyeY, 1.5);
+        gfx.fillStyle(eyeShine, 1);
+        gfx.fillCircle(centerX - 2.5, eyeY - 0.5, 0.5);
+        
+        // Right eye
+        gfx.fillStyle(eyeColor, 1);
+        gfx.fillCircle(centerX + 3, eyeY, 1.5);
+        gfx.fillStyle(eyeShine, 1);
+        gfx.fillCircle(centerX + 3.5, eyeY - 0.5, 0.5);
+
+        // ── SMILE (Subtle, friendly) ─────────────────────────────────────
+        gfx.lineStyle(1, skinShadow, 0.6);
+        gfx.beginPath();
+        gfx.arc(centerX, headY + 2, 2, 0.2, Math.PI - 0.2);
+        gfx.strokePath();
+
+        // ── NECK ─────────────────────────────────────────────────────────
+        const neckY = 22 + bobOffset;
+        gfx.fillStyle(skinTone, 1);
+        gfx.fillRect(centerX - 2.5, neckY, 5, 3);
+        
+        // Neck shadow
+        gfx.fillStyle(skinShadow, 0.3);
+        gfx.fillRect(centerX - 2.5, neckY + 2, 5, 1);
+
+        // ── SHIRT (Rounded, modern) ──────────────────────────────────────
+        const shirtY = 25 + bobOffset;
+        
+        // Shirt shadow
+        gfx.fillStyle(shirtShadow, 1);
+        gfx.fillRoundedRect(centerX - 6, shirtY + 1, 12, 10, 2);
+        
+        // Main shirt
+        gfx.fillStyle(shirtColor, 1);
+        gfx.fillRoundedRect(centerX - 6, shirtY, 12, 10, 2);
+        
+        // Shirt highlight (fabric shine)
+        gfx.fillStyle(shirtHighlight, 0.4);
+        gfx.fillRoundedRect(centerX - 5, shirtY + 1, 10, 3, 1);
+        
+        // Collar detail
+        gfx.fillStyle(skinHighlight, 0.8);
+        gfx.fillTriangle(
+          centerX - 1, shirtY,
+          centerX + 1, shirtY,
+          centerX, shirtY + 2
+        );
+
+        // ── ARMS (Simplified, clean) ─────────────────────────────────────
+        const armY = shirtY + 2;
+        
+        // Left arm
+        gfx.fillStyle(shirtShadow, 1);
+        gfx.fillRoundedRect(centerX - 8, armY, 2, 8, 1);
+        
+        // Right arm
+        gfx.fillStyle(shirtShadow, 1);
+        gfx.fillRoundedRect(centerX + 6, armY, 2, 8, 1);
+
+        // ── PANTS (Clean, modern) ────────────────────────────────────────
+        const pantsY = 35 + bobOffset;
+        
+        // Left leg
+        gfx.fillStyle(pantsColor, 1);
+        gfx.fillRoundedRect(centerX - 5, pantsY, 4, 8 + legOffset, 1);
+        
+        // Right leg
+        gfx.fillStyle(pantsColor, 1);
+        gfx.fillRoundedRect(centerX + 1, pantsY, 4, 8 - legOffset, 1);
+        
+        // Pants highlights
+        gfx.fillStyle(0xFFFFFF, 0.15);
+        gfx.fillRect(centerX - 4.5, pantsY + 1, 1, 3);
+        gfx.fillRect(centerX + 1.5, pantsY + 1, 1, 3);
+
+        // ── SHOES (Simple, rounded) ──────────────────────────────────────
+        const shoeY = 43 + bobOffset;
+        
+        // Left shoe
+        gfx.fillStyle(0x34495E, 1);
+        gfx.fillEllipse(centerX - 3, shoeY + legOffset, 2.5, 1.5);
+        
+        // Right shoe
+        gfx.fillStyle(0x34495E, 1);
+        gfx.fillEllipse(centerX + 3, shoeY - legOffset, 2.5, 1.5);
       }
 
       gfx.generateTexture(sheet.key, width, FRAME_HEIGHT);

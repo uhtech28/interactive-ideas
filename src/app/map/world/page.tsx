@@ -27,8 +27,7 @@ import { LEVEL_DEFINITIONS } from "@convex/ventureConstants";
 import type { Id } from "@convex/_generated/dataModel";
 import { eventBridge } from "@/lib/phaser/utils/event-bridge";
 import type { CheckpointState } from "@/lib/phaser/utils/event-bridge";
-import { HUD } from "@/components/hud/HUD";
-import { TemplateHUD } from "@/components/hud/TemplateHUD";
+import { QuestList, BossHPBar } from "@/components/hud";
 import { InterCheckpointOverlay } from "@/components/map/InterCheckpointOverlay";
 import { LiveActivityFeed } from "@/components/map/LiveActivityFeed";
 import { getTemplate, type TemplateId } from "@/config/templates";
@@ -43,6 +42,7 @@ import { StageClearModal } from "@/components/map/StageClearModal";
 import { WorldMapTour } from "@/components/map/WorldMapTour";
 import { LeftSidebar } from "@/components/map/LeftSidebar";
 import { ToolsPanel } from "@/components/map/ToolsPanel";
+import { MapNavbar } from "@/components/map/MapNavbar";
 import {
   activeVentureAtom,
   userProgressAtom,
@@ -291,13 +291,18 @@ function deriveCheckpointStatus(
   currentStage: number,
   currentCheckpoint: number,
 ): CheckpointStatus {
-  if (cp.t1Completed && cp.t2Completed && cp.t3Completed) return "gold";
-
   // If this checkpoint is the active checkpoint node of the venture,
   // it should remain in active/partial status until the player actually advances.
+  // Check this FIRST before checking gold status
   if (cp.stage === currentStage && cp.checkpoint === currentCheckpoint) {
+    // If all 3 tasks are done, it's gold but still active
+    if (cp.t1Completed && cp.t2Completed && cp.t3Completed) return "gold";
+    // If some tasks are done, it's partial
     return (cp.t1Completed || cp.t2Completed || cp.t3Completed) ? "partial" : "active";
   }
+
+  // For non-active checkpoints, check if they're gold (completed with all 3 tasks)
+  if (cp.t1Completed && cp.t2Completed && cp.t3Completed) return "gold";
 
   if (cp.status === "completed") return "completed";
   if (cp.stage < currentStage) return "completed";
@@ -325,7 +330,7 @@ function StageStrip({
       initial={{ y: 40, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ delay: 0.5, duration: 0.5 }}
-      className="no-scrollbar absolute bottom-24 left-1/2 z-20 flex max-w-[calc(100vw-0.75rem)] -translate-x-1/2 gap-1.5 overflow-x-auto rounded-full border border-white/5 bg-[#0a0d14]/60 p-1.5 shadow-[0_0_20px_rgba(30,20,50,0.5)] backdrop-blur-md sm:bottom-10 sm:gap-2 sm:p-2 md:bottom-9 lg:bottom-8"
+      className="no-scrollbar fixed bottom-4 left-1/2 z-20 flex w-[calc(100vw-1rem)] max-w-full -translate-x-1/2 gap-1.5 overflow-x-auto rounded-full border border-white/10 bg-[#0a0d14]/85 p-2 shadow-[0_0_30px_rgba(30,20,50,0.6)] backdrop-blur-xl sm:bottom-6 sm:w-auto sm:max-w-[calc(100vw-2rem)] sm:gap-2 sm:p-2.5 md:bottom-8 md:max-w-3xl lg:bottom-8 lg:max-w-4xl xl:max-w-5xl"
     >
       {stages.map((st, i) => {
         const isDone = i + 1 < activeStage;
@@ -341,47 +346,112 @@ function StageStrip({
             onMouseEnter={() => {
               if (isUnlocked) audioManager.playUI("hover");
             }}
-            whileHover={isUnlocked ? { scaleY: 1.6, scaleX: 1.1 } : {}}
+            whileHover={isUnlocked ? { scaleY: 1.8, scaleX: 1.15 } : {}}
             whileTap={isUnlocked ? { scale: 0.95 } : {}}
-            className="relative group"
+            className="relative group flex-shrink-0"
             title={
               isUnlocked
-                ? st.name
+                ? `${st.name} - ${st.biome}`
                 : `Complete Stage ${st.id - 1} to unlock ${st.name}`
             }
           >
+            {/* Stage indicator pill */}
             <motion.div
-              className="h-[8px] rounded-full"
+              className="h-[10px] rounded-full relative overflow-hidden"
               style={{
-                width: isCurrent ? "48px" : "28px",
+                width: isCurrent ? "56px" : "32px",
                 background: isDone
-                  ? "#4f46e5"
+                  ? "linear-gradient(135deg, #4f46e5, #6366f1)"
                   : isCurrent
                     ? st.glow
-                    : "rgba(255,255,255,0.05)",
-                border: `1px solid ${
-                  isDone
+                    : "rgba(255,255,255,0.06)",
+                border: `1.5px solid ${isDone
                     ? "#6366f1"
                     : isCurrent
                       ? st.glow
-                      : "rgba(255,255,255,0.1)"
-                }`,
-                boxShadow: isCurrent ? `0 0 15px ${st.glow}` : "none",
+                      : "rgba(255,255,255,0.12)"
+                  }`,
+                boxShadow: isCurrent 
+                  ? `0 0 20px ${st.glow}, 0 0 40px ${st.glow}40` 
+                  : isDone 
+                    ? "0 0 10px rgba(99, 102, 241, 0.5)"
+                    : "none",
                 cursor: isUnlocked ? "pointer" : "not-allowed",
-                transition:
-                  "width 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease",
-              }}
-            />
-            <span
-              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap text-[10px] tracking-[0.15em] font-semibold uppercase px-3 py-1.5 rounded-lg pointer-events-none shadow-lg backdrop-blur-xl"
-              style={{
-                fontFamily: "var(--font-sans)",
-                color: "#e2e8f0",
-                background: "rgba(15, 23, 42, 0.8)",
-                border: "1px solid rgba(99, 102, 241, 0.3)",
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
               }}
             >
-              {st.name}
+              {/* Shimmer effect for current stage */}
+              {isCurrent && (
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                  animate={{
+                    x: ["-100%", "200%"],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }}
+                />
+              )}
+              
+              {/* Completion checkmark */}
+              {isDone && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute inset-0 flex items-center justify-center text-white text-[8px]"
+                >
+                  ✓
+                </motion.div>
+              )}
+            </motion.div>
+
+            {/* Tooltip on hover */}
+            <div
+              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10"
+            >
+              <div
+                className="whitespace-nowrap text-[10px] sm:text-xs tracking-wide font-semibold px-3 py-2 rounded-xl shadow-2xl backdrop-blur-xl border"
+                style={{
+                  fontFamily: "var(--font-sans)",
+                  color: "#e2e8f0",
+                  background: "rgba(15, 23, 42, 0.95)",
+                  borderColor: isCurrent ? st.glow : "rgba(99, 102, 241, 0.3)",
+                  boxShadow: isCurrent 
+                    ? `0 0 20px ${st.glow}40` 
+                    : "0 10px 30px rgba(0, 0, 0, 0.5)",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-base">{st.icon}</span>
+                  <div className="text-left">
+                    <div className="font-bold">{st.name}</div>
+                    <div className="text-[9px] sm:text-[10px] text-white/60 font-normal">
+                      {st.biome}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Tooltip arrow */}
+              <div
+                className="absolute top-full left-1/2 -translate-x-1/2 -mt-px w-0 h-0"
+                style={{
+                  borderLeft: "6px solid transparent",
+                  borderRight: "6px solid transparent",
+                  borderTop: `6px solid ${isCurrent ? st.glow : "rgba(99, 102, 241, 0.3)"}`,
+                }}
+              />
+            </div>
+
+            {/* Stage number label (shows on hover) */}
+            <span
+              className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-[9px] font-bold tracking-wider"
+              style={{
+                color: isCurrent ? st.glow : isDone ? "#6366f1" : "#64748b",
+              }}
+            >
+              {st.id}
             </span>
           </motion.button>
         );
@@ -435,9 +505,8 @@ function CheckpointPanel({
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: "100%", opacity: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 32 }}
-        className="absolute right-0 top-0 bottom-0 z-[60] flex flex-col font-sans"
+        className="absolute right-0 top-0 bottom-0 z-[75] flex flex-col font-sans w-full sm:w-[380px] md:w-[420px] lg:w-[460px] xl:w-[500px] max-w-full"
         style={{
-          width: "min(100vw, 360px)",
           background:
             "linear-gradient(180deg, rgba(11, 15, 25, 0.85), rgba(7, 10, 18, 0.95))",
           backdropFilter: "blur(20px)",
@@ -451,7 +520,7 @@ function CheckpointPanel({
             audioManager.playTouch("click");
             onClose();
           }}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-[14px] transition-all duration-200 bg-white/5 hover:bg-white/10"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 md:top-5 md:right-5 w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-full flex items-center justify-center text-[13px] sm:text-[14px] md:text-[15px] lg:text-[16px] transition-all duration-200 bg-white/5 hover:bg-white/10"
           style={{
             border: "1px solid rgba(255,255,255,0.1)",
             color: "#cbd5e1",
@@ -471,16 +540,16 @@ function CheckpointPanel({
           ✕
         </button>
 
-        <div className="flex flex-col gap-3.5 p-5 flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-3 sm:gap-3.5 md:gap-4 p-3 sm:p-5 md:p-6 lg:p-7 pt-16 sm:pt-20 md:pt-24 flex-1 overflow-y-auto">
           {/* Stage label */}
           <div>
             <p
-              className="text-[10px] tracking-[0.2em] font-bold uppercase mb-1.5"
+              className="text-[9px] sm:text-[10px] md:text-[11px] lg:text-xs tracking-[0.2em] font-bold uppercase mb-1 sm:mb-1.5 md:mb-2"
               style={{ color: detail.stageGlow }}
             >
               Stage {detail.stage} · {detail.stageName}
             </p>
-            <h2 className="text-xl font-bold tracking-tight leading-tight text-white mb-2">
+            <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight leading-tight text-white mb-1.5 sm:mb-2 md:mb-3">
               {detail.title}
             </h2>
           </div>
@@ -506,7 +575,7 @@ function CheckpointPanel({
 
           {/* Outcome */}
           <div
-            className="text-[13px] leading-relaxed font-medium px-4 py-3 rounded-xl backdrop-blur-md"
+            className="text-[12px] sm:text-[13px] md:text-sm lg:text-base leading-relaxed font-medium px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 md:py-3.5 lg:py-4 rounded-lg sm:rounded-xl backdrop-blur-md"
             style={{
               color: "#cbd5e1",
               borderLeft: `3px solid ${detail.stageGlow}`,
@@ -519,7 +588,7 @@ function CheckpointPanel({
           </div>
 
           {/* Tasks */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5 sm:gap-2 md:gap-2.5 lg:gap-3">
             {detail.tasks.map((task, i) => (
               <TaskCard
                 key={i}
@@ -538,11 +607,11 @@ function CheckpointPanel({
           </div>
 
           {/* Progress dots */}
-          <div className="flex items-center gap-2 px-1 mt-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-2.5 px-0.5 sm:px-1 md:px-1.5 mt-1.5 sm:mt-2 md:mt-3">
             {detail.tasks.map((t, i) => (
               <div
                 key={i}
-                className="h-2 flex-1 rounded-full transition-all duration-300 relative overflow-hidden bg-white/5"
+                className="h-1.5 sm:h-2 md:h-2.5 lg:h-3 flex-1 rounded-full transition-all duration-300 relative overflow-hidden bg-white/5"
               >
                 <motion.div
                   className="absolute inset-y-0 left-0"
@@ -558,7 +627,7 @@ function CheckpointPanel({
               </div>
             ))}
           </div>
-          <p className="text-[11px] font-medium tracking-wide text-slate-400">
+          <p className="text-[10px] sm:text-[11px] md:text-xs lg:text-sm font-medium tracking-wide text-slate-400">
             {doneTasks}/3 tasks ·{" "}
             {2 - doneTasks > 0 && !canAdvance
               ? `${2 - doneTasks} more to advance`
@@ -567,11 +636,11 @@ function CheckpointPanel({
                 : ""}
           </p>
 
-          <div className="rounded-xl border border-amber-500/15 bg-amber-500/5 px-4 py-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">
+          <div className="rounded-lg sm:rounded-xl border border-amber-500/15 bg-amber-500/5 px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 md:py-3.5 lg:py-4">
+            <p className="text-[9px] sm:text-[10px] md:text-[11px] lg:text-xs font-black uppercase tracking-[0.18em] text-amber-300">
               Gold Checkpoint
             </p>
-            <p className="mt-1 text-[12px] leading-relaxed text-slate-300">
+            <p className="mt-1 text-[11px] sm:text-[12px] md:text-sm lg:text-base leading-relaxed text-slate-300">
               {isGold
                 ? "All 3 tasks are complete. This checkpoint will advance as gold."
                 : doneTasks === 2
@@ -581,12 +650,12 @@ function CheckpointPanel({
           </div>
 
           {/* Crossing animation label */}
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/5 bg-white/[0.02] mt-auto">
-            <span className="text-[10px] tracking-[0.15em] font-semibold uppercase text-slate-500">
+          <div className="flex items-center gap-2 px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 lg:py-3.5 rounded-lg sm:rounded-xl border border-white/5 bg-white/[0.02] mt-auto">
+            <span className="text-[9px] sm:text-[10px] md:text-[11px] lg:text-xs tracking-[0.15em] font-semibold uppercase text-slate-500">
               Crossing:
             </span>
             <span
-              className="text-[11px] font-bold tracking-wide"
+              className="text-[10px] sm:text-[11px] md:text-xs lg:text-sm font-bold tracking-wide"
               style={{ color: detail.stageGlow }}
             >
               {STAGE_ANIMATION[detail.stage]}
@@ -598,7 +667,7 @@ function CheckpointPanel({
         {!isLocked &&
           (detail.status !== "completed" || isActiveNode) &&
           (detail.status !== "gold" || isActiveNode) && (
-            <div className="p-4 pt-0">
+            <div className="p-3 sm:p-4 md:p-5 lg:p-6 pt-0">
               <motion.button
                 onClick={() => {
                   audioManager.playTouch(canAdvance ? "confirm" : "error");
@@ -613,7 +682,7 @@ function CheckpointPanel({
                   canAdvance && !isAdvancing ? { scale: 1.02, y: -2 } : {}
                 }
                 whileTap={canAdvance && !isAdvancing ? { scale: 0.98 } : {}}
-                className="w-full py-3.5 rounded-xl text-[12px] tracking-[0.1em] uppercase font-black transition-all duration-300 relative overflow-hidden"
+                className="w-full py-3 sm:py-3.5 md:py-4 lg:py-4.5 rounded-lg sm:rounded-xl text-[11px] sm:text-[12px] md:text-sm lg:text-base tracking-[0.1em] uppercase font-black transition-all duration-300 relative overflow-hidden"
                 style={{
                   background: isGold
                     ? "linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(202, 138, 4, 0.1))"
@@ -727,7 +796,7 @@ function TaskCard({
       }}
       whileHover={locked || task.done ? {} : { x: 4 }}
       whileTap={locked || task.done ? {} : { scale: 0.98 }}
-      className="flex items-start gap-3.5 px-4 py-3 rounded-xl relative overflow-hidden cursor-pointer group/task transition-colors"
+      className="flex items-start gap-2.5 sm:gap-3.5 md:gap-4 px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 md:py-3.5 lg:py-4 rounded-lg sm:rounded-xl relative overflow-hidden cursor-pointer group/task transition-colors"
       style={{
         background: task.done
           ? "rgba(99, 102, 241, 0.05)"
@@ -746,13 +815,13 @@ function TaskCard({
       )}
       {/* Left accent bar */}
       <div
-        className="absolute left-0 top-0 bottom-0 w-[4px] rounded-l-xl"
+        className="absolute left-0 top-0 bottom-0 w-[3px] sm:w-[4px] rounded-l-lg sm:rounded-l-xl"
         style={{ background: task.done ? "#818cf8" : accentColor }}
       />
 
       {/* Check circle */}
       <motion.div
-        className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[11px] font-bold"
+        className="w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[10px] sm:text-[11px] font-bold"
         style={{
           background: task.done ? "#6366f1" : "rgba(255,255,255,0.05)",
           border: `1.5px solid ${task.done ? "#6366f1" : "rgba(255,255,255,0.15)"}`,
@@ -765,33 +834,33 @@ function TaskCard({
       </motion.div>
 
       <div className="flex-1 min-w-0 relative z-10">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-0.5 sm:mb-1">
           <span
-            className="text-[10px] tracking-[0.1em] font-bold uppercase"
+            className="text-[9px] sm:text-[10px] tracking-[0.1em] font-bold uppercase"
             style={{ color: accentColor }}
           >
             {task.label}
           </span>
         </div>
-        <p className="text-[13px] leading-relaxed text-slate-300 font-medium">
+        <p className="text-[12px] sm:text-[13px] leading-relaxed text-slate-300 font-medium">
           {task.description}
         </p>
-        <p className="text-[10px] tracking-[0.1em] mt-2 font-semibold uppercase text-slate-500">
+        <p className="text-[9px] sm:text-[10px] tracking-[0.1em] mt-1.5 sm:mt-2 font-semibold uppercase text-slate-500">
           {task.tool}
         </p>
         {evaluationSummary?.isPending && (
-          <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
+          <p className="mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
             AI evaluating...
           </p>
         )}
         {evaluationSummary?.evaluation && (
-          <div className="mt-2 space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-300">
+          <div className="mt-1.5 sm:mt-2 space-y-0.5 sm:space-y-1">
+            <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-300">
               {evaluationSummary.evaluation.qualityTier} ·{" "}
               {evaluationSummary.evaluation.totalScore}/12
             </p>
             {evaluationSummary.evaluation.feedback && (
-              <p className="text-[11px] leading-relaxed text-slate-400">
+              <p className="text-[10px] sm:text-[11px] leading-relaxed text-slate-400">
                 {evaluationSummary.evaluation.feedback}
               </p>
             )}
@@ -886,7 +955,7 @@ function StageResetNotice({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 8 }}
-      className="absolute bottom-28 left-1/2 z-40 w-[min(92vw,520px)] -translate-x-1/2"
+      className="absolute bottom-16 left-1/2 z-40 w-[min(92vw,520px)] -translate-x-1/2 sm:bottom-28"
     >
       <div className="rounded-2xl border border-indigo-400/20 bg-slate-950/85 p-4 text-center shadow-2xl backdrop-blur-xl relative group">
         <motion.button
@@ -926,7 +995,7 @@ function TourToggle({ onToggle }: { onToggle: () => void }) {
       transition={{ delay: 1 }}
       onClick={onToggle}
       onMouseEnter={() => audioManager.playUI("hover")}
-      className="absolute bottom-52 right-2 z-20 flex h-9 w-9 items-center justify-center rounded-full text-[14px] shadow-lg backdrop-blur-xl sm:bottom-32 sm:right-4 sm:h-10 sm:w-10 sm:text-[16px] md:bottom-26 md:right-5 lg:bottom-24"
+      className="absolute bottom-20 right-2 z-20 flex h-9 w-9 items-center justify-center rounded-full text-[14px] shadow-lg backdrop-blur-xl sm:bottom-24 sm:right-4 sm:h-10 sm:w-10 sm:text-[16px] md:bottom-26 md:right-5 lg:bottom-24"
       style={{
         background: "rgba(15, 23, 42, 0.6)",
         border: "1px solid rgba(255, 255, 255, 0.1)",
@@ -941,35 +1010,7 @@ function TourToggle({ onToggle }: { onToggle: () => void }) {
   );
 }
 
-/** Audio mute toggle */
-function AudioToggle({
-  muted,
-  onToggle,
-}: {
-  muted: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <motion.button
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: 1 }}
-      onClick={onToggle}
-      onMouseEnter={() => audioManager.playUI("hover")}
-      className="absolute bottom-40 right-2 z-20 flex h-9 w-9 items-center justify-center rounded-full text-[14px] shadow-lg backdrop-blur-xl sm:bottom-20 sm:right-4 sm:h-10 sm:w-10 sm:text-[16px] md:bottom-14 md:right-5 lg:bottom-12"
-      style={{
-        background: "rgba(15, 23, 42, 0.6)",
-        border: "1px solid rgba(255, 255, 255, 0.1)",
-        color: muted ? "#64748b" : "#e2e8f0",
-      }}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
-      title={muted ? "Unmute" : "Mute"}
-    >
-      {muted ? "🔇" : "🔊"}
-    </motion.button>
-  );
-}
+
 
 /** Loading screen */
 function LoadingScreen() {
@@ -1095,6 +1136,30 @@ function MapPageInner() {
   const setTemplateMetricAtom = useSetAtom(templateMetricAtom);
   const [audioSettings, setAudioSettings] = useAtom(audioSettingsAtom);
 
+  // ── Initialize audio settings from audioManager on first load ──────────────
+  useEffect(() => {
+    // Force reset to 100% volume if user has old localStorage values
+    const VOLUME_VERSION = "v2"; // Increment this to force reset
+    const savedVersion = localStorage.getItem("audioVolumeVersion");
+
+    if (savedVersion !== VOLUME_VERSION) {
+      // Clear old audio settings and set new defaults
+      localStorage.removeItem("audioVolumes");
+      localStorage.setItem("audioVolumeVersion", VOLUME_VERSION);
+      console.log("[Audio] Resetting to 100% volume defaults");
+    }
+
+    // Sync atom with audioManager's localStorage values (or defaults)
+    const volumes = audioManager.getVolumes();
+    setAudioSettings({
+      masterVolume: volumes.master,
+      musicVolume: volumes.music,
+      sfxVolume: volumes.sfx,
+      uiVolume: volumes.ui,
+      muted: volumes.muted,
+    });
+  }, []); // Run once on mount
+
   // ── Convex queries ─────────────────────────────────────────────────────────
   const ventures = useQuery(api.worldMap.getVenturesByUser);
 
@@ -1145,9 +1210,9 @@ function MapPageInner() {
     api.aiScoring.getStageQualityScore,
     activeVenture && worldMapData?.venture
       ? {
-          ventureId: activeVenture._id,
-          stageNumber: worldMapData.venture.currentStage,
-        }
+        ventureId: activeVenture._id,
+        stageNumber: worldMapData.venture.currentStage,
+      }
       : "skip",
   );
 
@@ -1161,6 +1226,9 @@ function MapPageInner() {
   const advanceCheckpoint = useMutation(api.ventures.advanceCheckpoint);
   const ensureVentureStructure = useMutation(
     api.ventures.ensureVentureStructure,
+  );
+  const backfillPendingEvaluations = useMutation(
+    api.worldMap.backfillPendingEvaluations,
   );
   const seedFlags = useMutation(api.aiScoring.seedFeatureFlags);
   const savePersonaGender = useMutation(api.worldMap.savePersonaGender);
@@ -1240,10 +1308,10 @@ function MapPageInner() {
     api.interCheckpoint.getInterCheckpointEvents,
     activeVenture
       ? {
-          ventureId: activeVenture._id,
-          currentStage: activeVenture.currentStage,
-          currentCheckpoint: activeVenture.currentCheckpoint,
-        }
+        ventureId: activeVenture._id,
+        currentStage: activeVenture.currentStage,
+        currentCheckpoint: activeVenture.currentCheckpoint,
+      }
       : "skip"
   );
 
@@ -1348,6 +1416,13 @@ function MapPageInner() {
       structureEnsuredForRef.current = null;
     });
   }, [activeVenture?._id, ensureVentureStructure]);
+
+  useEffect(() => {
+    if (!activeVenture?._id) return;
+    backfillPendingEvaluations().catch((error) => {
+      console.error("[MapPage] Failed to backfill pending evaluations:", error);
+    });
+  }, [activeVenture?._id, backfillPendingEvaluations]);
 
   // ── Detect gold checkpoint notifications ──────────────────────────────────
   useEffect(() => {
@@ -1571,7 +1646,7 @@ function MapPageInner() {
       savePersonaGender({
         ventureId: activeVenture._id,
         gender: selectedGender,
-      }).catch(() => {});
+      }).catch(() => { });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeVenture?._id, selectedGender]);
@@ -1615,13 +1690,13 @@ function MapPageInner() {
   const xpPercent = levelData?.progress ?? 0;
   const levelPhase = levelData?.phase
     ? (() => {
-        const p = levelData.phase as string;
-        if (p === "tutorial") return 1;
-        if (p === "early") return 2;
-        if (p === "mid") return 3;
-        if (p === "senior") return 4;
-        return 5; // mentor
-      })()
+      const p = levelData.phase as string;
+      if (p === "tutorial") return 1;
+      if (p === "early") return 2;
+      if (p === "mid") return 3;
+      if (p === "senior") return 4;
+      return 5; // mentor
+    })()
     : 1;
 
   // Streak from Convex
@@ -1945,6 +2020,12 @@ function MapPageInner() {
       ventureId: venture._id,
       templateId: venture.templateId ?? "venture",
       personaGender: selectedGender,
+      userName: currentUser?.displayName || currentUser?.username || "User",
+      userImageUrl: currentUser?.displayName
+        ? `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(currentUser.displayName)}&size=128&backgroundColor=transparent`
+        : currentUser?.username
+          ? `https://api.dicebear.com/7.x/adventurer/png?seed=${encodeURIComponent(currentUser.username)}&size=128&backgroundColor=transparent`
+          : "https://api.dicebear.com/7.x/adventurer/png?seed=User&size=128&backgroundColor=transparent",
       assignedBosses: Array.isArray(venture.assignedBosses)
         ? venture.assignedBosses.map(String)
         : [],
@@ -1952,18 +2033,18 @@ function MapPageInner() {
       corruptionLevel,
       superBoss: superBoss
         ? {
-            bossSlug: superBoss.bossSlug,
-            bossName:
-              superBoss.definition?.name ??
-              superBoss.bossName ??
-              "Unknown Boss",
-            visualStatus: superBoss.visualStatus,
-            status: superBoss.status,
-            defeatVariant:
-              worldMapData?.projectState === "project_perfect"
-                ? "gold"
-                : "standard",
-          }
+          bossSlug: superBoss.bossSlug,
+          bossName:
+            superBoss.definition?.name ??
+            superBoss.bossName ??
+            "Unknown Boss",
+          visualStatus: superBoss.visualStatus,
+          status: superBoss.status,
+          defeatVariant:
+            worldMapData?.projectState === "project_perfect"
+              ? "gold"
+              : "standard",
+        }
         : undefined,
     } as Parameters<typeof eventBridge.dispatchToPhaser>[0]);
 
@@ -2080,6 +2161,10 @@ function MapPageInner() {
     },
     [selectedDetail, setSubmittingTask],
   );
+
+  // Stable ref so handleTaskSubmissionSuccess can call handleAdvance
+  // without creating a circular useCallback dependency.
+  const handleAdvanceRef = useRef<(forceBypass?: boolean) => void>(() => { });
 
   const handleTaskSubmissionSuccess = useCallback(
     ({
@@ -2279,6 +2364,14 @@ function MapPageInner() {
           setActiveTaskAtom(null);
         }
 
+        // ── Auto-advance when the checkpoint is now ready (≥2 tasks done) ──
+        // Delay gives the badge animation time to breathe before transitioning.
+        if (doneCount >= 2) {
+          setTimeout(() => {
+            handleAdvanceRef.current();
+          }, 1800);
+        }
+
         return {
           ...current,
           status:
@@ -2304,7 +2397,7 @@ function MapPageInner() {
   );
 
   // ── Advance checkpoint → Convex mutation ──────────────────────────────────
-  const handleAdvance = useCallback(async () => {
+  const handleAdvance = useCallback(async (forceBypass = false) => {
     if (!selectedDetail || !venture || isAdvancingCheckpoint) return;
 
     // Find the real Convex checkpoint document
@@ -2328,7 +2421,7 @@ function MapPageInner() {
       return true;
     }) ?? [];
 
-    if (unresolvedEvents.length > 0 && !bypassInterCheckpoint) {
+    if (unresolvedEvents.length > 0 && !bypassInterCheckpoint && !forceBypass) {
       setInterCheckpointQueue(unresolvedEvents as any);
       return;
     }
@@ -2402,6 +2495,7 @@ function MapPageInner() {
         checkpointId: cp._id as Id<"ventureCheckpoints">,
       });
 
+      // Reset bypass flag AFTER successful advance
       setBypassInterCheckpoint(false);
 
       // ── Level (checkpoint) badge — rarity based on corruption meter ────
@@ -2574,7 +2668,12 @@ function MapPageInner() {
     phaserReady,
     corruptionLevel,
     setBadgeQueue,
+    bypassInterCheckpoint,
+    interCheckpointData,
   ]);
+
+  // Keep handleAdvanceRef always pointing at the latest handleAdvance
+  handleAdvanceRef.current = handleAdvance;
 
   // ── Destroy audio on unmount ──────────────────────────────────────────────
   useEffect(() => {
@@ -2634,6 +2733,11 @@ function MapPageInner() {
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
       `}</style>
 
+      {/* ── Custom Map Navbar ─────────────────────────────────────────────────── */}
+      <div className="absolute inset-x-0 top-0 z-[70] pointer-events-auto">
+        <MapNavbar />
+      </div>
+
       {/* Phaser canvas - Fully responsive */}
       <div
         ref={containerRef}
@@ -2675,44 +2779,7 @@ function MapPageInner() {
       </AnimatePresence>
 
       {/* No venture state */}
-      {!isLoading && !activeVenture && phaserReady && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center backdrop-blur-md">
-          <div
-            className="text-center px-10 py-12 rounded-3xl"
-            style={{
-              background: "rgba(10, 15, 30, 0.8)",
-              border: "1px solid rgba(255, 255, 255, 0.05)",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
-            }}
-          >
-            <p
-              className="text-xs tracking-[0.2em] uppercase font-black mb-4"
-              style={{ color: "#6366f1" }}
-            >
-              No Active Venture
-            </p>
-            <p
-              className="text-sm font-medium mb-8"
-              style={{ color: "#94a3b8" }}
-            >
-              Create a venture to begin your journey
-            </p>
-            <Link
-              href="/venture/create"
-              className="px-6 py-3 rounded-xl text-xs tracking-wider font-bold uppercase transition-all duration-300 hover:scale-105"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(79, 70, 229, 0.1))",
-                border: "1px solid rgba(99, 102, 241, 0.4)",
-                color: "#818cf8",
-                boxShadow: "0 4px 20px rgba(99, 102, 241, 0.15)",
-              }}
-            >
-              Create Venture →
-            </Link>
-          </div>
-        </div>
-      )}
+
 
       {phaserReady && activeVenture && (
         <>
@@ -2739,18 +2806,7 @@ function MapPageInner() {
             <div className="pointer-events-none absolute inset-0 z-[13] animate-pulse border-[10px] border-red-500/25" />
           )}
 
-          <AnimatePresence>
-            {showPhaseBanner && activeStage <= PHASE_ONE_STAGE_LIMIT && (
-              <PhaseLaunchBanner
-                onOpenRoadmap={() => {
-                  setActiveToolsTab("roadmap");
-                  setIsToolsPanelOpen(true);
-                  setSelectedDetail(null);
-                }}
-                onClose={() => setShowPhaseBanner(false)}
-              />
-            )}
-          </AnimatePresence>
+          {/* Phase banner removed per user request */}
 
           <AnimatePresence>
             {showStageResetNotice && brightness && (
@@ -2762,12 +2818,11 @@ function MapPageInner() {
             )}
           </AnimatePresence>
 
-          {/* Primary HUD — reads from Jotai atoms populated by Convex data */}
-          {activeVenture?.templateId && activeVenture.templateId !== "venture" ? (
-            <TemplateHUD />
-          ) : (
-            <HUD />
-          )}
+          {/* Quest List - floating top-right panel (manages own positioning) */}
+          <QuestList />
+
+          {/* Boss HP Bar - shows when corruption > 60% */}
+          <BossHPBar />
 
           {/* Real-time Presence & Activity Feed Overlay */}
           <LiveActivityFeed />
@@ -2779,21 +2834,7 @@ function MapPageInner() {
             stages={templateStages}
           />
 
-          {/* Audio toggle — syncs Jotai atom AND audioManager */}
-          <AudioToggle
-            muted={audioSettings.muted}
-            onToggle={() => {
-              audioManager.unlock();
-              if (audioSettings.muted) {
-                audioManager.setMuted(false);
-                audioManager.playUI("click");
-              } else {
-                audioManager.playUI("click");
-                audioManager.setMuted(true);
-              }
-              setAudioSettings((prev) => ({ ...prev, muted: !prev.muted }));
-            }}
-          />
+
 
           {/* World Map Tour Walkthrough */}
           <WorldMapTour
@@ -2827,7 +2868,7 @@ function MapPageInner() {
             onSkip={() => setBadgeQueue((q) => q.slice(1))}
           />
 
-           {/* Gold checkpoint notification popup */}
+          {/* Gold checkpoint notification popup */}
           <GoldCheckpointPopup
             isVisible={!!goldCheckpointNotification}
             ventureName={goldCheckpointNotification?.ventureName ?? ""}
@@ -2848,18 +2889,21 @@ function MapPageInner() {
               onComplete={() => {
                 setBypassInterCheckpoint(true);
                 setInterCheckpointQueue([]);
-                // Trigger the advance since the events are now resolved
+                // Trigger the advance since the events are now resolved.
+                // Small delay lets the overlay exit animation finish first,
+                // then handleAdvance fires the checkpoint animation + persona walk.
                 setTimeout(() => {
-                  handleAdvance();
-                }, 50);
+                  handleAdvance(true);
+                }, 300);
               }}
               onClose={() => setInterCheckpointQueue([])}
             />
           )}
 
-          {/* Left Sidebar Trigger */}
-          <div className="absolute left-2 bottom-24 z-50 sm:bottom-auto sm:left-4 sm:top-1/2 sm:-translate-y-1/2 md:left-3 lg:left-4">
+          {/* Left Sidebar Trigger — responsive positioning */}
+          <div className="absolute left-2 top-1/2 -translate-y-1/2 z-50 sm:left-3 md:left-4 lg:left-5">
             <LeftSidebar
+              ventureName={ideaTitle}
               onOpenPanel={(tab) => {
                 setActiveToolsTab(tab);
                 setIsToolsPanelOpen(true);

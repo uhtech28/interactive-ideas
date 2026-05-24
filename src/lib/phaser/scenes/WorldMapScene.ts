@@ -307,6 +307,8 @@ export class WorldMapScene extends Phaser.Scene {
       ventureId: string;
       templateId?: TemplateId;
       personaGender: "male" | "female";
+      userName?: string;
+      userImageUrl?: string;
       assignedBosses?: string[];
       currentStage?: number;
       corruptionLevel?: number;
@@ -393,8 +395,9 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   private buildWorldForCurrentTemplate(): void {
-    this.cameras.main.setBounds(0, 0, this.MAP_WIDTH, this.MAP_HEIGHT);
-    this.physics.world.setBounds(0, 0, this.MAP_WIDTH, this.MAP_HEIGHT);
+    // Extend vertical bounds to MAP_HEIGHT + 160 to make the bottom of all map panels fully visible under full zoom
+    this.cameras.main.setBounds(0, 0, this.MAP_WIDTH, this.MAP_HEIGHT + 160);
+    this.physics.world.setBounds(0, 0, this.MAP_WIDTH, this.MAP_HEIGHT + 160);
 
     this.createBiomeZones();
     this.createTilemap();
@@ -670,6 +673,12 @@ export class WorldMapScene extends Phaser.Scene {
       const stageFillZoom = width / this.BIOME_WIDTH;
       zoom = Math.max(zoom, stageFillZoom * 0.92);
     }
+
+    // Ensure the entire height of the panel fits responsively on the screen without vertical cutting
+    const panelH = this.map.heightInPixels * this.MAP_PANEL_SCALE; // ~912px
+    const totalContentHeight = panelH + 200; // ~1112px
+    const stageHeightFillZoom = height / totalContentHeight;
+    zoom = Math.min(zoom, stageHeightFillZoom * 0.98);
 
     zoom = Phaser.Math.Clamp(zoom, 0.32, 1.25);
 
@@ -2329,9 +2338,9 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   // ─────────────────────────────────────────────────────────────
-  //  STAGE 7 · CROSSROADS  —  Twilight forest junction
-  //  Ground: deep violet-blue  |  Props: purple-tinted trees, fireflies
-  //  Path: moonlit dirt + vertical crossroad  |  Atmosphere: eerie glow
+  //  STAGE 7 · CROSSROADS  —  Enhanced Twilight Town
+  //  Rich tilemap with houses, gardens, trees, flowers, and decorations
+  //  Ground: twilight violet  |  Path: crossroads  |  Props: full town
   // ─────────────────────────────────────────────────────────────
 
   private createCrossroadsTilePanel(
@@ -2341,207 +2350,650 @@ export class WorldMapScene extends Phaser.Scene {
     biome: BiomeConfig,
     biomeIndex: number,
   ): void {
-    const tileSize = 16 * scale;
-    const cols = this.map.width;
-    const rows = this.map.height;
-    const toX = (x: number) => panelX + x * tileSize;
-    const toY = (y: number) => panelOffsetY + y * tileSize;
-    const midRow = rows / 2;
-    const midCol = cols / 2;
-    const panelW = cols * tileSize;
-    const panelH = rows * tileSize;
-    const midY = toY(midRow);
-    const midXw = toX(midCol);
-
-    // ── BASE GROUND: deep twilight violet ────────────────────
-    const ground = this.add.graphics();
-    ground.fillStyle(0x13082a, 1);
-    ground.fillRect(panelX, panelOffsetY, panelW, panelH);
-    ground.setDepth(1);
-    this.backgroundLayer.add(ground);
-
-    // ── TILE TEXTURE ─────────────────────────────────────────
-    const tex = this.add.graphics();
-    tex.setDepth(2);
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const shade = (r + c) % 2 === 0 ? 0x180a30 : 0x110726;
-        tex.fillStyle(shade, 0.5);
-        tex.fillRect(toX(c), toY(r), tileSize, tileSize);
-      }
+    const TILE_SIZE = 16 * scale;
+    const COLS = this.map.width;
+    const ROWS = this.map.height;
+    const midRow = Math.floor(ROWS / 2);
+    const midCol = Math.floor(COLS / 2);
+    
+    // Spectacular warm sunset orange & golden autumn theme
+    const COLORS = {
+      sky: 0x240f03,          // Deepest velvety rich dark amber/chocolate
+      ground: 0x2d1304,        // Warm amber-brown ground
+      groundAlt: 0x291103,     // Slightly darker amber-brown
+      grass: 0x451a03,         // Warm autumn auburn/dark orange grass
+      grassDark: 0x1c0700,     // Deep autumn grass shadow
+      path: 0x4a2708,          // Sophisticated dark golden paths
+      pathEdge: 0xb45309,      // Glowing amber edges for paths
+      accent: 0xd97706,        // Vibrant amber/orange highlight
+      highlight: 0xf59e0b,     // Soft golden/orange glows
+      glow: 0xfef08a,          // Soft warm gold ambient light
+      tree: 0x5c2b03,          // Mystical dark redwood canopy
+      treeDark: 0x271000,      // Deep redwood shadow
+      flower: 0xf97316,        // Vibrant orange sunset flower
+      flowerGlow: 0xffedd5,    // Soft warm cream/peach glow
+    };
+    
+    // Check if external tileset is loaded (optional enhancement)
+    const hasExternalTileset = this.textures.exists('stage7-tileset');
+    
+    if (hasExternalTileset) {
+      this.createCrossroadsWithExternalTileset(panelX, panelOffsetY, scale, TILE_SIZE, COLS, ROWS, COLORS);
+    } else {
+      // Enhanced version with more details
+      this.createEnhancedCrossroadsTown(panelX, panelOffsetY, scale, TILE_SIZE, COLS, ROWS, midRow, midCol, COLORS);
     }
-    this.backgroundLayer.add(tex);
+  }
 
-    // ── VERTICAL CROSSROAD PATH ───────────────────────────────
-    const vpath = this.add.graphics();
-    vpath.fillStyle(0x1e0d40, 1);
-    vpath.fillRect(midXw - 14, panelOffsetY, 28, panelH);
-    vpath.fillStyle(0x7c3aed, 0.08);
-    vpath.fillRect(midXw - 14, panelOffsetY, 2, panelH);
-    vpath.fillRect(midXw + 12, panelOffsetY, 2, panelH);
-    // Centre dash
-    vpath.fillStyle(0xa78bfa, 0.1);
-    for (let r = 1; r < rows; r += 3) {
-      vpath.fillRect(midXw - 2, toY(r), 4, tileSize * 1.4);
-    }
-    vpath.setDepth(3);
-    this.backgroundLayer.add(vpath);
-
-    // ── HORIZONTAL MAIN PATH ─────────────────────────────────
-    const path = this.add.graphics();
-    path.fillStyle(0x1e0d40, 1);
-    path.fillRect(panelX, midY - 14, panelW, 28);
-    path.fillStyle(0xa78bfa, 0.08);
-    path.fillRect(panelX, midY - 15, panelW, 2);
-    path.fillRect(panelX, midY + 13, panelW, 2);
-    // Centre dash on horizontal road
-    path.fillStyle(0xa78bfa, 0.1);
-    for (let c = 2; c < cols - 2; c += 3) {
-      path.fillRect(toX(c), midY - 2, tileSize * 1.4, 4);
-    }
-    path.setDepth(4);
-    this.backgroundLayer.add(path);
-
-    // ── STONE PLINTH at intersection ─────────────────────────
-    const plinth = this.add.graphics();
-    plinth.setDepth(5);
-    plinth.fillStyle(0x3b1d6e, 0.85);
-    plinth.fillRect(midXw - 10, midY - 10, 20, 20);
-    plinth.fillStyle(0x5b2ea3, 0.4);
-    plinth.fillRect(midXw - 8, midY - 8, 16, 3);
-    this.backgroundLayer.add(plinth);
-
-    // ── FENCE LINES (both sides of both roads) ────────────────
-    const fenceG = this.add.graphics();
-    fenceG.setDepth(5);
-    // Top fence (left of vertical road)
-    this.drawFenceRow(
-      fenceG,
-      toX(3),
-      midY - 30,
-      midXw - toX(3) - 16,
-      0x4a2880,
-      0x3a1e6a,
-      22,
+  private createCrossroadsWithExternalTileset(
+    panelX: number,
+    panelOffsetY: number,
+    scale: number,
+    tileSize: number,
+    cols: number,
+    rows: number,
+    colors: Record<string, number>,
+  ): void {
+    // Create tiled background using external tileset
+    const tilemap = this.add.tileSprite(
+      panelX,
+      panelOffsetY,
+      cols * tileSize,
+      rows * tileSize,
+      'stage7-tileset'
     );
-    // Top fence (right of vertical road)
-    this.drawFenceRow(
-      fenceG,
-      midXw + 16,
-      midY - 30,
-      toX(cols - 3) - midXw - 16,
-      0x4a2880,
-      0x3a1e6a,
-      22,
+    tilemap.setOrigin(0, 0);
+    tilemap.setTint(colors.glow);
+    tilemap.setDepth(1);
+    this.backgroundLayer.add(tilemap);
+    
+    // Add crossroads paths
+    const midRow = Math.floor(rows / 2);
+    const midCol = Math.floor(cols / 2);
+    
+    // Horizontal road
+    const hRoad = this.add.rectangle(
+      panelX + (cols * tileSize) / 2,
+      panelOffsetY + midRow * tileSize,
+      cols * tileSize,
+      tileSize * 3,
+      colors.ground,
+      1
     );
-    // Bottom fence (left)
-    this.drawFenceRow(
-      fenceG,
-      toX(3),
-      midY + 18,
-      midXw - toX(3) - 16,
-      0x4a2880,
-      0x3a1e6a,
-      22,
+    hRoad.setDepth(2);
+    this.backgroundLayer.add(hRoad);
+    
+    // Vertical road
+    const vRoad = this.add.rectangle(
+      panelX + midCol * tileSize,
+      panelOffsetY + (rows * tileSize) / 2,
+      tileSize * 3,
+      rows * tileSize,
+      colors.ground,
+      1
     );
-    // Bottom fence (right)
-    this.drawFenceRow(
-      fenceG,
-      midXw + 16,
-      midY + 18,
-      toX(cols - 3) - midXw - 16,
-      0x4a2880,
-      0x3a1e6a,
-      22,
-    );
-    this.backgroundLayer.add(fenceG);
-
-    // ── SCATTERED PROPS: twilight trees + fireflies ───────────
-    const props = this.add.graphics();
-    props.setDepth(6);
-
-    // Purple-tinted forest trees (in each quadrant)
-    [
-      // Top-left quadrant
-      [5, midRow - 4],
-      [9, midRow - 7],
-      [14, midRow - 5],
-      // Top-right quadrant
-      [cols / 2 + 3, midRow - 4],
-      [cols / 2 + 8, midRow - 7],
-      [cols / 2 + 14, midRow - 5],
-      // Bottom-left quadrant
-      [5, midRow + 3],
-      [10, midRow + 6],
-      [15, midRow + 4],
-      // Bottom-right quadrant
-      [cols / 2 + 3, midRow + 3],
-      [cols / 2 + 9, midRow + 6],
-      [cols / 2 + 15, midRow + 4],
-    ].forEach(([c, r]) => {
-      this.drawPixelTree(
-        props,
-        toX(c),
-        toY(r),
-        0x3d1d6e,
-        0x2d0f5a,
-        0x160730,
-        scale,
-      );
-    });
-
-    // Mushroom-like glowing plants (small ellipses)
-    [
-      [7, midRow - 2],
-      [12, midRow + 2],
-      [cols / 2 + 5, midRow - 2],
-      [cols / 2 + 11, midRow + 2],
-      [cols / 2 + 18, midRow - 3],
-    ].forEach(([c, r]) => {
-      props.fillStyle(0x6d28d9, 0.5);
-      props.fillEllipse(toX(c), toY(r), 10, 7);
-      props.fillStyle(0xa78bfa, 0.3);
-      props.fillEllipse(toX(c), toY(r) - 3, 6, 4);
-    });
-
-    // Firefly glow dots
-    props.setBlendMode(Phaser.BlendModes.ADD);
-    [
-      [6, midRow - 3],
-      [13, midRow + 1.5],
-      [20, midRow - 5],
-      [cols / 2 + 4, midRow - 2.5],
-      [cols / 2 + 12, midRow + 2],
-      [cols / 2 + 18, midRow - 4],
-      [8, midRow + 4],
-      [cols / 2 + 7, midRow + 4],
-    ].forEach(([c, r]) => {
-      props.fillStyle(0xa78bfa, 0.38);
-      props.fillEllipse(toX(c), toY(r), 5, 5);
-      props.fillStyle(0xddd6fe, 0.12);
-      props.fillEllipse(toX(c), toY(r), 13, 13);
-    });
-    this.backgroundLayer.add(props);
-
-    // ── SPRITES ───────────────────────────────────────────────
-    if (this.textures.exists("House_Hay_2")) {
-      const house = this.add.sprite(toX(21), toY(midRow - 5.2), "House_Hay_2");
-      house.setOrigin(0.5, 1);
-      house.setScale(scale);
-      house.setTint(0xc4b5fd);
-      house.setDepth(8);
-      this.midgroundLayer.add(house);
-    }
-    if (this.textures.exists("LampPost_3")) {
-      [16, 26].forEach((cx) => {
-        const lp = this.add.sprite(toX(cx), toY(midRow + 1.5), "LampPost_3");
-        lp.setOrigin(0.5, 1);
-        lp.setScale(scale);
-        lp.setTint(0xddd6fe);
-        lp.setDepth(9);
-        this.midgroundLayer.add(lp);
+    vRoad.setDepth(2);
+    this.backgroundLayer.add(vRoad);
+    
+    // Add buildings if available
+    if (this.textures.exists('stage7-buildings')) {
+      const buildingPositions = [
+        { x: 5, y: 10 },
+        { x: 15, y: 8 },
+        { x: 25, y: 12 },
+      ];
+      
+      buildingPositions.forEach(pos => {
+        const building = this.add.sprite(
+          panelX + pos.x * tileSize,
+          panelOffsetY + pos.y * tileSize,
+          'stage7-buildings'
+        );
+        building.setOrigin(0.5, 1);
+        building.setScale(scale);
+        building.setTint(colors.glow);
+        building.setDepth(8);
+        this.midgroundLayer.add(building);
       });
     }
+    
+    // Intersection marker
+    const marker = this.add.circle(
+      panelX + midCol * tileSize,
+      panelOffsetY + midRow * tileSize,
+      tileSize * 0.8,
+      colors.accent,
+      0.5
+    );
+    marker.setDepth(3);
+    this.backgroundLayer.add(marker);
+  }
+
+  private createEnhancedCrossroadsTown(
+    panelX: number,
+    panelOffsetY: number,
+    scale: number,
+    tileSize: number,
+    cols: number,
+    rows: number,
+    midRow: number,
+    midCol: number,
+    colors: Record<string, number>,
+  ): void {
+    const GROUND = 0,
+      GRASS = 1,
+      PATH_H = 2,
+      PATH_V = 3,
+      HOUSE = 4,
+      GARDEN = 5,
+      TREE = 6,
+      FLOWER = 7,
+      LAMP = 8,
+      BUSH = 9,
+      ROCK = 10,
+      WELL = 11;
+
+    const panelW = cols * tileSize;
+    const panelH = rows * tileSize;
+
+    // Draw high-fidelity gradient base ground for Crossroads Town
+    const baseGround = this.add.graphics();
+    baseGround.setDepth(1);
+    
+    const gradientSteps = 24;
+    for (let i = 0; i < gradientSteps; i++) {
+      const t = i / gradientSteps;
+      const stepH = panelH / gradientSteps;
+      const y = panelOffsetY + i * stepH;
+      
+      // Interpolate from deep dark space amber/black (0x140701) to rich glowing warm sunset orange (0x5a2003)
+      const rStart = 20, gStart = 7, bStart = 1;
+      const rEnd = 90, gEnd = 32, bEnd = 3;
+      
+      const r = Math.floor(rStart + (rEnd - rStart) * t);
+      const g = Math.floor(gStart + (gEnd - gStart) * t);
+      const b = Math.floor(bStart + (bEnd - bStart) * t);
+      const color = (r << 16) | (g << 8) | b;
+      
+      baseGround.fillStyle(color, 1);
+      baseGround.fillRect(panelX, y, panelW, stepH + 1);
+    }
+    this.backgroundLayer.add(baseGround);
+
+    // Add floating magical twilight fireflies
+    for (let i = 0; i < 20; i++) {
+      const fx = panelX + Math.random() * panelW;
+      const fy = panelOffsetY + Math.random() * panelH;
+      const size = 1.5 + Math.random() * 1.5;
+      
+      const firefly = this.add.circle(fx, fy, size, 0xf59e0b, 0.85);
+      firefly.setDepth(12);
+      firefly.setBlendMode(Phaser.BlendModes.ADD);
+      this.animationLayer.add(firefly);
+      
+      // Floating animation
+      this.tweens.add({
+        targets: firefly,
+        x: fx + (Math.random() - 0.5) * 20,
+        y: fy + (Math.random() - 0.5) * 20,
+        alpha: { from: 0.2, to: 0.9 },
+        scale: { from: 0.7, to: 1.3 },
+        duration: 2000 + Math.random() * 2000,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut"
+      });
+    }
+
+    // 8 beautifully planned estates with two trees each and exact checkpoint alignment
+    const estates = [
+      // --- TOP-LEFT QUADRANT (2 houses) ---
+      {
+        houseRow: 5, houseCol: 5,
+        trees: [[4, 4], [4, 6]],
+        lawn: { minR: 3, maxR: 7, minC: 3, maxC: 7 },
+        walkway: [[6, 5], [7, 5], [8, 5]]
+      },
+      {
+        houseRow: 5, houseCol: 12,
+        trees: [[4, 11], [4, 13]],
+        lawn: { minR: 3, maxR: 7, minC: 10, maxC: 14 },
+        walkway: [[6, 12], [7, 12], [8, 12]]
+      },
+      
+      // --- TOP-RIGHT QUADRANT (2 houses) ---
+      {
+        houseRow: 5, houseCol: 27,
+        trees: [[4, 26], [4, 28]],
+        lawn: { minR: 3, maxR: 7, minC: 25, maxC: 29 },
+        walkway: [[6, 27], [7, 27], [8, 27]]
+      },
+      {
+        houseRow: 5, houseCol: 34,
+        trees: [[4, 33], [4, 35]],
+        lawn: { minR: 3, maxR: 7, minC: 32, maxC: 36 },
+        walkway: [[6, 34], [7, 34], [8, 34]]
+      },
+      
+      // --- BOTTOM-LEFT QUADRANT (2 houses) ---
+      // House 5: Aligns directly with Checkpoint 1 at (col 7, row 31)
+      {
+        houseRow: 29, houseCol: 7,
+        trees: [[28, 6], [28, 8]],
+        lawn: { minR: 27, maxR: 31, minC: 5, maxC: 9 },
+        walkway: [[30, 7], [31, 7], [32, 7]]
+      },
+      // House 6: Perfectly positioned near the checkpoints with visible background trees
+      {
+        houseRow: 19, houseCol: 15,
+        trees: [[16, 14], [16, 16]],
+        lawn: { minR: 17, maxR: 21, minC: 13, maxC: 17 },
+        walkway: [[20, 15], [21, 15], [22, 15]]
+      },
+      
+      // --- BOTTOM-RIGHT QUADRANT (2 houses) ---
+      // House 7: Perfectly positioned near the checkpoints with visible background trees
+      {
+        houseRow: 19, houseCol: 27,
+        trees: [[16, 26], [16, 28]],
+        lawn: { minR: 17, maxR: 21, minC: 25, maxC: 29 },
+        walkway: [[20, 27], [21, 27], [22, 27]]
+      },
+      // House 8: Moved left to col 33 so Checkpoint 4 is completely visible and the house does not overlap
+      {
+        houseRow: 29, houseCol: 33,
+        trees: [[26, 32], [26, 34]],
+        lawn: { minR: 27, maxR: 31, minC: 31, maxC: 35 },
+        walkway: [[30, 33], [31, 33], [32, 33]]
+      }
+    ];
+
+    // Generate enhanced tilemap with beautiful town layout
+    const levelData: number[][] = Array.from({ length: rows }, (_, row) => 
+      Array.from({ length: cols }, (_, col) => {
+        // 1. Check estate grids first
+        for (const est of estates) {
+          if (row === est.houseRow && col === est.houseCol) {
+            return HOUSE;
+          }
+          for (const [tr, tc] of est.trees) {
+            if (row === tr && col === tc) {
+              return TREE;
+            }
+          }
+          for (const [wr, wc] of est.walkway) {
+            if (row === wr && col === wc) {
+              return PATH_H; // paved stone walkway to main streets
+            }
+          }
+          if (row >= est.lawn.minR && row <= est.lawn.maxR &&
+              col >= est.lawn.minC && col <= est.lawn.maxC) {
+            return GRASS;
+          }
+        }
+
+        // 2. Main crossroads paths (wider)
+        if (row >= midRow - 1 && row <= midRow + 1) return PATH_H;
+        if (col >= midCol - 1 && col <= midCol + 1) return PATH_V;
+        
+        // 3. Side paths creating town blocks
+        if (row === 8 || row === 22) {
+          if (col < midCol - 2 || col > midCol + 2) return PATH_H;
+        }
+        if (col === 8 || col === 22) {
+          if (row < midRow - 2 || row > midRow + 2) return PATH_V;
+        }
+        
+        // 4. Street Junction Lamp Posts (perfectly aligned at path intersections only)
+        if (row === 7 && col === 7) return LAMP;
+        if (row === 7 && col === midCol + 3) return LAMP;
+        if (row === midRow + 3 && col === 7) return LAMP;
+        if (row === midRow + 3 && col === midCol + 3) return LAMP;
+        
+        // 5. Symmetric Wells next to residential estates
+        if (row === 8 && col === 2) return WELL;
+        if (row === 8 && col === cols - 3) return WELL;
+        if (row === midRow + 8 && col === 2) return WELL;
+        if (row === midRow + 8 && col === cols - 3) return WELL;
+        
+        // Decorative rocks/benches next to roads (spaced regularly)
+        if (row === midRow - 2 && (col === 4 || col === cols - 5)) return ROCK;
+        if (row === midRow + 2 && (col === 4 || col === cols - 5)) return ROCK;
+        
+        // 6. Forest Borders (Beautiful outer framing tree lines)
+        if (row === 1 && col % 4 === 0) return TREE;
+        if (row === rows - 2 && col % 4 === 0) return TREE;
+        if (col === 1 && row % 4 === 0) return TREE;
+        if (col === cols - 2 && row % 4 === 0) return TREE;
+        
+        // Default to a perfectly clean background ground
+        return GROUND;
+      })
+    );
+
+    // Render tiles from enhanced 2D array
+    const toX = (col: number) => panelX + col * tileSize + tileSize / 2;
+    const toY = (row: number) => panelOffsetY + row * tileSize + tileSize / 2;
+    
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const tileType = levelData[row][col];
+        const x = toX(col);
+        const y = toY(row);
+        
+        switch (tileType) {
+          case GROUND: {
+            // Let the gorgeous mystical twilight gradient base ground show through
+            break;
+          }
+          
+          case GRASS: {
+            // Semi-transparent grass to blend with the glowing background gradient
+            const tile = this.add.rectangle(x, y, tileSize, tileSize, colors.grass, 0.75);
+            tile.setDepth(1);
+            this.backgroundLayer.add(tile);
+            
+            // Add grass texture
+            const grassDot = this.add.circle(x + (row % 3) - 1, y + (col % 3) - 1, 1, colors.grassDark, 0.5);
+            grassDot.setDepth(2);
+            this.backgroundLayer.add(grassDot);
+            break;
+          }
+          
+          case PATH_H:
+          case PATH_V: {
+            const tile = this.add.rectangle(x, y, tileSize, tileSize, colors.path, 1);
+            tile.setDepth(2);
+            this.backgroundLayer.add(tile);
+            
+            // Path edge highlights
+            if (tileType === PATH_H && (row === midRow - 1 || row === midRow + 1)) {
+              const edge = this.add.rectangle(x, y, tileSize, 2, colors.pathEdge, 0.4);
+              edge.setDepth(3);
+              this.backgroundLayer.add(edge);
+            }
+            break;
+          }
+          
+          case HOUSE: {
+            const ground = this.add.rectangle(x, y, tileSize, tileSize, colors.grass, 1);
+            ground.setDepth(1);
+            this.backgroundLayer.add(ground);
+            
+            // Use existing house sprites if available
+            if (this.textures.exists('House_Hay_1') || this.textures.exists('House_Hay_2')) {
+              const houseKey = (row + col) % 2 === 0 ? 'House_Hay_1' : 'House_Hay_2';
+              if (this.textures.exists(houseKey)) {
+                const house = this.add.sprite(x, y + tileSize / 2, houseKey);
+                house.setOrigin(0.5, 1);
+                house.setScale(scale * 0.9);
+                house.setTint(colors.glow);
+                house.setDepth(8);
+                this.midgroundLayer.add(house);
+                
+                // Add shadow
+                const shadow = this.add.ellipse(x, y + tileSize / 2, tileSize * 0.8, tileSize * 0.3, 0x000000, 0.3);
+                shadow.setDepth(7);
+                this.midgroundLayer.add(shadow);
+              }
+            } else {
+              // Fallback: simple house shape
+              const houseBody = this.add.rectangle(x, y, tileSize * 0.8, tileSize * 0.8, 0x8b7355, 1);
+              houseBody.setDepth(8);
+              this.midgroundLayer.add(houseBody);
+              
+              const roof = this.add.triangle(x, y - tileSize * 0.4, 0, tileSize * 0.4, tileSize * 0.5, -tileSize * 0.2, -tileSize * 0.5, -tileSize * 0.2, 0xd4a574);
+              roof.setDepth(9);
+              this.midgroundLayer.add(roof);
+              
+              // Window glow
+              const window1 = this.add.rectangle(x - 4, y, 3, 3, colors.highlight, 0.8);
+              window1.setDepth(10);
+              this.midgroundLayer.add(window1);
+            }
+            break;
+          }
+          
+          case GARDEN: {
+            const tile = this.add.rectangle(x, y, tileSize, tileSize, colors.grass, 1);
+            tile.setDepth(1);
+            this.backgroundLayer.add(tile);
+            
+            // Garden flowers
+            const flowerColors = [colors.flower, colors.flowerGlow, colors.highlight];
+            const flowerColor = flowerColors[(row + col) % 3];
+            const flower = this.add.circle(x, y, 2, flowerColor, 0.7);
+            flower.setDepth(4);
+            this.backgroundLayer.add(flower);
+            break;
+          }
+          
+          case TREE: {
+            const ground = this.add.rectangle(x, y, tileSize, tileSize, colors.grass, 1);
+            ground.setDepth(1);
+            this.backgroundLayer.add(ground);
+            
+            // Use existing tree sprites if available
+            if (this.textures.exists('Tree_Emerald_1')) {
+              const tree = this.add.sprite(x, y + tileSize / 2, 'Tree_Emerald_1');
+              tree.setOrigin(0.5, 1);
+              tree.setScale(scale * 0.8);
+              tree.setTint(colors.tree);
+              tree.setDepth(6);
+              this.midgroundLayer.add(tree);
+              
+              // Shadow
+              const shadow = this.add.ellipse(x, y + tileSize / 2, tileSize * 0.6, tileSize * 0.2, 0x000000, 0.3);
+              shadow.setDepth(5);
+              this.midgroundLayer.add(shadow);
+            } else {
+              // Fallback tree
+              const canopy = this.add.ellipse(x, y - 4, 14, 18, colors.tree, 0.9);
+              canopy.setDepth(6);
+              this.backgroundLayer.add(canopy);
+              
+              const trunk = this.add.rectangle(x, y + 4, 4, 10, colors.treeDark, 1);
+              trunk.setDepth(5);
+              this.backgroundLayer.add(trunk);
+            }
+            break;
+          }
+          
+          case FLOWER: {
+            const ground = this.add.rectangle(x, y, tileSize, tileSize, colors.grass, 1);
+            ground.setDepth(1);
+            this.backgroundLayer.add(ground);
+            
+            // Glowing flower
+            const flower = this.add.circle(x, y, 3, colors.flower, 0.8);
+            flower.setDepth(4);
+            flower.setBlendMode(Phaser.BlendModes.ADD);
+            this.backgroundLayer.add(flower);
+            
+            const glow = this.add.circle(x, y, 8, colors.flowerGlow, 0.2);
+            glow.setDepth(4);
+            glow.setBlendMode(Phaser.BlendModes.ADD);
+            this.backgroundLayer.add(glow);
+            break;
+          }
+          
+          case LAMP: {
+            const ground = this.add.rectangle(x, y, tileSize, tileSize, colors.path, 1);
+            ground.setDepth(2);
+            this.backgroundLayer.add(ground);
+            
+            // Use existing lamp post if available
+            if (this.textures.exists('LampPost_3')) {
+              const lamp = this.add.sprite(x, y + tileSize / 2, 'LampPost_3');
+              lamp.setOrigin(0.5, 1);
+              lamp.setScale(scale);
+              lamp.setTint(colors.glow);
+              lamp.setDepth(9);
+              this.midgroundLayer.add(lamp);
+              
+              // Lamp glow
+              const lampGlow = this.add.circle(x, y - tileSize / 2, 12, colors.highlight, 0.3);
+              lampGlow.setDepth(10);
+              lampGlow.setBlendMode(Phaser.BlendModes.ADD);
+              this.midgroundLayer.add(lampGlow);
+            } else {
+              // Fallback lamp
+              const post = this.add.rectangle(x, y, 2, tileSize, 0x4a4a4a, 1);
+              post.setDepth(9);
+              this.midgroundLayer.add(post);
+              
+              const light = this.add.circle(x, y - tileSize / 2, 4, colors.highlight, 0.9);
+              light.setDepth(10);
+              light.setBlendMode(Phaser.BlendModes.ADD);
+              this.midgroundLayer.add(light);
+            }
+            break;
+          }
+          
+          case BUSH: {
+            const ground = this.add.rectangle(x, y, tileSize, tileSize, colors.grass, 1);
+            ground.setDepth(1);
+            this.backgroundLayer.add(ground);
+            
+            // Decorative bush
+            const bush = this.add.ellipse(x, y, 10, 8, colors.tree, 0.8);
+            bush.setDepth(4);
+            this.backgroundLayer.add(bush);
+            
+            const bushHighlight = this.add.ellipse(x - 2, y - 2, 4, 3, colors.grass, 0.6);
+            bushHighlight.setDepth(5);
+            this.backgroundLayer.add(bushHighlight);
+            break;
+          }
+          
+          case ROCK: {
+            const ground = this.add.rectangle(x, y, tileSize, tileSize, colors.grass, 1);
+            ground.setDepth(1);
+            this.backgroundLayer.add(ground);
+            
+            // Use existing rock sprite if available
+            if (this.textures.exists('Rock_Brown_1')) {
+              const rock = this.add.sprite(x, y, 'Rock_Brown_1');
+              rock.setOrigin(0.5, 0.5);
+              rock.setScale(scale * 0.6);
+              rock.setTint(0x6a5a8a);
+              rock.setDepth(4);
+              this.backgroundLayer.add(rock);
+            } else {
+              // Fallback rock
+              const rock = this.add.ellipse(x, y, 8, 6, 0x4a3a5a, 1);
+              rock.setDepth(4);
+              this.backgroundLayer.add(rock);
+            }
+            break;
+          }
+          
+          case WELL: {
+            const ground = this.add.rectangle(x, y, tileSize, tileSize, colors.path, 1);
+            ground.setDepth(2);
+            this.backgroundLayer.add(ground);
+            
+            // Town well/fountain
+            const wellBase = this.add.circle(x, y, tileSize * 0.6, 0x6a5a4a, 1);
+            wellBase.setDepth(7);
+            this.backgroundLayer.add(wellBase);
+            
+            const wellTop = this.add.circle(x, y, tileSize * 0.4, colors.accent, 0.8);
+            wellTop.setDepth(8);
+            this.backgroundLayer.add(wellTop);
+            
+            // Water glow
+            const waterGlow = this.add.circle(x, y, tileSize * 0.5, colors.highlight, 0.3);
+            waterGlow.setDepth(9);
+            waterGlow.setBlendMode(Phaser.BlendModes.ADD);
+            this.backgroundLayer.add(waterGlow);
+            break;
+          }
+        }
+      }
+    }
+    
+    // Add impressive center plaza with decorative elements
+    const plazaSize = tileSize * 3;
+    
+    // Outer plaza circle
+    const plazaOuter = this.add.circle(
+      toX(midCol),
+      toY(midRow),
+      plazaSize / 2,
+      colors.accent,
+      0.2
+    );
+    plazaOuter.setDepth(3);
+    this.backgroundLayer.add(plazaOuter);
+    
+    // Middle plaza ring
+    const plazaMiddle = this.add.circle(
+      toX(midCol),
+      toY(midRow),
+      plazaSize / 3,
+      colors.highlight,
+      0.3
+    );
+    plazaMiddle.setDepth(4);
+    this.backgroundLayer.add(plazaMiddle);
+    
+    // Center fountain/monument
+    const monumentBase = this.add.circle(
+      toX(midCol),
+      toY(midRow),
+      tileSize * 0.8,
+      0x6a5a4a,
+      1
+    );
+    monumentBase.setDepth(7);
+    this.backgroundLayer.add(monumentBase);
+    
+    const monument = this.add.circle(
+      toX(midCol),
+      toY(midRow),
+      tileSize * 0.6,
+      colors.highlight,
+      0.8
+    );
+    monument.setDepth(8);
+    this.backgroundLayer.add(monument);
+    
+    // Monument glow (pulsing effect)
+    const monumentGlow = this.add.circle(
+      toX(midCol),
+      toY(midRow),
+      tileSize * 1.2,
+      colors.glow,
+      0.3
+    );
+    monumentGlow.setDepth(6);
+    monumentGlow.setBlendMode(Phaser.BlendModes.ADD);
+    this.backgroundLayer.add(monumentGlow);
+    
+    // Add decorative stars around monument
+    const starPositions = [
+      { angle: 0, dist: tileSize * 1.5 },
+      { angle: 90, dist: tileSize * 1.5 },
+      { angle: 180, dist: tileSize * 1.5 },
+      { angle: 270, dist: tileSize * 1.5 },
+    ];
+    
+    starPositions.forEach(({ angle, dist }) => {
+      const rad = (angle * Math.PI) / 180;
+      const starX = toX(midCol) + Math.cos(rad) * dist;
+      const starY = toY(midRow) + Math.sin(rad) * dist;
+      
+      const star = this.add.circle(starX, starY, 3, colors.flower, 0.8);
+      star.setDepth(5);
+      star.setBlendMode(Phaser.BlendModes.ADD);
+      this.backgroundLayer.add(star);
+      
+      const starGlow = this.add.circle(starX, starY, 8, colors.flowerGlow, 0.2);
+      starGlow.setDepth(5);
+      starGlow.setBlendMode(Phaser.BlendModes.ADD);
+      this.backgroundLayer.add(starGlow);
+    });
   }
 
   private createCapitalTilePanel(
@@ -2565,241 +3017,244 @@ export class WorldMapScene extends Phaser.Scene {
     const toX = (x: number) => panelX + x * tileSize;
     const toY = (y: number) => panelOffsetY + y * tileSize;
 
-    const makeGraphic = () => this.make.graphics({ x: 0, y: 0 }, false);
-
-    const buildGridTexture = (): string => {
-      const g = makeGraphic();
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          g.fillStyle((r + c) % 2 === 0 ? 0x321600 : 0x271000, 0.5);
-          g.fillRect(c * tileSize, r * tileSize, tileSize, tileSize);
-        }
-      }
-      const key = `capitalGrid_${cols}_${rows}_${tileSize}`;
-      g.generateTexture(key, panelW, panelH);
-      g.destroy();
-      return key;
-    };
-
-    const buildWheatTexture = (): string => {
-      const g = makeGraphic();
-      const drawBand = (startRow: number, endRow: number) => {
-        for (let r = startRow; r < endRow; r += 1.6) {
-          g.fillStyle(0x1a0a00, 0.85);
-          g.fillRect(
-            3 * tileSize,
-            r * tileSize,
-            tileSize * (cols - 6),
-            tileSize * 0.5,
-          );
-
-          g.fillStyle(0x3a1800, 0.65);
-          g.fillRect(
-            3 * tileSize,
-            r * tileSize + tileSize * 0.5,
-            tileSize * (cols - 6),
-            tileSize * 0.8,
-          );
-
-          for (let c = 4; c < cols - 3; c += 1.2) {
-            const x = c * tileSize;
-            const y = r * tileSize;
-
-            g.fillStyle(0xb45309, 0.75);
-            g.fillRect(
-              x + tileSize * 0.4,
-              y - tileSize * 0.9,
-              tileSize * 0.12,
-              tileSize,
-            );
-
-            g.fillStyle(0xd97706, 0.6);
-            g.fillRect(
-              x + tileSize * 0.26,
-              y - tileSize * 0.9,
-              tileSize * 0.4,
-              tileSize * 0.3,
-            );
-
-            g.fillStyle(0xfbbf24, 0.22);
-            g.fillRect(
-              x + tileSize * 0.28,
-              y - tileSize * 0.88,
-              tileSize * 0.18,
-              tileSize * 0.12,
-            );
-          }
-        }
-      };
-
-      drawBand(0.5, midRow - 2.5);
-      drawBand(midRow + 2, rows - 0.5);
-
-      const key = `capitalWheat_${cols}_${rows}_${tileSize}`;
-      g.generateTexture(key, panelW, panelH);
-      g.destroy();
-      return key;
-    };
-
-    const gridKey = this.textures.exists(
-      `capitalGrid_${cols}_${rows}_${tileSize}`,
-    )
-      ? `capitalGrid_${cols}_${rows}_${tileSize}`
-      : buildGridTexture();
-
-    const wheatKey = this.textures.exists(
-      `capitalWheat_${cols}_${rows}_${tileSize}`,
-    )
-      ? `capitalWheat_${cols}_${rows}_${tileSize}`
-      : buildWheatTexture();
-
-    const ground = this.add.rectangle(
-      panelX,
-      panelOffsetY,
-      panelW,
-      panelH,
-      0x2a1200,
-      1,
-    );
-    ground.setOrigin(0, 0);
+    // Rich tropical ground with gradient
+    const ground = this.add.graphics();
     ground.setDepth(1);
+    
+    // Base sandy layer with vertical gradient effect using multiple rectangles
+    const gradientSteps = 20;
+    for (let i = 0; i < gradientSteps; i++) {
+      const t = i / gradientSteps;
+      const height = panelH / gradientSteps;
+      const y = panelOffsetY + i * height;
+      
+      // Interpolate between colors
+      const r = Math.floor(201 + (191 - 201) * Math.sin(t * Math.PI));
+      const g = Math.floor(160 + (160 - 160) * Math.sin(t * Math.PI));
+      const b = Math.floor(106 + (112 - 106) * Math.sin(t * Math.PI));
+      const color = (r << 16) | (g << 8) | b;
+      
+      ground.fillStyle(color, 1);
+      ground.fillRect(panelX, y, panelW, height + 1);
+    }
     this.backgroundLayer.add(ground);
 
-    const grid = this.add
-      .image(panelX, panelOffsetY, gridKey)
-      .setOrigin(0, 0)
-      .setDepth(2);
-    this.backgroundLayer.add(grid);
-
-    const wheat = this.add
-      .image(panelX, panelOffsetY, wheatKey)
-      .setOrigin(0, 0)
-      .setDepth(3);
-    this.backgroundLayer.add(wheat);
-
-    const path = this.add.graphics();
-    path.setDepth(4);
-    path.fillStyle(0x5c2800, 1);
-    path.fillRect(panelX, midY - 14, panelW, 28);
-    path.fillStyle(0x7c3800, 0.25);
-    for (let x = panelX; x < panelX + panelW; x += tileSize * 2) {
-      path.fillRect(x, midY - 14, tileSize * 0.22, 28);
+    // Detailed land texture with varied tiles
+    const landTiles = this.add.graphics();
+    landTiles.setDepth(2);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const noise = Math.sin(c * 0.5) * Math.cos(r * 0.3);
+        const tileVariant = Math.floor((noise + 1) * 2) % 5;
+        const colors = [0xc9a06a, 0xd4a574, 0xbf9660, 0xcca870, 0xb89968];
+        const alphas = [0.3, 0.4, 0.35, 0.45, 0.38];
+        
+        landTiles.fillStyle(colors[tileVariant], alphas[tileVariant]);
+        landTiles.fillRect(c * tileSize, r * tileSize, tileSize, tileSize);
+        
+        // Add subtle texture details
+        if (Math.random() > 0.85) {
+          landTiles.fillStyle(0xa08050, 0.2);
+          landTiles.fillCircle(
+            c * tileSize + tileSize * 0.5,
+            r * tileSize + tileSize * 0.5,
+            tileSize * 0.3
+          );
+        }
+      }
     }
-    path.fillRect(panelX, midY - 2, panelW, 4);
-    path.fillStyle(0xfbbf24, 0.16);
-    path.fillRect(panelX, midY - 15, panelW, 3);
-    path.fillRect(panelX, midY + 13, panelW, 3);
-    this.backgroundLayer.add(path);
+    landTiles.setPosition(panelX, panelOffsetY);
+    this.backgroundLayer.add(landTiles);
 
-    const fence = this.add.graphics();
-    fence.setDepth(5);
-    this.drawFenceRow(
-      fence,
-      toX(3),
-      midY - 30,
-      tileSize * (cols - 6),
-      0xb45309,
-      0x92400e,
-      24,
-    );
-    this.drawFenceRow(
-      fence,
-      toX(3),
-      midY + 18,
-      tileSize * (cols - 6),
-      0xb45309,
-      0x92400e,
-      24,
-    );
-    this.backgroundLayer.add(fence);
-
-    const wall = this.add.graphics();
-    wall.setDepth(6);
-    wall.fillStyle(0x7c3a0a, 0.85);
-    wall.fillRect(toX(cols - 5), panelOffsetY, tileSize * 1.8, panelH);
-    wall.fillStyle(0x5a2800, 0.5);
-    for (let r = 0; r < rows; r += 2) {
-      wall.fillRect(toX(cols - 5), toY(r), tileSize * 1.8, tileSize * 0.1);
+    // Enhanced main road with better details
+    const road = this.add.graphics();
+    road.setDepth(4);
+    
+    // Road base with gradient
+    road.fillGradientStyle(0x8b6f47, 0x8b6f47, 0x7a5f3d, 0x7a5f3d, 1);
+    road.fillRect(panelX, midY - 24, panelW, 48);
+    
+    // Cobblestone pattern with varied sizes
+    for (let x = panelX; x < panelX + panelW; x += tileSize * 1.2) {
+      for (let y = midY - 22; y < midY + 22; y += tileSize * 1.1) {
+        const stoneSize = tileSize * (0.6 + Math.random() * 0.3);
+        const offsetX = (Math.random() - 0.5) * tileSize * 0.3;
+        const offsetY = (Math.random() - 0.5) * tileSize * 0.3;
+        
+        road.fillStyle(0x9d7d54, 0.35);
+        road.fillRoundedRect(x + offsetX, y + offsetY, stoneSize, stoneSize * 0.8, 2);
+        
+        // Stone highlights
+        road.fillStyle(0xb89968, 0.15);
+        road.fillCircle(x + offsetX + 2, y + offsetY + 2, stoneSize * 0.2);
+      }
     }
-    for (let r = 0.5; r < rows; r += 3) {
-      wall.fillStyle(0x9a4e10, 0.8);
-      wall.fillRect(toX(cols - 5) + 3, toY(r), tileSize * 0.75, tileSize * 1.3);
-    }
-    this.backgroundLayer.add(wall);
+    
+    // Road borders with decorative edge
+    road.lineStyle(3, 0x6b5437, 0.9);
+    road.strokeRect(panelX, midY - 24, panelW, 48);
+    road.lineStyle(1, 0x9d7d54, 0.5);
+    road.strokeRect(panelX + 2, midY - 22, panelW - 4, 44);
+    this.backgroundLayer.add(road);
 
+    // Add tropical building sprites with variety
+    const buildingPositions: Array<[number, number, number, number]> = [
+      [8, midRow - 7, 1, 0.85],
+      [18, midRow - 6.5, 3, 0.9],
+      [28, midRow - 7.2, 6, 0.88],
+      [38, midRow - 6.8, 10, 0.92],
+      [48, midRow - 7, 12, 0.87],
+      [12, midRow + 5, 4, 0.83],
+      [24, midRow + 5.5, 7, 0.86],
+      [36, midRow + 5.2, 11, 0.89],
+      [46, midRow + 5.8, 13, 0.84],
+    ];
+
+    buildingPositions.forEach(([c, r, buildingNum, scaleVal]) => {
+      const buildingKey = `tropical_building_${buildingNum}`;
+      if (this.textures.exists(buildingKey)) {
+        const building = this.add.sprite(toX(c), toY(r), buildingKey);
+        building.setOrigin(0.5, 1);
+        building.setScale(scale * scaleVal);
+        building.setTint(0xfff8f0);
+        building.setDepth(6);
+        building.setAlpha(0.95);
+        this.backgroundLayer.add(building);
+      }
+    });
+
+    // Enhanced tropical trees with variety
+    const treePositions: Array<[number, number, number, number]> = [
+      [5, midRow - 5, 1, 1.0],
+      [14, midRow - 4.5, 2, 1.1],
+      [22, midRow - 5.2, 1, 0.95],
+      [32, midRow - 4.8, 2, 1.05],
+      [41, midRow - 5, 1, 1.0],
+      [50, midRow - 4.7, 2, 0.98],
+      [9, midRow + 3.5, 2, 0.92],
+      [19, midRow + 4, 1, 1.02],
+      [30, midRow + 3.8, 2, 0.96],
+      [40, midRow + 4.2, 1, 1.08],
+      [49, midRow + 3.6, 2, 0.94],
+    ];
+
+    treePositions.forEach(([c, r, treeNum, scaleVal]) => {
+      const treeKey = `tropical_tree_${treeNum}`;
+      if (this.textures.exists(treeKey)) {
+        const tree = this.add.sprite(toX(c), toY(r), treeKey);
+        tree.setOrigin(0.5, 1);
+        tree.setScale(scale * scaleVal);
+        tree.setDepth(7);
+        this.midgroundLayer.add(tree);
+      }
+    });
+
+    // Add varied decorative elements
+    const decorPositions: Array<[number, number, number, number]> = [
+      [11, midRow - 2.5, 1, 0.7],
+      [16, midRow + 2, 3, 0.65],
+      [25, midRow - 2.8, 5, 0.72],
+      [34, midRow + 2.2, 7, 0.68],
+      [43, midRow - 2.6, 9, 0.7],
+      [52, midRow + 2.5, 11, 0.66],
+    ];
+
+    decorPositions.forEach(([c, r, decorNum, scaleVal]) => {
+      const decorKey = `tropical_decor_${decorNum}`;
+      if (this.textures.exists(decorKey)) {
+        const decor = this.add.sprite(toX(c), toY(r), decorKey);
+        decor.setOrigin(0.5, 1);
+        decor.setScale(scale * scaleVal);
+        decor.setDepth(8);
+        this.midgroundLayer.add(decor);
+      }
+    });
+
+    // Add greenery clusters
+    const greeneryPositions: Array<[number, number, number, number]> = [
+      [7, midRow - 3, 1, 0.8],
+      [13, midRow + 2.5, 2, 0.75],
+      [21, midRow - 2.8, 3, 0.82],
+      [29, midRow + 2.8, 4, 0.78],
+      [37, midRow - 3.2, 5, 0.8],
+      [45, midRow + 2.6, 1, 0.76],
+      [53, midRow - 2.9, 2, 0.79],
+    ];
+
+    greeneryPositions.forEach(([c, r, greenNum, scaleVal]) => {
+      const greenKey = `tropical_greenery_${greenNum}`;
+      if (this.textures.exists(greenKey)) {
+        const green = this.add.sprite(toX(c), toY(r), greenKey);
+        green.setOrigin(0.5, 1);
+        green.setScale(scale * scaleVal);
+        green.setDepth(8);
+        this.midgroundLayer.add(green);
+      }
+    });
+
+    // Add atmospheric details - market stalls
     const props = this.add.graphics();
-    props.setDepth(7);
+    props.setDepth(9);
 
-    const trees: Array<[number, number]> = [
-      [5, midRow - 4],
-      [10, midRow - 6],
-      [17, midRow - 4],
-      [32, midRow - 5],
-      [40, midRow - 6],
-      [6, midRow + 3],
-      [13, midRow + 5],
-      [30, midRow + 3],
-      [38, midRow + 4],
+    const stallPositions: Array<[number, number]> = [
+      [26, midRow - 3.5],
+      [35, midRow + 3],
+      [44, midRow - 3.2],
     ];
 
-    for (const [c, r] of trees) {
-      this.drawPixelTree(
-        props,
-        toX(c),
-        toY(r),
-        0x7c4010,
-        0xb45309,
-        0x7c2d0a,
-        scale,
-      );
-    }
-
-    const haystacks: Array<[number, number]> = [
-      [22, midRow - 3],
-      [27, midRow + 2],
-      [44, midRow - 4],
-      [48, midRow + 3],
-    ];
-
-    for (const [c, r] of haystacks) {
-      props.fillStyle(0xd97706, 0.85);
-      props.fillEllipse(toX(c), toY(r), 18, 12);
-      props.fillStyle(0xfbbf24, 0.35);
-      props.fillEllipse(toX(c) - 2, toY(r) - 2, 10, 6);
-    }
-
-    const scX = toX(35);
-    const scY = midY - 36;
-    props.fillStyle(0x4a2800, 0.9);
-    props.fillRect(scX - 1, scY, 3, 14);
-    props.fillRect(scX - 7, scY + 4, 15, 2);
-    props.fillStyle(0x7c4010, 0.8);
-    props.fillEllipse(scX, scY - 2, 8, 8);
-    props.fillStyle(0xb45309, 0.7);
-    props.fillRect(scX - 5, scY - 6, 12, 3);
-    props.fillRect(scX - 3, scY - 11, 7, 6);
+    stallPositions.forEach(([c, r]) => {
+      const x = toX(c);
+      const y = toY(r);
+      
+      // Stall structure with depth
+      props.fillStyle(0xa0826d, 1);
+      props.fillRect(x - 10, y + 2, 20, 14);
+      props.fillStyle(0x8b6f47, 0.8);
+      props.fillRect(x - 9, y + 3, 2, 13);
+      props.fillRect(x + 7, y + 3, 2, 13);
+      
+      // Colorful awning with stripes
+      const awningColors = [0xd94f30, 0xe85d3a, 0xc44428];
+      awningColors.forEach((color, i) => {
+        props.fillStyle(color, 0.9);
+        props.fillRect(x - 12 + i * 8, y - 6, 8, 10);
+      });
+      
+      // Awning highlights
+      props.fillStyle(0xffffff, 0.25);
+      props.fillRect(x - 11, y - 5, 3, 8);
+      props.fillRect(x - 3, y - 5, 3, 8);
+      props.fillRect(x + 5, y - 5, 3, 8);
+      
+      // Goods on display
+      props.fillStyle(0xfbbf24, 0.8);
+      props.fillCircle(x - 5, y + 8, 3);
+      props.fillCircle(x + 2, y + 8, 3);
+      props.fillStyle(0x7bc99c, 0.8);
+      props.fillCircle(x - 2, y + 10, 2.5);
+      props.fillCircle(x + 5, y + 10, 2.5);
+    });
 
     this.backgroundLayer.add(props);
 
-    if (this.textures.exists("House_Hay_1")) {
-      const house = this.add.sprite(toX(21), toY(midRow - 5.2), "House_Hay_1");
-      house.setOrigin(0.5, 1);
-      house.setScale(scale);
-      house.setTint(0xfde68a);
-      house.setDepth(8);
-      this.midgroundLayer.add(house);
-    }
-
-    if (this.textures.exists("LampPost_3")) {
-      for (const cx of [16, 26]) {
-        const lp = this.add.sprite(toX(cx), toY(midRow + 1.5), "LampPost_3");
-        lp.setOrigin(0.5, 1);
-        lp.setScale(scale);
-        lp.setTint(0xfef08a);
-        lp.setDepth(9);
-        this.midgroundLayer.add(lp);
+    // Add ambient particles/details
+    const ambient = this.add.graphics();
+    ambient.setDepth(10);
+    
+    // Scattered tropical flowers/details
+    for (let i = 0; i < 30; i++) {
+      const x = panelX + Math.random() * panelW;
+      const y = panelOffsetY + Math.random() * panelH;
+      
+      if (Math.abs(y - midY) > 30) { // Avoid road
+        const flowerColors = [0xff6b9d, 0xfbbf24, 0x7bc99c, 0xe85d3a];
+        const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+        ambient.fillStyle(color, 0.4);
+        ambient.fillCircle(x, y, 2);
       }
     }
+    
+    this.midgroundLayer.add(ambient);
   }
 
   private renderMapObjects(
@@ -3761,31 +4216,132 @@ export class WorldMapScene extends Phaser.Scene {
     const nodes = this.getStageNodes(stageId);
     if (nodes.length === 0) return;
 
-    // Stage 8 has dense late-game routing, so slightly tighter rings.
-    const pads = this.add.graphics();
-    pads.setDepth(14);
-    nodes.forEach((node) => {
-      pads.fillStyle(0x2b4729, 0.24);
-      pads.fillEllipse(node.x + 4, node.y + 73, 106, 36);
-      pads.lineStyle(3, 0xe5d8aa, 0.34);
-      pads.strokeEllipse(node.x, node.y + 62, 80, 25);
+    // Stage 8 - Enhanced Tropical Medieval City landmarks
+    nodes.forEach((node, index) => {
+      // Create layered platform with depth
+      const platform = this.add.graphics();
+      platform.setDepth(14);
+      
+      // Shadow layer
+      platform.fillStyle(0x8b6f47, 0.25);
+      platform.fillEllipse(node.x + 6, node.y + 78, 120, 42);
+      
+      // Main sandy platform with gradient effect
+      platform.fillStyle(0xd4a574, 0.45);
+      platform.fillEllipse(node.x + 4, node.y + 73, 115, 40);
+      platform.fillStyle(0xe0b080, 0.3);
+      platform.fillEllipse(node.x + 2, node.y + 70, 110, 38);
+      
+      // Decorative stone border
+      platform.lineStyle(4, 0xa0826d, 0.5);
+      platform.strokeEllipse(node.x, node.y + 65, 95, 32);
+      platform.lineStyle(2, 0xc9a06a, 0.6);
+      platform.strokeEllipse(node.x, node.y + 63, 90, 30);
+      
+      // Tropical accent border
+      platform.lineStyle(3, 0x5fa777, 0.45);
+      platform.strokeEllipse(node.x, node.y + 62, 88, 28);
+      
+      this.midgroundLayer.add(platform);
 
-      this.addLandmarkSprite(
-        "LampPost_3",
-        node.x - 54,
-        node.y + 114,
-        0.76,
-        0.92,
-      );
-      this.addLandmarkSprite(
-        "LampPost_3",
-        node.x + 54,
-        node.y + 114,
-        0.76,
-        0.92,
-      );
+      // Add varied tropical trees based on checkpoint index
+      const treeType = (index % 2) + 1;
+      const treeKey = `tropical_tree_${treeType}`;
+      
+      if (this.textures.exists(treeKey)) {
+        // Left tree
+        const leftTree = this.add.sprite(node.x - 62, node.y + 108, treeKey);
+        leftTree.setOrigin(0.5, 1);
+        leftTree.setScale(0.75);
+        leftTree.setDepth(15);
+        leftTree.setAlpha(0.95);
+        this.midgroundLayer.add(leftTree);
+        
+        // Right tree (slightly different scale for variety)
+        const rightTree = this.add.sprite(node.x + 62, node.y + 108, treeKey);
+        rightTree.setOrigin(0.5, 1);
+        rightTree.setScale(0.8);
+        rightTree.setDepth(15);
+        rightTree.setAlpha(0.95);
+        this.midgroundLayer.add(rightTree);
+      }
+      
+      // Add tropical greenery clusters
+      const greeneryType = ((index % 5) + 1);
+      const greeneryKey = `tropical_greenery_${greeneryType}`;
+      
+      if (this.textures.exists(greeneryKey)) {
+        // Multiple greenery positions for lush look
+        const greeneryPositions = [
+          [-35, 92, 0.65],
+          [35, 92, 0.7],
+          [-50, 98, 0.6],
+          [50, 98, 0.62],
+          [0, 88, 0.55],
+        ];
+        
+        greeneryPositions.forEach(([offsetX, offsetY, scale]) => {
+          const greenery = this.add.sprite(
+            node.x + offsetX,
+            node.y + offsetY,
+            greeneryKey
+          );
+          greenery.setOrigin(0.5, 1);
+          greenery.setScale(scale);
+          greenery.setDepth(14);
+          greenery.setAlpha(0.9);
+          this.midgroundLayer.add(greenery);
+        });
+      }
+      
+      // Add decorative elements
+      const decorType = ((index % 18) + 1);
+      const decorKey = `tropical_decor_${decorType}`;
+      
+      if (this.textures.exists(decorKey)) {
+        // Front decorations
+        const frontDecor = this.add.sprite(node.x, node.y + 95, decorKey);
+        frontDecor.setOrigin(0.5, 1);
+        frontDecor.setScale(0.6);
+        frontDecor.setDepth(16);
+        frontDecor.setAlpha(0.85);
+        this.midgroundLayer.add(frontDecor);
+      }
+      
+      // Add atmospheric details with graphics
+      const details = this.add.graphics();
+      details.setDepth(13);
+      
+      // Scattered tropical flowers around platform
+      const flowerColors = [0xff6b9d, 0xfbbf24, 0x7bc99c, 0xe85d3a, 0xa78bfa];
+      for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2;
+        const radius = 45 + Math.random() * 15;
+        const x = node.x + Math.cos(angle) * radius;
+        const y = node.y + 65 + Math.sin(angle) * radius * 0.3;
+        
+        const color = flowerColors[i % flowerColors.length];
+        details.fillStyle(color, 0.5);
+        details.fillCircle(x, y, 2.5);
+        details.fillStyle(0xffffff, 0.3);
+        details.fillCircle(x, y, 1);
+      }
+      
+      // Small stones/pebbles for texture
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2 + Math.PI / 16;
+        const radius = 38 + Math.random() * 8;
+        const x = node.x + Math.cos(angle) * radius;
+        const y = node.y + 68 + Math.sin(angle) * radius * 0.3;
+        
+        details.fillStyle(0xa0826d, 0.4);
+        details.fillCircle(x, y, 3);
+        details.fillStyle(0xc9a06a, 0.3);
+        details.fillCircle(x - 1, y - 1, 1.5);
+      }
+      
+      this.midgroundLayer.add(details);
     });
-    this.midgroundLayer.add(pads);
   }
 
   /**
@@ -4206,9 +4762,9 @@ export class WorldMapScene extends Phaser.Scene {
 
       // Strict per-stage path only: do NOT draw connectors to another stage.
       // Venture stages 3 and 4 use bespoke plaza layouts, so skip the generic
-      // wooden connector there. Other templates should still get connectors.
+      // wooden connector there. Stage 7 Crossroads does not need the wooden plank overlay.
       const shouldSkipGenericConnector =
-        this.currentTemplateId === "venture" && [3, 4].includes(stage.id);
+        (this.currentTemplateId === "venture" && [3, 4].includes(stage.id)) || stage.id === 7;
       if (!shouldSkipGenericConnector && stagePositions.length > 1 && biome) {
         this.drawStagePathConnector(stagePositions, biome.colors.path, 0.9);
       }
@@ -4485,8 +5041,13 @@ export class WorldMapScene extends Phaser.Scene {
       Math.max(0, Math.round(baseWood.blue * 0.56)),
     );
 
+    const plankWidth = 28;
+    const plankHeight = 7;
+    const spacing = 16;
+
+    // Shadow
     const shadow = this.add.graphics();
-    shadow.lineStyle(22, 0x000000, 0.1 * alpha);
+    shadow.lineStyle(plankWidth + 6, 0x000000, 0.08 * alpha);
     shadow.beginPath();
     shadow.moveTo(points[0].x + 2, points[0].y + 4);
     points.slice(1).forEach((point) => shadow.lineTo(point.x + 2, point.y + 4));
@@ -4494,29 +5055,57 @@ export class WorldMapScene extends Phaser.Scene {
     shadow.setDepth(2.4);
     this.midgroundLayer.add(shadow);
 
-    const path = this.add.graphics();
-    path.lineStyle(16, woodColor, 0.92 * alpha + 0.08);
-    path.beginPath();
-    path.moveTo(points[0].x, points[0].y);
-    points.slice(1).forEach((point) => path.lineTo(point.x, point.y));
-    path.strokePath();
+    // Support rails underneath the planks
+    const rails = this.add.graphics();
+    rails.lineStyle(plankWidth, darkWood, 0.8 * alpha + 0.1);
+    rails.beginPath();
+    rails.moveTo(points[0].x, points[0].y);
+    points.slice(1).forEach((point) => rails.lineTo(point.x, point.y));
+    rails.strokePath();
+    rails.setDepth(2.5);
+    this.midgroundLayer.add(rails);
 
-    // Subtle top highlight
-    path.lineStyle(2, 0xffffff, 0.14 * alpha);
-    path.beginPath();
-    path.moveTo(points[0].x, points[0].y - 3);
-    points.slice(1).forEach((point) => path.lineTo(point.x, point.y - 3));
-    path.strokePath();
+    // Optional rope details
+    const rope = this.add.graphics();
+    const edgeOffset = plankWidth * 0.42;
+    rope.lineStyle(1.5, 0xd6b16c, 0.5 * alpha);
+    this.drawOffsetPolyline(rope, points, -edgeOffset);
+    this.drawOffsetPolyline(rope, points, edgeOffset);
+    rope.setDepth(2.8);
+    this.midgroundLayer.add(rope);
 
-    // Lower dark edge
-    path.lineStyle(2, darkWood, 0.5 * alpha + 0.1);
-    path.beginPath();
-    path.moveTo(points[0].x, points[0].y + 5);
-    points.slice(1).forEach((point) => path.lineTo(point.x, point.y + 5));
-    path.strokePath();
+    // Sample the path to place planks
+    const sampled = this.samplePolyline(points, spacing);
+    const plankPalette = [woodColor, woodColor, darkWood];
 
-    path.setDepth(2.7);
-    this.midgroundLayer.add(path);
+    sampled.forEach((sample, index) => {
+      const plank = this.add.rectangle(
+        sample.x,
+        sample.y,
+        plankWidth + ((index % 3) - 1) * 3,
+        plankHeight,
+        plankPalette[index % plankPalette.length],
+        1,
+      );
+      plank.setRotation(sample.angle + (index % 2 === 0 ? 0.04 : -0.03));
+      plank.setStrokeStyle(1, 0x3a2412, 0.5 * alpha);
+      plank.setAlpha(0.92);
+      plank.setDepth(2.6 + index * 0.0001);
+      this.midgroundLayer.add(plank);
+
+      const grain = this.add.rectangle(
+        sample.x,
+        sample.y - 2,
+        plankWidth * 0.68,
+        1.5,
+        0xd5a15f,
+        0.18 * alpha,
+      );
+      grain.setRotation(plank.rotation);
+      grain.setDepth(plank.depth + 0.01);
+      grain.setAlpha(0.6);
+      this.midgroundLayer.add(grain);
+    });
   }
 
   /**
@@ -4653,7 +5242,7 @@ export class WorldMapScene extends Phaser.Scene {
         { x: 112, y: 500 },
         { x: 302, y: 354 },
         { x: 430, y: 354 },
-        { x: 612, y: 500 },
+        { x: 528, y: 500 },
       ],
       // Capital: a ceremonial approach up to the citadel, then back to the gate.
       8: [
@@ -5117,6 +5706,8 @@ export class WorldMapScene extends Phaser.Scene {
     assignedBosses?: string[];
     currentStage?: number;
     corruptionLevel?: number;
+    userName?: string;
+    userImageUrl?: string;
     superBoss?: {
       bossSlug: string;
       bossName: string;
@@ -5169,6 +5760,8 @@ export class WorldMapScene extends Phaser.Scene {
           0,
           0,
           event.personaGender as PersonaGender,
+          event.userName ?? "User",
+          event.userImageUrl ?? "https://api.dicebear.com/7.x/adventurer/png?seed=User&size=128&backgroundColor=transparent",
         );
         this.gameLayer.add(this.persona);
       }
@@ -5292,68 +5885,114 @@ export class WorldMapScene extends Phaser.Scene {
 
   /**
    * Position persona beside the active checkpoint on a walkable map tile.
+   *
+   * Selection rules (strictly forward):
+   * 1. Collect all "active" and "in_progress" nodes (NOT "gold"/"completed" –
+   *    those are done and must never pull the persona backward).
+   * 2. Among candidates, pick the one with the HIGHEST globalIndex so the
+   *    persona always advances to the current frontier checkpoint.
+   * 3. If nothing is active yet, fall back to the highest completed/gold node
+   *    (still highest-index only), and ultimately the very first node.
    */
   private positionPersonaOnActiveCheckpoint(): void {
     if (!this.persona) return;
 
-    // Find active checkpoint
-    for (const node of this.checkpointNodes.values()) {
-      const status = node.status;
-      if (status === "active" || status === "in_progress") {
-        const pos = this.getPersonaMarkerPosition(node);
-        const nextCheckpointId = node.checkpointId;
-        if (!this.lastPersonaCheckpointId) {
-          this.persona.setPosition(pos.x, pos.y);
-          this.persona.setIdleFacingRight(this.getPersonaIdleFacingRight(node));
-          this.persona.playIdle();
-          this.lastPersonaCheckpointId = nextCheckpointId;
-          return;
-        }
+    const allNodes = Array.from(this.checkpointNodes.values());
 
-        if (this.lastPersonaCheckpointId !== nextCheckpointId) {
-          const previousNode = this.checkpointNodes.get(
-            this.lastPersonaCheckpointId,
-          );
-          const route = this.getPersonaWalkingRoute(
-            this.lastPersonaCheckpointId,
-            nextCheckpointId,
-          );
-          const destination = route[route.length - 1] ?? pos;
-          this.persona.moveAlongPath(
-            route,
-            this.getPersonaMoveDuration(destination.x, destination.y),
-          );
-          if (previousNode && previousNode.stage !== node.stage) {
-            this.playStageEntryWeather(
-              node.x,
-              node.y - 120,
-              node.stage,
-              this.activeBiomeConfigs[node.stage - 1]?.colors.accent2 ??
-                0xdff5ff,
-            );
-          }
-          this.lastPersonaCheckpointId = nextCheckpointId;
-          return;
-        }
+    // ── 1. Find the furthest-forward active/in_progress node ──────────────
+    const frontierNode = allNodes
+      .filter((n) => n.status === "active" || n.status === "in_progress")
+      .sort((a, b) => b.globalIndex - a.globalIndex)[0] ?? null;
 
-        this.persona.setPosition(pos.x, pos.y);
-        this.persona.setIdleFacingRight(this.getPersonaIdleFacingRight(node));
-        this.persona.playIdle();
-        return;
-      }
+    // ── 2. Determine target node ───────────────────────────────────────────
+    let targetNode: CheckpointNode | null = frontierNode;
+
+    if (!targetNode) {
+      // All tasks done in current stage – stand on the last completed node
+      targetNode =
+        allNodes
+          .filter((n) => n.status === "completed" || n.status === "gold")
+          .sort((a, b) => b.globalIndex - a.globalIndex)[0] ?? null;
     }
 
-    // Default: position on first checkpoint if no active found
-    const firstNode = Array.from(this.checkpointNodes.values())[0];
-    if (firstNode) {
-      const pos = this.getPersonaMarkerPosition(firstNode);
+    if (!targetNode) {
+      // Absolute fallback: very first checkpoint node
+      targetNode =
+        allNodes.sort((a, b) => a.globalIndex - b.globalIndex)[0] ?? null;
+    }
+
+    if (!targetNode) return; // no nodes exist at all
+
+    const nextCheckpointId = targetNode.checkpointId;
+    const pos = this.getPersonaMarkerPosition(targetNode);
+
+    // ── 3. Initial placement (no previous position known) ─────────────────
+    if (!this.lastPersonaCheckpointId) {
       this.persona.setPosition(pos.x, pos.y);
       this.persona.setIdleFacingRight(
-        this.getPersonaIdleFacingRight(firstNode),
+        this.getPersonaIdleFacingRight(targetNode),
       );
       this.persona.playIdle();
-      this.lastPersonaCheckpointId = firstNode.checkpointId;
+      this.lastPersonaCheckpointId = nextCheckpointId;
+      return;
     }
+
+    // ── 4. Already at the correct checkpoint – idle in place ──────────────
+    if (this.lastPersonaCheckpointId === nextCheckpointId) {
+      // Keep persona alive at current position; only snap if not walking
+      if (!this.persona.walking) {
+        this.persona.setPosition(pos.x, pos.y);
+        this.persona.setIdleFacingRight(
+          this.getPersonaIdleFacingRight(targetNode),
+        );
+        this.persona.playIdle();
+      }
+      return;
+    }
+
+    // ── 5. New frontier – walk forward along path ──────────────────────────
+    const previousNode = this.getCheckpointNode(this.lastPersonaCheckpointId);
+
+    // Safety guard: never walk backward. If somehow the new target is behind
+    // the last known position, just teleport forward silently.
+    const lastNode = previousNode;
+    if (lastNode && targetNode.globalIndex < lastNode.globalIndex) {
+      console.warn(
+        '[WorldMapScene] ⚠️ Prevented backward persona movement from',
+        lastNode.globalIndex, '→', targetNode.globalIndex,
+      );
+      this.persona.setPosition(pos.x, pos.y);
+      this.persona.setIdleFacingRight(
+        this.getPersonaIdleFacingRight(targetNode),
+      );
+      this.persona.playIdle();
+      this.lastPersonaCheckpointId = nextCheckpointId;
+      return;
+    }
+
+    const route = this.getPersonaWalkingRoute(
+      this.lastPersonaCheckpointId,
+      nextCheckpointId,
+    );
+
+    const destination = route[route.length - 1] ?? pos;
+    this.persona.moveAlongPath(
+      route,
+      this.getPersonaMoveDuration(destination.x, destination.y),
+    );
+
+    // Stage-transition weather burst
+    if (previousNode && previousNode.stage !== targetNode.stage) {
+      this.playStageEntryWeather(
+        targetNode.x,
+        targetNode.y - 120,
+        targetNode.stage,
+        this.activeBiomeConfigs[targetNode.stage - 1]?.colors.accent2 ??
+          0xdff5ff,
+      );
+    }
+
+    this.lastPersonaCheckpointId = nextCheckpointId;
   }
 
   private getPersonaWalkingRoute(
@@ -5499,7 +6138,7 @@ export class WorldMapScene extends Phaser.Scene {
     const y = Phaser.Math.Clamp(
       preferredY,
       halfHeight,
-      this.MAP_HEIGHT - halfHeight,
+      (this.MAP_HEIGHT + 160) - halfHeight,
     );
 
     return { x, y };

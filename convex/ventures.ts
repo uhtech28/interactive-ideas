@@ -1469,6 +1469,7 @@ async function advanceVenturePointerAfterCheckpoint(
 ) {
   if (getCompletedTaskCount(checkpoint) < 2) return;
 
+  // First, try to find the next checkpoint in the same stage
   const nextCheckpoint = await ctx.db
     .query("ventureCheckpoints")
     .withIndex("by_venture_stage", (q) =>
@@ -1478,21 +1479,38 @@ async function advanceVenturePointerAfterCheckpoint(
     .order("asc")
     .first();
 
+  console.log('[advanceVenturePointerAfterCheckpoint]', {
+    currentStage: checkpoint.stage,
+    currentCheckpoint: checkpoint.checkpoint,
+    nextCheckpoint: nextCheckpoint ? {
+      stage: nextCheckpoint.stage,
+      checkpoint: nextCheckpoint.checkpoint
+    } : null,
+    ventureCurrentStage: venture.currentStage,
+    ventureCurrentCheckpoint: venture.currentCheckpoint
+  });
+
   if (nextCheckpoint) {
+    // Only advance if we're not regressing
     const wouldRegress =
       nextCheckpoint.stage < venture.currentStage ||
       (nextCheckpoint.stage === venture.currentStage &&
         nextCheckpoint.checkpoint < venture.currentCheckpoint);
 
     if (!wouldRegress) {
+      console.log('[advanceVenturePointerAfterCheckpoint] Advancing to checkpoint', nextCheckpoint.checkpoint, 'in stage', nextCheckpoint.stage);
       await ctx.db.patch(venture._id, {
         currentCheckpoint: nextCheckpoint.checkpoint,
         updatedAt: now,
       });
+    } else {
+      console.log('[advanceVenturePointerAfterCheckpoint] Would regress, not advancing');
     }
     return;
   }
 
+  // No next checkpoint in same stage, try to advance stage
+  console.log('[advanceVenturePointerAfterCheckpoint] No next checkpoint in stage, trying to advance stage');
   if (checkpoint.stage >= venture.currentStage) {
     await tryAdvanceStage(ctx, venture, checkpoint.stage, now);
   }
@@ -1597,6 +1615,8 @@ async function tryAdvanceStage(
   currentStage: number,
   now: number = Date.now(),
 ) {
+  console.log('[tryAdvanceStage] Attempting to advance from stage', currentStage);
+  
   // Get all checkpoints for current stage
   const stageCheckpoints = await ctx.db
     .query("ventureCheckpoints")
@@ -1605,7 +1625,14 @@ async function tryAdvanceStage(
     )
     .collect();
 
+  console.log('[tryAdvanceStage] Stage checkpoints:', stageCheckpoints.map(cp => ({
+    checkpoint: cp.checkpoint,
+    status: cp.status
+  })));
+
   const allComplete = stageCheckpoints.every((cp) => cp.status === "completed");
+
+  console.log('[tryAdvanceStage] All checkpoints complete?', allComplete);
 
   if (!allComplete) return;
 
