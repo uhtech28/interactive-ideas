@@ -9,7 +9,11 @@ interface LevelDisplayProps {
   onClick?: () => void;
 }
 
-const LevelDisplayComponent = ({ score, compact = false, onClick }: LevelDisplayProps) => {
+const LevelDisplayComponent = ({
+  score,
+  compact = false,
+  onClick,
+}: LevelDisplayProps) => {
   const getTierColors = (score: number) => {
     if (score >= 9) {
       return {
@@ -37,22 +41,33 @@ const LevelDisplayComponent = ({ score, compact = false, onClick }: LevelDisplay
 
   const tier = getTierColors(score);
 
+  // Format score: show integer if whole, else 1 decimal place max
+  const displayScore = Number.isInteger(score)
+    ? String(score)
+    : score.toFixed(1);
+
   if (compact) {
     return (
-      <div 
-        className={`flex items-center gap-2 font-sans transition-all active:scale-95 ${onClick ? "cursor-pointer hover:opacity-80" : ""}`}
+      <div
+        className={`flex items-center gap-1.5 font-sans transition-all active:scale-95 ${onClick ? "cursor-pointer hover:opacity-80" : ""}`}
         onClick={onClick}
       >
-        <div className={`flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-zinc-950/50 ${tier.primary}`}>
-          <span className={`text-[15px] font-black tracking-tighter ${tier.text}`}>
-            {score}
+        <div
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-zinc-950/50 ${tier.primary}`}
+        >
+          <span
+            className={`text-[13px] font-black tracking-tighter leading-none ${tier.text}`}
+          >
+            {displayScore}
           </span>
         </div>
-        <div className="hidden sm:flex flex-col">
+        <div className="hidden sm:flex flex-col gap-0">
           <span className="text-[7px] text-zinc-500 uppercase tracking-widest font-black leading-none mb-0.5">
             Score
           </span>
-          <span className={`text-[8px] font-black uppercase leading-none tracking-widest ${tier.text}`}>
+          <span
+            className={`text-[8px] font-black uppercase leading-none tracking-widest ${tier.text}`}
+          >
             {tier.label}
           </span>
         </div>
@@ -61,7 +76,7 @@ const LevelDisplayComponent = ({ score, compact = false, onClick }: LevelDisplay
   }
 
   return (
-    <div 
+    <div
       className={`flex items-center gap-2.5 font-sans group transition-all active:scale-95 ${onClick ? "cursor-pointer" : ""}`}
       onClick={onClick}
     >

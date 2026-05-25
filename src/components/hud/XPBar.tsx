@@ -24,16 +24,19 @@ const XPBarComponent = ({
   const percentage = Math.min((currentXP / maxXP) * 100, 100);
   const isNearlyFull = percentage >= 90;
 
-  const hasBoss = bossHp !== undefined && bossBaseHp !== undefined && bossHp > 0;
-  const bossPercentage = hasBoss ? Math.min((bossHp! / bossBaseHp!) * 100, 100) : 0;
+  const hasBoss =
+    bossHp !== undefined && bossBaseHp !== undefined && bossHp > 0;
+  const bossPercentage = hasBoss
+    ? Math.min((bossHp! / bossBaseHp!) * 100, 100)
+    : 0;
 
   // ─── COMPACT MODE WITH BOSS ACTIVE (VS COMBAT HUD) ───────────────────────
   if (compact && hasBoss) {
     return (
-      <div className="flex items-center gap-3 font-sans w-full max-w-[280px] sm:max-w-[340px] px-1 select-none">
+      <div className="flex items-center gap-2 font-sans w-full min-w-0 px-1 select-none">
         {/* User XP Side */}
-        <div className="flex-1 flex flex-col items-end gap-0.5">
-          <span className="text-[7.5px] text-cyan-400 font-black uppercase tracking-wider leading-none">
+        <div className="flex-1 min-w-0 flex flex-col items-end gap-0.5">
+          <span className="text-[7.5px] text-cyan-400 font-black uppercase tracking-wider leading-none whitespace-nowrap">
             🛡️ YOU (XP)
           </span>
           <div className="relative h-2 w-full overflow-hidden rounded-l-md border-y border-l border-cyan-500/25 bg-black/60">
@@ -71,8 +74,8 @@ const XPBarComponent = ({
         </div>
 
         {/* Boss HP Side */}
-        <div className="flex-1 flex flex-col items-start gap-0.5">
-          <span className="text-[7.5px] text-rose-500 font-black uppercase tracking-wider leading-none animate-pulse">
+        <div className="flex-1 min-w-0 flex flex-col items-start gap-0.5">
+          <span className="text-[7.5px] text-rose-500 font-black uppercase tracking-wider leading-none animate-pulse truncate max-w-full">
             👹 {bossName || "BOSS"}
           </span>
           <div className="relative h-2 w-full overflow-hidden rounded-r-md border-y border-r border-rose-500/25 bg-black/60">
@@ -107,10 +110,15 @@ const XPBarComponent = ({
         {/* Head-to-Head Labels */}
         <div className="flex items-center justify-between text-xs font-black tracking-widest relative z-10">
           <div className="flex items-center gap-1.5 text-cyan-400">
-            <Zap className="h-4 w-4 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" fill="currentColor" />
+            <Zap
+              className="h-4 w-4 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]"
+              fill="currentColor"
+            />
             <span>KNOWLEDGE (YOU)</span>
           </div>
-          <div className="text-zinc-500 font-mono text-[9px] uppercase tracking-wider">COMBAT STATUS</div>
+          <div className="text-zinc-500 font-mono text-[9px] uppercase tracking-wider">
+            COMBAT STATUS
+          </div>
           <div className="flex items-center gap-1.5 text-rose-500 animate-pulse">
             <span>{bossName || "BOSS"}</span>
             <span>👹</span>
@@ -133,13 +141,19 @@ const XPBarComponent = ({
                 <motion.div
                   className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent w-full h-full"
                   animate={{ x: ["-100%", "100%"] }}
-                  transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
+                  transition={{
+                    duration: 1.8,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }}
                 />
               </motion.div>
             </div>
             <div className="flex items-center justify-between text-[10px] font-bold text-cyan-400 font-mono">
               <span>LVL {Math.round(percentage)}%</span>
-              <span className="text-zinc-500 font-normal">{currentXP.toLocaleString()} XP</span>
+              <span className="text-zinc-500 font-normal">
+                {currentXP.toLocaleString()} XP
+              </span>
             </div>
           </div>
 
@@ -165,13 +179,19 @@ const XPBarComponent = ({
                 <motion.div
                   className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent w-full h-full"
                   animate={{ x: ["-100%", "100%"] }}
-                  transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
+                  transition={{
+                    duration: 2.2,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }}
                 />
               </motion.div>
             </div>
             <div className="flex items-center justify-between text-[10px] font-bold text-rose-400 font-mono">
               <span>HP {Math.round(bossPercentage)}%</span>
-              <span className="text-zinc-500 font-normal">{bossHp} / {bossBaseHp} HP</span>
+              <span className="text-zinc-500 font-normal">
+                {bossHp} / {bossBaseHp} HP
+              </span>
             </div>
           </div>
         </div>

@@ -152,7 +152,11 @@ export type ReactToPhaserEvent =
         xp: number;
         isOnline: boolean;
       }[];
-    };
+    }
+  /** Boss retreated mid-stage after player defeated it at a checkpoint */
+  | { type: "BOSS_COMBAT_RETREAT"; stage: number; checkpoint: number }
+  /** Final boss outcome at stage completion — slain (gold) or retreated permanently */
+  | { type: "BOSS_FINAL_OUTCOME"; stage: number; outcome: "slay_gold" | "retreat_permanent" };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Phaser → React events

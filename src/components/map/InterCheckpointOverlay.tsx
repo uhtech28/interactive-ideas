@@ -6,7 +6,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { audioManager } from "@/lib/audio/audioManager";
-import { Shield, Gem, Trophy, Coins, Flame, Check, X, ArrowRight } from "lucide-react";
+import { Shield, Gem, Trophy, Coins, Flame, Check, X, ArrowRight, ArrowLeft } from "lucide-react";
 
 interface InterCheckpointOverlayProps {
   isOpen: boolean;
@@ -17,6 +17,13 @@ interface InterCheckpointOverlayProps {
   ventureId: Id<"ventures">;
   onComplete: () => void;
   onClose: () => void;
+  // Boss combat gate props (mandatory combat at every checkpoint)
+  isBossCombat?: boolean;
+  isLastCheckpointInStage?: boolean;
+  isGoldCheckpoint?: boolean;
+  onBossVictory?: () => void;
+  onBossSkip?: () => void;
+  onBossRetreat?: () => void;
 }
 
 const HENCHMAN_THEMES: Record<string, Record<number, { name: string; represents: string; intro: string; victory: string; retreat: string; icon: string }>> = {
@@ -116,9 +123,16 @@ export function InterCheckpointOverlay({
   ventureId,
   onComplete,
   onClose,
+  isBossCombat = false,
+  isLastCheckpointInStage = false,
+  isGoldCheckpoint = false,
+  onBossVictory,
+  onBossSkip,
+  onBossRetreat,
 }: InterCheckpointOverlayProps) {
   const [currentEventIndex, setCurrentEventIndex] = useState(0);
-  const [phase, setPhase] = useState<"intro" | "action" | "result">("intro");
+  // Boss combat goes straight to action phase (mandatory — no intro choice)
+  const [phase, setPhase] = useState<"intro" | "action" | "result">(isBossCombat ? "action" : "intro");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -257,11 +271,20 @@ export function InterCheckpointOverlay({
         const completeness = answer.trim().length > 35 ? "Exceptional" : "Proficient";
         const timeBonus = timeLeft * 10;
 
+        // Boss combat gate: determine victory message based on stage position
+        const victoryMsg = isBossCombat
+          ? isLastCheckpointInStage
+            ? isGoldCheckpoint
+              ? `⚔️ BOSS SLAIN!\n\nYou completed all tasks with gold mastery. The ${henchmanInfo.name} is destroyed for good!\n\n✏️ Answer: "${answer}"\n\n🎯 Relevance: ${relevance}% • ${completeness} • Time Bonus: +${timeBonus} XP`
+              : `⚔️ BOSS DEFEATED!\n\nStage cleared — the ${henchmanInfo.name} retreats permanently from this stage!\n\n✏️ Answer: "${answer}"\n\n🎯 Relevance: ${relevance}% • ${completeness} • Time Bonus: +${timeBonus} XP`
+            : `⚔️ BOSS RETREATS!\n\nYou forced the ${henchmanInfo.name} back to the stage boundary!\n\n✏️ Answer: "${answer}"\n\n🎯 Relevance: ${relevance}% • ${completeness} • Time Bonus: +${timeBonus} XP`
+          : `Boss Defeated!\n\n✏️ Your Answer: "${answer}"\n\n🎯 AI Evaluation:\n• Relevance Score: ${relevance}%\n• Completion Standard: ${completeness}\n• Time Bonus: +${timeBonus} XP (${timeLeft}s remaining)`;
+
         setResultData({
           outcome: "victory",
           xpEarned: res.xpEarned + timeBonus,
           corruptionReduction: res.corruptionReduction,
-          message: `Boss Defeated!\n\n✏️ Your Answer: "${answer}"\n\n🎯 AI Evaluation:\n• Relevance Score: ${relevance}%\n• Completion Standard: ${completeness}\n• Time Bonus: +${timeBonus} XP (${timeLeft}s remaining)`,
+          message: victoryMsg,
         });
         setPhase("result");
       }
@@ -303,7 +326,9 @@ export function InterCheckpointOverlay({
           xpEarned: res.xpEarned,
           corruptionReduction: res.corruptionReduction,
           goldDeducted: 5,
-          message: `Paid 5 gold coins to slip past the ${henchmanInfo.name}.`,
+          message: isBossCombat
+            ? `Paid 5 Gold to bypass the ${henchmanInfo.name}. The boss retreats — for now.`
+            : `Paid 5 gold coins to slip past the ${henchmanInfo.name}.`,
         });
         setPhase("result");
       }
@@ -402,6 +427,11 @@ export function InterCheckpointOverlay({
 
   const handleNext = () => {
     audioManager.playUI("click");
+    // Boss combat gate: route to dedicated callbacks instead of onComplete
+    if (isBossCombat && resultData) {
+      if (resultData.outcome === "victory" && onBossVictory) { onBossVictory(); return; }
+      if (resultData.outcome === "skipped" && onBossSkip) { onBossSkip(); return; }
+    }
     if (currentEventIndex + 1 < events.length) {
       setCurrentEventIndex((prev) => prev + 1);
       setPhase("intro");
@@ -415,7 +445,7 @@ export function InterCheckpointOverlay({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6">
+      <div className={`fixed inset-0 z-[${isBossCombat ? 130 : 120}] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6`}>
         <motion.div
           initial={{ opacity: 0, scale: 0.9, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -426,7 +456,11 @@ export function InterCheckpointOverlay({
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-6">
             <span className="text-xs font-bold uppercase tracking-widest text-white/40">
-              Passage Event {currentEventIndex + 1} of {events.length}
+              {isBossCombat
+                ? isLastCheckpointInStage
+                  ? isGoldCheckpoint ? "⚔️ Final Boss — Gold Run" : "⚔️ Final Boss — Stage Clear"
+                  : "⚔️ Boss Combat — Mid Stage"
+                : `Passage Event ${currentEventIndex + 1} of ${events.length}`}
             </span>
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/5 border border-white/10">
               <Coins className="w-3.5 h-3.5 text-yellow-400" />
@@ -680,12 +714,52 @@ export function InterCheckpointOverlay({
                 )}
               </div>
 
-              <button
-                onClick={handleNext}
-                className={`w-full py-3 rounded-xl font-bold bg-white text-black hover:bg-white/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2`}
-              >
-                Continue <ArrowRight className="w-4 h-4" />
-              </button>
+              {resultData.outcome === "retreat" ? (
+                <div className="flex flex-col sm:flex-row gap-3 w-full">
+                  <button
+                    onClick={() => {
+                      audioManager.playUI("click");
+                      setPhase("action");
+                      setResultData(null);
+                      setError(null);
+                      setTimeLeft(20);
+                      setAnswer("");
+                    }}
+                    className="flex-1 py-3 rounded-xl font-bold bg-white text-black hover:bg-white/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> Retry
+                  </button>
+                  <button
+                    onClick={() => {
+                      audioManager.playUI("click");
+                      if (isBossCombat && onBossRetreat) { onBossRetreat(); return; }
+                      onClose();
+                    }}
+                    className="flex-1 py-3 rounded-xl font-bold border border-white/20 hover:bg-white/5 active:scale-[0.98] text-white transition-all flex items-center justify-center gap-2"
+                  >
+                    Back to Map
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleNext}
+                  className={`w-full py-3 rounded-xl font-bold ${
+                    isBossCombat && resultData.outcome === "victory"
+                      ? isLastCheckpointInStage && isGoldCheckpoint
+                        ? "bg-gradient-to-r from-yellow-500 to-amber-400 text-black"
+                        : "bg-gradient-to-r from-emerald-600 to-teal-500 text-white"
+                      : "bg-white text-black"
+                  } hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2`}
+                >
+                  {isBossCombat && resultData.outcome === "victory"
+                    ? isLastCheckpointInStage && isGoldCheckpoint
+                      ? "🏆 Stage Conquered!"
+                      : isLastCheckpointInStage
+                      ? "✅ Stage Cleared!"
+                      : "⚔️ Advance!"
+                    : <>Continue <ArrowRight className="w-4 h-4" /></>}
+                </button>
+              )}
             </div>
           )}
 
