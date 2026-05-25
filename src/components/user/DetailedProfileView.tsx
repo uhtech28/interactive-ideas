@@ -67,7 +67,45 @@ export const DetailedProfileView: React.FC<DetailedProfileViewProps> = ({
 
   const earnedBadges = useQuery(api.badges.getUserProfileBadges, { userId: profile._id });
   const equippedBadgeIds = profile.equippedBadges || [];
-  const equippedBadgesList = earnedBadges?.filter((b) => equippedBadgeIds.includes(b.id)) || [];
+
+  // Resolve equipped list with a fallback/padding of the highest-rarity earned badges
+  const equippedBadgesList = React.useMemo(() => {
+    if (!earnedBadges) return [];
+
+    // Start with explicitly equipped badges
+    const equipped = earnedBadges.filter((b) => equippedBadgeIds.includes(b.id));
+    const list = [...equipped];
+
+    // If we have less than 3 display badges, pad them with the highest rarity/prestige earned badges
+    if (list.length < 3) {
+      const rarityRank: Record<string, number> = {
+        mythic: 6,
+        legendary: 5,
+        hidden: 5,
+        diamond: 4,
+        epic: 4,
+        gold: 3,
+        rare: 3,
+        silver: 2,
+        uncommon: 2,
+        bronze: 1,
+        common: 1,
+      };
+
+      const remainingBadges = earnedBadges.filter((b) => !equipped.some((eq) => eq.id === b.id));
+      const sortedRemaining = [...remainingBadges].sort((a, b) => {
+        const rankA = rarityRank[a.rarity] || 0;
+        const rankB = rarityRank[b.rarity] || 0;
+        if (rankA !== rankB) return rankB - rankA;
+        return (b.awardedAt || 0) - (a.awardedAt || 0);
+      });
+
+      const needed = 3 - list.length;
+      list.push(...sortedRemaining.slice(0, needed));
+    }
+
+    return list as BadgeItem[];
+  }, [earnedBadges, equippedBadgeIds]);
 
   const handleEditProfile = () => {
     router.push("/profile-setup");
