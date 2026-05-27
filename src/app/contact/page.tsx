@@ -7,9 +7,10 @@ export default function ContactPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('save') === 'true') {
-      // window.location.href is allowed on iOS Safari (unlike link.click())
-      // /api/vcard serves the VCF with a Refresh header that redirects to ibhaveda.com after 4s
-      window.location.href = '/api/vcard';
+      // 300ms lets images paint before iOS shows the Add to Contacts sheet
+      setTimeout(() => {
+        window.location.href = '/api/vcard';
+      }, 300);
     }
   }, []);
 
