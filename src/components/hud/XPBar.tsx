@@ -158,23 +158,23 @@ const XPBarComponent = ({
           />
           {/* VS badge */}
           <motion.div
-            className="relative flex h-9 w-9 items-center justify-center rounded-full z-10"
+            className="relative flex h-[16px] w-[16px] items-center justify-center rounded-full z-10"
             style={{
               background: "linear-gradient(135deg, #f59e0b 0%, #b45309 50%, #92400e 100%)",
-              border: "1.5px solid rgba(253,230,138,0.8)",
-              boxShadow: "0 0 16px rgba(245,158,11,0.7), 0 0 32px rgba(245,158,11,0.3), inset 0 1px 0 rgba(255,255,255,0.3)",
+              border: "1px solid rgba(253,230,138,0.8)",
+              boxShadow: "0 0 8px rgba(245,158,11,0.7), inset 0 1px 0 rgba(255,255,255,0.3)",
             }}
             animate={{ scale: [1, 1.04, 1] }}
             transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
           >
-            <span className="text-[11px] font-black text-black italic tracking-tighter drop-shadow-none select-none leading-none">
+            <span className="text-[7.5px] font-black text-black italic tracking-tighter drop-shadow-none select-none leading-none">
               VS
             </span>
             {/* Outer ring pulse */}
             <motion.div
-              className="absolute -inset-[3px] rounded-full pointer-events-none"
-              style={{ border: "1px solid rgba(245,158,11,0.4)" }}
-              animate={{ scale: [1, 1.5, 1.5], opacity: [0.8, 0, 0] }}
+              className="absolute -inset-[2px] rounded-full pointer-events-none"
+              style={{ border: "0.5px solid rgba(245,158,11,0.4)" }}
+              animate={{ scale: [1, 1.3, 1.3], opacity: [0.8, 0, 0] }}
               transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
             />
           </motion.div>
