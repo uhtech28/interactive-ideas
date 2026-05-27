@@ -615,13 +615,14 @@ export const KanbanProvider = <T extends KanbanItemProps = KanbanItemProps, C ex
             <Fragment key={column.id}>{children(column)}</Fragment>
           ))}
         </div>
-        {typeof window !== "undefined" &&
-          createPortal(
-            <DragOverlay>
-              <t.Out />
-            </DragOverlay>,
-            document.body
-          )}
+        {typeof window !== "undefined"
+          ? (createPortal(
+              <DragOverlay>
+                <t.Out />
+              </DragOverlay>,
+              document.body
+            ) as any)
+          : null}
       </DndContext>
     </KanbanContext.Provider>
   );
