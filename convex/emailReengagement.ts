@@ -379,7 +379,7 @@ export const sendReengagementEmails = internalAction({
 
         await ctx.runAction(internal.resend.sendEmail, {
           to: email,
-          subject: `${firstName}, here's what you missed on Interactive Ideas`,
+          subject: `${firstName}, here's what you missed on Ibhaveda`,
           html,
         });
 

@@ -2,7 +2,7 @@
  * Persona.ts
  *
  * Persona — a Phaser Container representing the user's avatar character on the
- * Interactive Ideas world-map. Supports male/female variants with idle float
+ * Ibhaveda world-map. Supports male/female variants with idle float
  * animation and movement capabilities.
  */
 

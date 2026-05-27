@@ -32,12 +32,12 @@ const monoFont = JetBrains_Mono({
 // metadataBase makes openGraph/twitter image URLs absolute, which Insta /
 // LinkedIn / X / Slack require to actually render the preview image.
 const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://theinteractiveideas.com";
+  process.env.NEXT_PUBLIC_SITE_URL || "https://ibhaveda.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
 
-  title: "Interactive Ideas - Share & Cultivate Brilliant Ideas",
+  title: "Ibhaveda - Share & Cultivate Brilliant Ideas",
 
   description:
     "Connect with like-minded creators, share your brilliant ideas, get valuable feedback, and collaborate on groundbreaking projects in our innovative community.",
@@ -64,7 +64,7 @@ icons: {
 },
 
   openGraph: {
-    title: "Interactive Ideas - Where Brilliant Ideas Come to Life",
+    title: "Ibhaveda - Where Brilliant Ideas Come to Life",
 
     description:
       "Join thousands of creators sharing ideas, finding collaborators, and building the future together.",
@@ -73,14 +73,14 @@ icons: {
 
     url: siteUrl,
 
-    siteName: "Interactive Ideas",
+    siteName: "Ibhaveda",
 
     images: [
       {
         url: "/opengraph-image.png",
         width: 1200,
         height: 630,
-        alt: "Interactive Ideas",
+        alt: "Ibhaveda",
       },
     ],
   },
@@ -88,7 +88,7 @@ icons: {
   twitter: {
     card: "summary_large_image",
 
-    title: "Interactive Ideas - Where Brilliant Ideas Come to Life",
+    title: "Ibhaveda - Where Brilliant Ideas Come to Life",
 
     description:
       "Join thousands of creators sharing ideas, finding collaborators, and building the future together.",

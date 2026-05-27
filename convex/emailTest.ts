@@ -29,7 +29,7 @@ export const sendTestReengagementEmail = internalAction({
 
     await ctx.runAction(internal.resend.sendEmail, {
       to: toEmail,
-      subject: "[TEST] Re-engagement email preview — Interactive Ideas",
+      subject: "[TEST] Re-engagement email preview — Ibhaveda",
       html,
     });
 

@@ -20,11 +20,11 @@ export function ArticlePage({ article }: { article: Article }) {
     description: article.description,
     author: {
       "@type": "Organization",
-      name: "Interactive Ideas",
+      name: "Ibhaveda",
     },
     publisher: {
       "@type": "Organization",
-      name: "Interactive Ideas",
+      name: "Ibhaveda",
       logo: {
         "@type": "ImageObject",
         url: absoluteUrl("/logo.png"),
@@ -53,7 +53,7 @@ export function ArticlePage({ article }: { article: Article }) {
 
         <header className="mt-8 border-b border-white/10 pb-10">
           <p className="text-sm text-slate-400">
-            By Interactive Ideas · {article.readTime}
+            By Ibhaveda · {article.readTime}
           </p>
           <h1 className="mt-5 font-display text-4xl font-bold tracking-tight text-white md:text-6xl">
             {article.title}

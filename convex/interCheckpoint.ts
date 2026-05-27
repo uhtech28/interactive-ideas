@@ -106,15 +106,14 @@ function generateInterCheckpointEvents(
   const rng = seededRandom(seed);
   const events: InterCheckpointEventType[] = [];
 
-  // Corruption boosts henchman probability
-  const henchmanBoost = corruptionLevel > 60 ? 0.2 : corruptionLevel > 30 ? 0.1 : 0;
+  // Boss/Henchman is ALWAYS present in every checkpoint transition
+  events.push("henchman");
 
-  if (rng() < EVENT_PROBABILITIES.henchman + henchmanBoost) events.push("henchman");
   if (rng() < EVENT_PROBABILITIES.treasure) events.push("treasure");
   if (rng() < EVENT_PROBABILITIES.shield) events.push("shield");
   if (rng() < EVENT_PROBABILITIES.insight) events.push("insight");
 
-  return events.length > 0 ? events : ["clear"];
+  return events;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

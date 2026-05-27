@@ -3,7 +3,7 @@
 /**
  * src/app/map/page.tsx
  *
- * Interactive Ideas — Venture World Map
+ * Ibhaveda — Venture World Map
  * React overlay layer + Phaser canvas integration
  *
  * Stack: Next.js 15 · React 19 · Framer Motion 12 · Tailwind CSS 4 · Convex · Clerk
@@ -1455,6 +1455,20 @@ function MapPageInner() {
       : "skip",
   );
 
+  // ── Boss combat gate state ────────────────────────────────────────────────
+  // Tracks which checkpoints have had their boss defeated (key = "stage-checkpoint")
+  const [bossDefeatedCheckpoints, setBossDefeatedCheckpoints] = useState<Set<string>>(
+    () => new Set()
+  );
+  // When non-null, the boss combat overlay is open for this checkpoint
+  const [bossCombatTarget, setBossCombatTarget] = useState<{
+    stage: number;
+    checkpoint: number;
+    checkpointId: string;
+    isLastInStage: boolean;
+    isGold: boolean;
+  } | null>(null);
+
   useEffect(() => {
     if (!activeVenture) return;
     const tourCompletedKey = `worldMapTourCompleted_${activeVenture._id}`;
@@ -2583,13 +2597,30 @@ function MapPageInner() {
       ).length;
       if (doneTasks < 2) return;
 
-      // Check for unresolved inter-checkpoint events
+      // ── Boss combat gate: must defeat boss before every checkpoint advance ─
+      const bossCombatKey = `${cp.stage}-${cp.checkpoint}`;
+      if (!bossDefeatedCheckpoints.has(bossCombatKey) && !forceBypass) {
+        // Compute whether this is the last checkpoint in the stage
+        const isLastCp = !checkpoints.find(
+          (c) => c.stage === cp.stage && c.checkpoint === cp.checkpoint + 1,
+        );
+        const isGoldCp = doneTasks >= 3;
+        setBossCombatTarget({
+          stage: cp.stage,
+          checkpoint: cp.checkpoint,
+          checkpointId: cp._id,
+          isLastInStage: isLastCp,
+          isGold: isGoldCp,
+        });
+        return;
+      }
+
+      // Check for unresolved inter-checkpoint events (treasure/shield/insight — NOT henchman, that's handled above)
       const unresolvedEvents =
         interCheckpointData?.events.filter((evt) => {
-          if (evt === "clear") return false;
+          if (evt === "clear" || evt === "henchman") return false;
           const state = interCheckpointData.existingState;
           if (!state) return true;
-          if (evt === "henchman" && state.henchmanOutcome) return false;
           if (
             evt === "treasure" &&
             state.treasuresFound &&
@@ -2869,6 +2900,7 @@ function MapPageInner() {
       setBadgeQueue,
       bypassInterCheckpoint,
       interCheckpointData,
+      bossDefeatedCheckpoints,
     ],
   );
 
@@ -2979,8 +3011,7 @@ function MapPageInner() {
 
           <div className="shrink-0">
             <LevelDisplay
-              level={userProgress.level}
-              phase={userProgress.phase}
+              score={userProgress.qualityScore}
               compact={true}
             />
           </div>
@@ -3138,7 +3169,69 @@ function MapPageInner() {
             }}
           />
 
-          {/* Inter-checkpoint passage events overlay */}
+          {/* ── Boss combat gate overlay — fires for every checkpoint at 2/3 tasks ── */}
+          {bossCombatTarget && activeVenture && (
+            <InterCheckpointOverlay
+              isOpen={true}
+              events={["henchman"]}
+              templateId={activeVenture.templateId as any}
+              stage={bossCombatTarget.stage}
+              checkpoint={bossCombatTarget.checkpoint}
+              ventureId={activeVenture._id}
+              isBossCombat={true}
+              isLastCheckpointInStage={bossCombatTarget.isLastInStage}
+              isGoldCheckpoint={bossCombatTarget.isGold}
+              onBossVictory={() => {
+                const key = `${bossCombatTarget.stage}-${bossCombatTarget.checkpoint}`;
+                // Mark boss as defeated for this checkpoint
+                setBossDefeatedCheckpoints((prev) => {
+                  const next = new Set(prev);
+                  next.add(key);
+                  return next;
+                });
+                // Fire Phaser visual: boss retreats mid-stage, or is slain at final checkpoint
+                if (bossCombatTarget.isLastInStage) {
+                  eventBridge.dispatchToPhaser({
+                    type: "BOSS_FINAL_OUTCOME",
+                    stage: bossCombatTarget.stage,
+                    outcome: bossCombatTarget.isGold ? "slay_gold" : "retreat_permanent",
+                  });
+                } else {
+                  eventBridge.dispatchToPhaser({
+                    type: "BOSS_COMBAT_RETREAT",
+                    stage: bossCombatTarget.stage,
+                    checkpoint: bossCombatTarget.checkpoint,
+                  });
+                }
+                setBossCombatTarget(null);
+                setTimeout(() => handleAdvance(true), 300);
+              }}
+              onBossSkip={() => {
+                const key = `${bossCombatTarget.stage}-${bossCombatTarget.checkpoint}`;
+                setBossDefeatedCheckpoints((prev) => {
+                  const next = new Set(prev);
+                  next.add(key);
+                  return next;
+                });
+                // Skip = boss retreats (even at final checkpoint)
+                eventBridge.dispatchToPhaser({
+                  type: "BOSS_COMBAT_RETREAT",
+                  stage: bossCombatTarget.stage,
+                  checkpoint: bossCombatTarget.checkpoint,
+                });
+                setBossCombatTarget(null);
+                setTimeout(() => handleAdvance(true), 300);
+              }}
+              onBossRetreat={() => {
+                // Player failed — close overlay, do NOT advance
+                setBossCombatTarget(null);
+              }}
+              onComplete={() => setBossCombatTarget(null)}
+              onClose={() => setBossCombatTarget(null)}
+            />
+          )}
+
+          {/* Inter-checkpoint passage events overlay (treasure/shield/insight only) */}
           {activeVenture && (
             <InterCheckpointOverlay
               isOpen={interCheckpointQueue.length > 0}
@@ -3150,9 +3243,6 @@ function MapPageInner() {
               onComplete={() => {
                 setBypassInterCheckpoint(true);
                 setInterCheckpointQueue([]);
-                // Trigger the advance since the events are now resolved.
-                // Small delay lets the overlay exit animation finish first,
-                // then handleAdvance fires the checkpoint animation + persona walk.
                 setTimeout(() => {
                   handleAdvance(true);
                 }, 300);

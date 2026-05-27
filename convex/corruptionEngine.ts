@@ -1,7 +1,7 @@
 /**
  * corruptionEngine.ts
  *
- * Full corruption engine for the Interactive Ideas platform.
+ * Full corruption engine for the Ibhaveda platform.
  *
  * Implements the PRD corruption mechanics:
  *   - +5% per day of inactivity

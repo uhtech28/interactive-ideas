@@ -3,7 +3,7 @@
 /**
  * src/app/map/page.tsx
  *
- * Interactive Ideas — Venture World Map
+ * Ibhaveda — Venture World Map
  * React overlay layer + Phaser canvas integration
  *
  * Stack: Next.js 15 · React 19 · Framer Motion 12 · Tailwind CSS 4 · Convex · Clerk
@@ -2841,8 +2841,7 @@ function MapPageInner() {
 
           <div className="shrink-0">
             <LevelDisplay
-              level={userProgress.level}
-              phase={userProgress.phase}
+              score={userProgress.qualityScore}
               compact={true}
             />
           </div>

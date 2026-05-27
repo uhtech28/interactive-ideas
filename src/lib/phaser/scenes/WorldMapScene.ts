@@ -264,6 +264,9 @@ export class WorldMapScene extends Phaser.Scene {
   private retreatedStages: Set<number> = new Set();
   /** Stages whose mini-boss defeat animation has already started this session */
   private slainMiniBossStages: Set<number> = new Set();
+  /** Checkpoints that have already triggered a mini-boss combat sequence */
+  private triggeredBossCheckpoints: Set<string> = new Set();
+  private initializedBossTriggers: boolean = false;
   /** Wheel scroll handler reference for cleanup */
   private wheelHandler: ((e: WheelEvent) => void) | null = null;
   /** Residual path markers for partially completed stages */
@@ -337,6 +340,8 @@ export class WorldMapScene extends Phaser.Scene {
       variant: "standard" | "gold";
     }) => void;
     updateContributors?: (event: { contributors: ContributorData[] }) => void;
+    bossCombatRetreat?: (event: { stage: number; checkpoint: number }) => void;
+    bossFinalOutcome?: (event: { stage: number; outcome: "slay_gold" | "retreat_permanent" }) => void;
   };
 
   // Map dimensions
@@ -5592,6 +5597,10 @@ export class WorldMapScene extends Phaser.Scene {
       this.handlePlayCheckpointAnimation.bind(this);
     this.boundHandlers.updateContributors =
       this.handleUpdateContributors.bind(this);
+    this.boundHandlers.bossCombatRetreat =
+      this.handleBossCombatRetreat.bind(this);
+    this.boundHandlers.bossFinalOutcome =
+      this.handleBossFinalOutcome.bind(this);
 
     eventBridge.onPhaser(
       "UPDATE_BRIGHTNESS",
@@ -5618,6 +5627,14 @@ export class WorldMapScene extends Phaser.Scene {
       "UPDATE_CONTRIBUTORS",
       this.boundHandlers.updateContributors,
     );
+    eventBridge.onPhaser(
+      "BOSS_COMBAT_RETREAT",
+      this.boundHandlers.bossCombatRetreat,
+    );
+    eventBridge.onPhaser(
+      "BOSS_FINAL_OUTCOME",
+      this.boundHandlers.bossFinalOutcome,
+    );
 
     // Handle checkpoint clicks (emitted by CheckpointNode)
     this.events.on(
@@ -5635,8 +5652,71 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   /**
-   * Handles brightness updates - DISABLED (always full brightness)
+   * Handles BOSS_COMBAT_RETREAT — mid-stage boss animates back to stage end after player victory.
    */
+  private handleBossCombatRetreat(event: { stage: number; checkpoint: number }): void {
+    const miniBoss = this.miniBosses.get(event.stage);
+    if (!miniBoss || !miniBoss.active) return;
+
+    // Compute final position (end of this stage)
+    let stageEndGlobalIndex = 0;
+    for (let s = 0; s < event.stage; s++) {
+      stageEndGlobalIndex += (this.activeStages[s]?.checkpoints ?? 0);
+    }
+    stageEndGlobalIndex -= 1;
+
+    const finalPos = this.calculateSnakePosition(stageEndGlobalIndex, this.TOTAL_CHECKPOINTS);
+    const offsetX = 100, offsetY = -120;
+
+    this.tweens.killTweensOf(miniBoss);
+    this.tweens.add({
+      targets: miniBoss,
+      x: finalPos.x + offsetX,
+      y: finalPos.y + offsetY,
+      duration: 1200,
+      ease: "Cubic.easeInOut",
+      onComplete: () => {
+        miniBoss.retreat();
+        this.retreatedStages.add(event.stage);
+        console.log(`[WorldMapScene] 🟡 Boss Stage ${event.stage} retreated to end after checkpoint combat.`);
+      },
+    });
+  }
+
+  /**
+   * Handles BOSS_FINAL_OUTCOME — permanent slay or retreat at stage completion.
+   */
+  private handleBossFinalOutcome(event: { stage: number; outcome: "slay_gold" | "retreat_permanent" }): void {
+    const miniBoss = this.miniBosses.get(event.stage);
+    if (!miniBoss || !miniBoss.active) return;
+
+    this.tweens.killTweensOf(miniBoss);
+
+    if (event.outcome === "slay_gold") {
+      miniBoss.slayGold();
+      this.transformBiomeGold(event.stage);
+      console.log(`[WorldMapScene] 🏆 Boss Stage ${event.stage} SLAIN (gold)!`);
+    } else {
+      this.tweens.add({
+        targets: miniBoss,
+        y: miniBoss.y + 150,
+        scaleX: 0,
+        scaleY: 0,
+        alpha: 0,
+        duration: 1800,
+        ease: "Cubic.easeIn",
+        onComplete: () => miniBoss.destroy(),
+      });
+      this.restoreBiome(event.stage);
+      console.log(`[WorldMapScene] 🟡 Boss Stage ${event.stage} retreated permanently.`);
+    }
+
+    this.slainMiniBossStages.add(event.stage);
+    this.retreatedStages.delete(event.stage);
+    this.removeResidualMarker(event.stage);
+  }
+
+
   private handleUpdateBrightness(event?: { brightness: number }): void {
     // Always keep full brightness - no darkness overlay
     this.updateBrightnessFilter(100);
@@ -5807,6 +5887,34 @@ export class WorldMapScene extends Phaser.Scene {
    * Updates mini-boss weakness based on checkpoint completion
    */
   private updateMiniBossProgress(checkpoints: CheckpointState[]): void {
+    console.log("[WorldMapScene] updateMiniBossProgress - total checkpoints received:", checkpoints.length);
+
+    if (!this.initializedBossTriggers) {
+      checkpoints.forEach((cp) => {
+        const doneTasks = (cp.t1 ? 1 : 0) + (cp.t2 ? 1 : 0) + (cp.t3 ? 1 : 0);
+        if (doneTasks >= 2) {
+          const cpKey = `${cp.stage}-${cp.checkpoint}`;
+          this.triggeredBossCheckpoints.add(cpKey);
+          
+          // If a checkpoint in this stage has at least 2 completed tasks,
+          // the mini-boss for this stage should start in the retreated state.
+          this.retreatedStages.add(cp.stage);
+        }
+      });
+      this.initializedBossTriggers = true;
+      console.log("[WorldMapScene] Initialized triggeredBossCheckpoints on load:", Array.from(this.triggeredBossCheckpoints));
+      console.log("[WorldMapScene] Initialized retreatedStages on load:", Array.from(this.retreatedStages));
+
+      // Make sure those bosses that are retreated start in the retreated visual state
+      for (const [stage, miniBoss] of this.miniBosses.entries()) {
+        if (this.retreatedStages.has(stage) && !this.slainMiniBossStages.has(stage)) {
+          if (miniBoss && miniBoss.active) {
+            miniBoss.retreat();
+          }
+        }
+      }
+    }
+
     const stageProgress = new Map<
       number,
       { completed: number; total: number }
@@ -5841,7 +5949,10 @@ export class WorldMapScene extends Phaser.Scene {
     // Update all mini-bosses
     for (const [stage, miniBoss] of this.miniBosses.entries()) {
       const progress = stageProgress.get(stage);
-      if (!progress) continue;
+      if (!progress) {
+        console.log(`[WorldMapScene] No progress found for stage ${stage}`);
+        continue;
+      }
 
       const { completed, total } = progress;
       const stageCheckpoints = checkpoints
@@ -5861,19 +5972,34 @@ export class WorldMapScene extends Phaser.Scene {
         finalCheckpoint?.status === "gold" ||
         !!finalCheckpoint?.goldBonusEarned;
 
+      console.log(`[WorldMapScene] Stage ${stage}: completed=${completed}/${total}, stageComplete=${stageComplete}, playerMovedPast=${playerMovedPast}, finalCheckpointGold=${finalCheckpointGold}`);
+
       if (stageComplete && !this.slainMiniBossStages.has(stage)) {
-        // Slay the boss when stage is complete
+        // Slay or retreat permanently when stage is complete
         if (miniBoss && miniBoss.active) {
-          // Use gold slay if final checkpoint is gold
           if (finalCheckpointGold) {
+            // Did all tasks -> Boss dies!
             miniBoss.slayGold();
             this.transformBiomeGold(stage);
           } else {
-            miniBoss.slay();
+            // Did bare minimum (2 tasks) -> Boss retreats permanently!
+            this.tweens.killTweensOf(miniBoss);
+            this.tweens.add({
+              targets: miniBoss,
+              y: miniBoss.y + 150,
+              scaleX: 0,
+              scaleY: 0,
+              alpha: 0,
+              duration: 2000,
+              ease: "Cubic.easeIn",
+              onComplete: () => {
+                miniBoss.destroy();
+              }
+            });
             this.restoreBiome(stage);
           }
           this.slainMiniBossStages.add(stage);
-          this.retreatedStages.delete(stage); // slay supersedes retreat
+          this.retreatedStages.delete(stage); // slay/retreat-permanent supersedes temporary retreat
           // Remove residual marker if it exists
           this.removeResidualMarker(stage);
         }
@@ -5893,8 +6019,72 @@ export class WorldMapScene extends Phaser.Scene {
           );
         }
       } else if (!playerMovedPast && !stageComplete) {
-        // Still on this stage — keep weakening based on progress
-        if (miniBoss && miniBoss.active) {
+        // Check for 2/3 tasks completion on checkpoints in this active stage
+        stageCheckpoints.forEach((cp) => {
+          const doneTasks = (cp.t1 ? 1 : 0) + (cp.t2 ? 1 : 0) + (cp.t3 ? 1 : 0);
+          const cpKey = `${cp.stage}-${cp.checkpoint}`;
+          console.log(`[WorldMapScene] Checkpoint ${cpKey}: doneTasks=${doneTasks}, cp.checkpoint=${cp.checkpoint}, total=${total}, triggered=${this.triggeredBossCheckpoints.has(cpKey)}`);
+
+          // Only trigger for mid-stage checkpoints (final checkpoint triggers final outcome)
+          if (doneTasks >= 2 && cp.checkpoint < total && !this.triggeredBossCheckpoints.has(cpKey)) {
+            console.log(`[WorldMapScene] 🎯 Triggering mini-boss combat at checkpoint ${cpKey}!`);
+            this.triggeredBossCheckpoints.add(cpKey);
+
+            if (miniBoss && miniBoss.active) {
+              let globalIndexForCp = 0;
+              for (let s = 0; s < cp.stage - 1; s++) {
+                globalIndexForCp += this.activeStages[s].checkpoints;
+              }
+              globalIndexForCp += cp.checkpoint - 1;
+
+              const cpPos = this.calculateSnakePosition(globalIndexForCp, this.TOTAL_CHECKPOINTS);
+              const offsetX = 100;
+              const offsetY = -120;
+
+              // Move boss to the checkpoint where combat happens
+              miniBoss.setPosition(cpPos.x + offsetX, cpPos.y + offsetY);
+              miniBoss.setAlpha(1);
+
+              // Play combat shake / attack visual
+              this.tweens.killTweensOf(miniBoss);
+              this.tweens.add({
+                targets: miniBoss,
+                x: miniBoss.x + 12,
+                y: miniBoss.y - 12,
+                duration: 70,
+                yoyo: true,
+                repeat: 6,
+                onComplete: () => {
+                  // Combat finished! Retreat back to the end of the stage
+                  let stageEndGlobalIndex = 0;
+                  for (let s = 0; s < cp.stage; s++) {
+                    stageEndGlobalIndex += this.activeStages[s].checkpoints;
+                  }
+                  stageEndGlobalIndex -= 1;
+
+                  const finalPos = this.calculateSnakePosition(stageEndGlobalIndex, this.TOTAL_CHECKPOINTS);
+
+                  this.tweens.add({
+                    targets: miniBoss,
+                    x: finalPos.x + offsetX,
+                    y: finalPos.y + offsetY,
+                    duration: 1600,
+                    ease: "Cubic.easeInOut",
+                    onComplete: () => {
+                      // Play standard retreat visual feedback
+                      miniBoss.retreat();
+                      this.retreatedStages.add(stage);
+                      console.log(`[WorldMapScene] Mini-boss Stage ${stage} successfully retreated to end of stage.`);
+                    }
+                  });
+                }
+              });
+            }
+          }
+        });
+
+        // Still on this stage — keep weakening based on progress if not retreated
+        if (miniBoss && miniBoss.active && !this.retreatedStages.has(stage)) {
           miniBoss.weaken(completed, total);
         }
       }
@@ -5986,6 +6176,8 @@ export class WorldMapScene extends Phaser.Scene {
       if (ventureChanged) {
         this.retreatedStages.clear();
         this.slainMiniBossStages.clear();
+        this.triggeredBossCheckpoints.clear();
+        this.initializedBossTriggers = false;
         this.checkpointIdAliases.clear();
         this.lastPersonaCheckpointId = null;
         this.revealedStages.clear();
@@ -6656,6 +6848,12 @@ export class WorldMapScene extends Phaser.Scene {
         "UPDATE_CONTRIBUTORS",
         this.boundHandlers.updateContributors,
       );
+    }
+    if (this.boundHandlers.bossCombatRetreat) {
+      eventBridge.off("BOSS_COMBAT_RETREAT", this.boundHandlers.bossCombatRetreat);
+    }
+    if (this.boundHandlers.bossFinalOutcome) {
+      eventBridge.off("BOSS_FINAL_OUTCOME", this.boundHandlers.bossFinalOutcome);
     }
     if (this.resizeHandler) {
       this.scale.off("resize", this.resizeHandler);

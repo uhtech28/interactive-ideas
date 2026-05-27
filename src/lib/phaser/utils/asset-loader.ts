@@ -1,7 +1,7 @@
 // /**
 //  * asset-loader.ts
 //  *
-//  * Programmatic Phaser texture creation for Interactive Ideas — Week 1.
+//  * Programmatic Phaser texture creation for Ibhaveda — Week 1.
 //  *
 //  * All game textures are painted at runtime via Phaser's Graphics API so that
 //  * zero external image files are required during Week 1 development.
@@ -1059,7 +1059,7 @@
 /**
  * asset-loader.ts
  *
- * Programmatic Phaser texture creation for Interactive Ideas.
+ * Programmatic Phaser texture creation for Ibhaveda.
  * Theme: Dark Tech Platform — Indigo · Purple · Cyan · Deep Navy
  *
  * ─── Texture registry ────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-# Interactive Ideas — Game Assets
+# Ibhaveda — Game Assets
 
 This directory contains all game assets for the Phaser 3 world map system.
 

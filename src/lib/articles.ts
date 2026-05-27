@@ -35,7 +35,7 @@ export type Article = {
   sections: ArticleSection[];
 };
 
-export const SITE_URL = "https://interactiveideas.io";
+export const SITE_URL = "https://ibhaveda.com";
 
 export const categories: Category[] = [
   {
@@ -45,7 +45,7 @@ export const categories: Category[] = [
       "How raw ideas become tested ventures without pretending the first pitch is the company.",
     intro:
       "Venture creation is the work between inspiration and incorporation: pressure-testing the market, finding the right collaborators, shaping proof, and making progress visible before a startup has the polish of a company.",
-    seoTitle: "Venture Creation Articles | Interactive Ideas",
+    seoTitle: "Venture Creation Articles | Ibhaveda",
     seoDescription:
       "Practical articles on venture creation platforms, startup idea development, validation, and turning early ideas into executable ventures.",
   },
@@ -56,7 +56,7 @@ export const categories: Category[] = [
       "Execution systems for founders who need momentum, feedback loops, and visible progress.",
     intro:
       "Most early startup work fails quietly. Startup execution is about reducing that silence: breaking ideas into actions, testing assumptions, and making the next move obvious enough that teams keep moving.",
-    seoTitle: "Startup Execution Articles | Interactive Ideas",
+    seoTitle: "Startup Execution Articles | Ibhaveda",
     seoDescription:
       "Founder-focused articles on gamified startup execution, launch momentum, early validation, and why promising startup ideas stall.",
   },
@@ -67,7 +67,7 @@ export const categories: Category[] = [
       "A practical look at cofounder discovery, contribution, trust, and shared venture-building.",
     intro:
       "Founder collaboration is not networking with better branding. It is the operating layer where people reveal how they think, what they can build, and whether they can survive ambiguity together.",
-    seoTitle: "Founder Collaboration Articles | Interactive Ideas",
+    seoTitle: "Founder Collaboration Articles | Ibhaveda",
     seoDescription:
       "Articles on finding cofounders online, evaluating collaborators, and building productive founder collaboration around early startup ideas.",
   },
@@ -78,9 +78,9 @@ export const categories: Category[] = [
       "What happens when startup creation becomes more participatory, transparent, and contribution-driven.",
     intro:
       "Open innovation gives early ideas more surface area. Instead of hiding every unfinished thought, founders can expose the right problems to the right people and use contribution as a way to discover leverage.",
-    seoTitle: "Open Innovation Articles | Interactive Ideas",
+    seoTitle: "Open Innovation Articles | Ibhaveda",
     seoDescription:
-      "Explore open entrepreneurship, crowdsolving, public problem-solving, and collaborative startup creation with Interactive Ideas.",
+      "Explore open entrepreneurship, crowdsolving, public problem-solving, and collaborative startup creation with Ibhaveda.",
   },
   {
     slug: "future-of-entrepreneurship",
@@ -89,7 +89,7 @@ export const categories: Category[] = [
       "The next shape of venture-building: collaborative, AI-assisted, and less dependent on lone-founder mythology.",
     intro:
       "The future of entrepreneurship will not only be faster. It will be more networked, more assisted, and more honest about how ideas actually become companies: through repeated contact with people, tools, and reality.",
-    seoTitle: "Future of Entrepreneurship Articles | Interactive Ideas",
+    seoTitle: "Future of Entrepreneurship Articles | Ibhaveda",
     seoDescription:
       "Research-style articles on collaborative venture building, AI in startup creation, and the future of entrepreneurship.",
   },
@@ -145,7 +145,7 @@ export const articles: Article[] = [
         body: [
           "A strong venture creation platform makes the invisible parts of early company-building visible: assumptions, experiments, roles, progress, decisions, and unresolved questions. It does not need to replace judgment. It should make judgment easier by keeping the work close to reality.",
           "The most valuable visibility is not vanity visibility. Public likes, vague comments, and inflated enthusiasm can make an idea feel alive while hiding the fact that no one is doing the difficult work. Better signals include who returns to contribute, which objections repeat, what users try to do before being taught, and which tasks remain blocked after the excitement fades.",
-          "Interactive Ideas is built around this premise: the path from idea to venture should be social, structured, and execution-oriented without forcing founders to prematurely perform like fully formed companies.",
+          "Ibhaveda is built around this premise: the path from idea to venture should be social, structured, and execution-oriented without forcing founders to prematurely perform like fully formed companies.",
         ],
       },
       {
@@ -356,7 +356,7 @@ export const articles: Article[] = [
         heading: "Trust comes from repeated work",
         body: [
           "Trust is not built by alignment language. It is built when people do what they said, communicate when blocked, and make the venture better over multiple cycles.",
-          "Interactive Ideas is designed to make that repeated work more visible. Founders can move beyond one-off feedback and start seeing who actually contributes to the life of an idea.",
+          "Ibhaveda is designed to make that repeated work more visible. Founders can move beyond one-off feedback and start seeing who actually contributes to the life of an idea.",
         ],
       },
     ],
@@ -392,7 +392,7 @@ export const articles: Article[] = [
         heading: "The boundary matters",
         body: [
           "Open entrepreneurship needs boundaries. Platform content, private user data, internal strategy, and sensitive venture work should not be exposed by default. Founders need control over what is public, what is shared with collaborators, and what stays private.",
-          "For Interactive Ideas, that boundary is central. Public SEO content can teach the philosophy of venture-building while the actual platform content remains protected behind auth until there is an explicit reason to make more of it public.",
+          "For Ibhaveda, that boundary is central. Public SEO content can teach the philosophy of venture-building while the actual platform content remains protected behind auth until there is an explicit reason to make more of it public.",
         ],
       },
     ],
@@ -508,7 +508,7 @@ export const articles: Article[] = [
         heading: "AI output has to connect to execution",
         body: [
           "The useful future is not an AI that writes a startup plan and leaves the founder alone with a document. The useful future connects AI output to execution: tasks, experiments, collaborator requests, progress tracking, and learning.",
-          "Interactive Ideas is positioned around that broader shift. The point is not merely to generate more ideas. It is to help founders move from idea to venture with more structure, more collaboration, and better judgment at every step.",
+          "Ibhaveda is positioned around that broader shift. The point is not merely to generate more ideas. It is to help founders move from idea to venture with more structure, more collaboration, and better judgment at every step.",
         ],
       },
     ],

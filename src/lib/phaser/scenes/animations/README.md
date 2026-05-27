@@ -1,6 +1,6 @@
 # Checkpoint Animation System - 2-Stage MVP
 
-Complete implementation of checkpoint completion animations for the Interactive Ideas 2-stage venture system with standard and gold variants.
+Complete implementation of checkpoint completion animations for the Ibhaveda 2-stage venture system with standard and gold variants.
 
 ---
 
@@ -496,7 +496,7 @@ console.log(scene.checkpointNodes.get('cp_s1_c1'))
 
 ## 👥 Credits
 
-**Design**: Interactive Ideas Product Team  
+**Design**: Ibhaveda Product Team  
 **Implementation**: Phaser Animation System  
 **Framework**: Phaser 3 + React + TypeScript  
 **Inspiration**: Monument Valley, Journey, Zelda series
@@ -505,4 +505,4 @@ console.log(scene.checkpointNodes.get('cp_s1_c1'))
 
 ## 📄 License
 
-Part of Interactive Ideas platform - All rights reserved
+Part of Ibhaveda platform - All rights reserved

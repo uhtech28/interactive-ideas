@@ -258,7 +258,7 @@ export function parseTags(tagStr?: string) {
 }
 
 export function getDisplayName(author?: IdeaAuthor | null) {
-  return author?.displayName || author?.name || author?.username || "InteractiveIdeas Builder";
+  return author?.displayName || author?.name || author?.username || "Ibhaveda Builder";
 }
 
 export function getRoleBadge(author?: IdeaAuthor | null) {

@@ -141,7 +141,7 @@ export function IdeaForgeNavbar({
             <Image src="/logo.png" alt="" width={44} height={44} className="h-full w-full object-cover" priority />
           </div>
           <div className="hidden sm:block">
-            <div className={cn(displayFontClass, "text-sm font-semibold tracking-wide text-white")}>InteractiveIdeas</div>
+            <div className={cn(displayFontClass, "text-sm font-semibold tracking-wide text-white")}>Ibhaveda</div>
             <div className="text-[11px] uppercase tracking-[0.18em] text-[#7C86A2]">Builder Network</div>
           </div>
         </Link>

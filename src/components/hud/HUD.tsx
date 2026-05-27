@@ -18,7 +18,6 @@ import {
   stageInfoAtom,
   checkpointProgressAtom,
   corruptionStateAtom,
-
   submittingTaskAtom,
   activeTaskAtom,
 } from "@/lib/stores/hudStore";
@@ -89,12 +88,13 @@ const HUDComponent = () => {
               >
                 <div className="px-2 py-1.5 sm:px-3 sm:py-2">
                   <div
-                    className="no-scrollbar mx-auto flex w-full items-center justify-start gap-2 overflow-x-auto rounded-2xl border px-2 py-1.5 sm:gap-3 sm:px-3 md:justify-center"
+                    className="no-scrollbar mx-auto flex w-full items-center justify-start gap-1.5 overflow-x-auto rounded-2xl border px-2 py-1.5 sm:gap-2 sm:px-3 md:justify-center"
                     style={{
                       borderColor: "rgba(255, 255, 255, 0.05)",
                       background: "rgba(255, 255, 255, 0.02)",
                     }}
                   >
+                    {/* Stage icon + biome name */}
                     <div className="shrink-0">
                       <StageInfo
                         stageName={stageInfo.stageName}
@@ -109,9 +109,10 @@ const HUDComponent = () => {
                       />
                     </div>
 
-                    <div className="hidden h-6 w-px bg-[#c8b47a]/15 sm:block" />
+                    <div className="hidden h-6 w-px shrink-0 bg-[#c8b47a]/15 sm:block" />
 
-                    <div className="shrink-0">
+                    {/* Idea name + gold count — shrinks and truncates */}
+                    <div className="min-w-0 flex-1 sm:flex-none sm:shrink-0">
                       <CheckpointProgress
                         completed={checkpointProgress.completed}
                         total={checkpointProgress.total}
@@ -125,12 +126,12 @@ const HUDComponent = () => {
                       />
                     </div>
 
+                    <div className="hidden h-6 w-px shrink-0 bg-[#c8b47a]/15 sm:block" />
 
-
+                    {/* Score badge */}
                     <div className="shrink-0">
                       <LevelDisplay
-                        level={userProgress.level}
-                        phase={userProgress.phase}
+                        score={userProgress.qualityScore}
                         compact={true}
                         onClick={() => {
                           if (activeTask) {
@@ -139,7 +140,11 @@ const HUDComponent = () => {
                         }}
                       />
                     </div>
-                    <div className="shrink-0">
+
+                    <div className="hidden h-6 w-px shrink-0 bg-[#c8b47a]/15 sm:block" />
+
+                    {/* XP / VS-boss bar — fills remaining space */}
+                    <div className="min-w-0 flex-1">
                       <XPBar
                         currentXP={userProgress.xp}
                         maxXP={userProgress.xpToNextLevel}

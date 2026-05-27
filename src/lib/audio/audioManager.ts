@@ -1,7 +1,7 @@
 /**
  * audioManager.ts
  *
- * Interactive Ideas — Howler.js Audio Manager
+ * Ibhaveda — Howler.js Audio Manager
  *
  * Manages all game audio across four categories:
  *   1. Ambience  — 8 biome loops (crossfade 800ms on stage transition)

@@ -40,7 +40,7 @@ export function CategoryHub({ category }: { category: Category }) {
             Articles
           </h2>
           <p className="mt-2 text-sm text-slate-400">
-            Practical pieces from Interactive Ideas.
+            Practical pieces from Ibhaveda.
           </p>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {categoryArticles.map((article) => (
@@ -67,7 +67,7 @@ export function CategoryHub({ category }: { category: Category }) {
         <div className="mt-12">
           <ContentCta
             title="Start from an idea, move toward a venture"
-            description="Interactive Ideas gives early founders a place to shape ideas, invite contribution, and turn scattered momentum into visible progress."
+            description="Ibhaveda gives early founders a place to shape ideas, invite contribution, and turn scattered momentum into visible progress."
           />
         </div>
       </div>

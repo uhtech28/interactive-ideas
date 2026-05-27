@@ -25,10 +25,10 @@ export default function ContactPage() {
     }
   }, [opened]);
   
-  const website = "https://theinteractiveideas.com/";
+  const website = "https://ibhaveda.com/";
   const linkedin = "https://www.linkedin.com/in/aryan-v-awasthi/";
-  const instagram = "https://www.instagram.com/theinteractiveideas/";
-  const x = "https://x.com/AryanVAwasthi";
+  const instagram = "https://www.instagram.com/ibhaveda/";
+  const x = "https://x.com/ibhaveda";
 
   return (
     <main className="min-h-screen bg-[#070A0F] px-4 py-6 text-white sm:px-6 sm:py-10">
@@ -36,11 +36,11 @@ export default function ContactPage() {
         <div className="mb-10 flex items-center gap-3">
           <img
                 src="/logo.png"
-                alt="Interactive Ideas"
+                alt="Ibhaveda"
                 className="h-12 w-12 rounded-2xl object-cover"
             />
           <div>
-            <p className="text-lg font-bold leading-none">InteractiveIdeas</p>
+            <p className="text-lg font-bold leading-none">Ibhaveda</p>
             <p className="mt-1 text-xs uppercase tracking-[0.35em] text-slate-400">
               Builder Network
             </p>

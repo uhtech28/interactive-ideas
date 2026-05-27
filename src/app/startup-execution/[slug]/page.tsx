@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!article) return {};
 
   return {
-    title: `${article.title} | Interactive Ideas`,
+    title: `${article.title} | Ibhaveda`,
     description: article.description,
     alternates: { canonical: absoluteUrl(articlePath(article)) },
     openGraph: {
