@@ -2,7 +2,7 @@
  * brightness-calculator.ts
  *
  * Pure TypeScript utility that implements the two-layer world brightness formula
- * for the Interactive Ideas Phaser game engine integration.
+ * for the Ibhaveda Phaser game engine integration.
  *
  * The brightness model has two independent layers that sum to a 0–100% value:
  *

@@ -147,7 +147,7 @@ export function buildFarewellEmail(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Before we go — Interactive Ideas</title>
+  <title>Before we go — Ibhaveda</title>
   <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800&display=swap" rel="stylesheet">
   <style>@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800&display=swap');</style>
 </head>
@@ -163,9 +163,9 @@ export function buildFarewellEmail(
           <!-- Logo — update src if your path differs from /logo.png -->
           <tr>
             <td align="center" style="padding-bottom:28px;">
-              <a href="https://theinteractiveideas.com" style="text-decoration:none;display:block;">
-                <img src="https://theinteractiveideas.com/logo.png"
-                     alt="Interactive Ideas"
+              <a href="https://ibhaveda.com" style="text-decoration:none;display:block;">
+                <img src="https://ibhaveda.com/logo.png"
+                     alt="Ibhaveda"
                      width="210"
                      style="display:block;margin:0 auto;height:auto;border:0;max-width:210px;"
                 />
@@ -223,7 +223,7 @@ export function buildFarewellEmail(
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
                 <tr>
                   <td align="center">
-                    <a href="https://theinteractiveideas.com"
+                    <a href="https://ibhaveda.com"
                        style="display:inline-block;background:linear-gradient(135deg,#7C3AED,#5b21b6);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 44px;border-radius:10px;letter-spacing:0.3px;line-height:1;">
                       Take me back &rarr;
                     </a>
@@ -244,11 +244,11 @@ export function buildFarewellEmail(
           <tr>
             <td style="padding:24px 0;text-align:center;">
               <p style="margin:0;color:#4a4568;font-size:12px;line-height:1.6;">
-                This is the final email from Interactive Ideas to this address.
+                This is the final email from Ibhaveda to this address.
               </p>
               <p style="margin:6px 0 0;color:#4a4568;font-size:12px;">
-                &copy; 2025 Interactive Ideas &middot;
-                <a href="https://theinteractiveideas.com" style="color:#7C3AED;text-decoration:none;">Visit Platform</a>
+                &copy; 2025 Ibhaveda &middot;
+                <a href="https://ibhaveda.com" style="color:#7C3AED;text-decoration:none;">Visit Platform</a>
               </p>
             </td>
           </tr>
@@ -289,7 +289,7 @@ export function buildReengagementEmail(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>You've been away — Interactive Ideas</title>
+  <title>You've been away — Ibhaveda</title>
   <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800&display=swap" rel="stylesheet">
   <style>@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800&display=swap');</style>
 </head>
@@ -306,9 +306,9 @@ export function buildReengagementEmail(
           <!-- Logo — update src if your path differs from /logo.png -->
           <tr>
             <td align="center" style="padding-bottom:28px;">
-              <a href="https://theinteractiveideas.com" style="text-decoration:none;display:block;">
-                <img src="https://theinteractiveideas.com/logo.png"
-                     alt="Interactive Ideas"
+              <a href="https://ibhaveda.com" style="text-decoration:none;display:block;">
+                <img src="https://ibhaveda.com/logo.png"
+                     alt="Ibhaveda"
                      width="210"
                      style="display:block;margin:0 auto;height:auto;border:0;max-width:210px;"
                 />
@@ -352,9 +352,9 @@ export function buildReengagementEmail(
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td align="center">
-                    <a href="https://theinteractiveideas.com"
+                    <a href="https://ibhaveda.com"
                        style="display:inline-block;background:linear-gradient(135deg,#7C3AED,#5b21b6);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 44px;border-radius:10px;letter-spacing:0.3px;line-height:1;">
-                      Come Back to Interactive Ideas &rarr;
+                      Come Back to Ibhaveda &rarr;
                     </a>
                   </td>
                 </tr>
@@ -367,11 +367,11 @@ export function buildReengagementEmail(
           <tr>
             <td style="padding:24px 0;text-align:center;">
               <p style="margin:0;color:#4a4568;font-size:12px;line-height:1.6;">
-                You're receiving this because you have an account on Interactive Ideas.
+                You're receiving this because you have an account on Ibhaveda.
               </p>
               <p style="margin:6px 0 0;color:#4a4568;font-size:12px;">
-                &copy; 2025 Interactive Ideas &middot;
-                <a href="https://theinteractiveideas.com" style="color:#7C3AED;text-decoration:none;">Visit Platform</a>
+                &copy; 2025 Ibhaveda &middot;
+                <a href="https://ibhaveda.com" style="color:#7C3AED;text-decoration:none;">Visit Platform</a>
               </p>
             </td>
           </tr>

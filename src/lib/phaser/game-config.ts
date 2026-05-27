@@ -1,7 +1,7 @@
 /**
  * Phaser Game Configuration Factory
  *
- * Creates the core Phaser game configuration for the Interactive Ideas world map.
+ * Creates the core Phaser game configuration for the Ibhaveda world map.
  * Optimized for pixel art rendering with proper scaling and physics.
  *
  * @module lib/phaser/game-config

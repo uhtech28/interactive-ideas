@@ -11,16 +11,16 @@ import {
 import { ArticleSearch, type SearchArticle } from "@/components/content/article-search";
 
 export const metadata: Metadata = {
-  title: "Articles | Interactive Ideas",
+  title: "Articles | Ibhaveda",
   description:
-    "Explore Interactive Ideas articles on venture creation, startup execution, founder collaboration, open innovation, and the future of entrepreneurship.",
+    "Explore Ibhaveda articles on venture creation, startup execution, founder collaboration, open innovation, and the future of entrepreneurship.",
   alternates: {
     canonical: absoluteUrl("/articles"),
   },
   openGraph: {
-    title: "Articles | Interactive Ideas",
+    title: "Articles | Ibhaveda",
     description:
-      "Founder-focused articles from Interactive Ideas on building startups from raw ideas into executed ventures.",
+      "Founder-focused articles from Ibhaveda on building startups from raw ideas into executed ventures.",
     url: absoluteUrl("/articles"),
     type: "website",
   },
@@ -40,7 +40,7 @@ export default function ArticlesPage() {
     <main className="min-h-screen bg-background px-4 py-16 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
         <Link href="/" className="text-sm font-medium text-primary hover:text-primary/80">
-          Interactive Ideas
+          Ibhaveda
         </Link>
 
         <header className="mt-8 max-w-3xl">

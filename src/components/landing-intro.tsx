@@ -122,7 +122,7 @@ export default function LandingIntro() {
   return (
     <div
       role="dialog"
-      aria-label="Interactive Ideas intro"
+      aria-label="Ibhaveda intro"
       style={{
         position: "fixed",
         inset: 0,
@@ -276,7 +276,7 @@ export default function LandingIntro() {
                     letterSpacing: "-0.01em",
                   }}
                 >
-                  Interactive Ideas changes that.
+                  Ibhaveda changes that.
                 </span>
               </div>
             )}
@@ -519,7 +519,7 @@ function PlatformMockup({ typing }: { typing: boolean }) {
         <Dot color="#FEBC2E" />
         <Dot color="#28C840" />
         <span style={{ marginLeft: 12, fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
-          interactiveideas.app · Feed
+          ibhaveda.com · Feed
         </span>
       </div>
 
@@ -1081,7 +1081,7 @@ function ClosingCard() {
           marginTop: 6,
         }}
       >
-        Interactive Ideas
+        Ibhaveda
       </div>
       <div
         style={{
@@ -1093,7 +1093,7 @@ function ClosingCard() {
         The Idea Incubator — designed as a social media,{" "}
         <span style={GRADIENT_TEXT}>played like a game.</span>
       </div>
-      <div style={{ fontSize: 13, color: "#C7D2FE" }}>theinteractiveideas.com</div>
+      <div style={{ fontSize: 13, color: "#C7D2FE" }}>ibhaveda.com</div>
 
       <div
         style={{

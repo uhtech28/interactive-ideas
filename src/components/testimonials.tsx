@@ -17,19 +17,19 @@ const testimonials: Testimonial[] = [
         name: 'Elena Rodriguez',
         role: 'Product Designer',
         image: 'https://randomuser.me/api/portraits/women/1.jpg',
-        quote: 'Interactive Ideas transformed how I collaborate on design concepts. The feedback I received on my app idea led to a successful funding round!',
+        quote: 'Ibhaveda transformed how I collaborate on design concepts. The feedback I received on my app idea led to a successful funding round!',
     },
     {
         name: 'Marcus Chen',
         role: 'Entrepreneur & Innovator',
         image: 'https://randomuser.me/api/portraits/men/6.jpg',
-        quote: 'Found my perfect co-founder through Interactive Ideas! We went from initial concept to prototype in just 6 months.',
+        quote: 'Found my perfect co-founder through Ibhaveda! We went from initial concept to prototype in just 6 months.',
     },
     {
         name: 'Priya Sharma',
         role: 'Technology Startup Founder',
         image: 'https://randomuser.me/api/portraits/women/7.jpg',
-        quote: 'The community validation on Interactive Ideas gave me the confidence to quit my job and build my startup full-time.',
+        quote: 'The community validation on Ibhaveda gave me the confidence to quit my job and build my startup full-time.',
     },
     {
         name: 'Alex Thompson',
@@ -41,13 +41,13 @@ const testimonials: Testimonial[] = [
         name: 'Sarah Kim',
         role: 'UX Researcher',
         image: 'https://randomuser.me/api/portraits/women/4.jpg',
-        quote: "Interactive Ideas creates a safe space for innovation. Every idea gets proper analysis and constructive feedback from industry experts.",
+        quote: "Ibhaveda creates a safe space for innovation. Every idea gets proper analysis and constructive feedback from industry experts.",
     },
     {
         name: 'David Morales',
         role: 'Serial Entrepreneur',
         image: 'https://randomuser.me/api/portraits/men/2.jpg',
-        quote: 'From concept to launch, I collaborated with 15 different creators on Interactive Ideas. Together we built something amazing!',
+        quote: 'From concept to launch, I collaborated with 15 different creators on Ibhaveda. Together we built something amazing!',
     },
 ]
 

@@ -9,11 +9,11 @@ const links = [
   { title: "Future of Entrepreneurship", href: "/future-of-entrepreneurship" },
 ];
 
-const X_URL = "https://x.com/aryanvawasthi";
+const X_URL = "https://x.com/ibhaveda";
 const LINKEDIN_URL = "https://www.linkedin.com/in/aryan-v-awasthi";
 const FACEBOOK_URL = "https://www.facebook.com/profile.php?id=61589162732110";
-const THREADS_URL = "https://www.threads.com/@theinteractiveideas";
-const INSTAGRAM_URL = "https://www.instagram.com/theinteractiveideas/";
+const THREADS_URL = "https://www.threads.com/@ibhaveda";
+const INSTAGRAM_URL = "https://www.instagram.com/ibhaveda/";
 
 const ICON_CLASS = "inline-block p-2 text-muted-foreground hover:text-primary cursor-pointer";
 
@@ -69,7 +69,7 @@ export default function FooterSection() {
         </div>
 
         <span className="text-muted-foreground block text-center text-sm">
-          © {new Date().getFullYear()} Interactive Ideas, All rights reserved
+          © {new Date().getFullYear()} Ibhaveda, All rights reserved
         </span>
       </div>
     </footer>

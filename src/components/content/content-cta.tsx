@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export function ContentCta({
-  title = "Start building on Interactive Ideas",
+  title = "Start building on Ibhaveda",
   description = "Take the idea out of your notes and put it into a place where progress, collaborators, and execution can form around it.",
 }: {
   title?: string;
@@ -22,7 +22,7 @@ export function ContentCta({
           href="/"
           className="inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary/90"
         >
-          Go to Interactive Ideas
+          Go to Ibhaveda
         </Link>
       </div>
     </section>

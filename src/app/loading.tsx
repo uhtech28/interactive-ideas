@@ -13,7 +13,7 @@ export default function Loading() {
             <Spinner size={58} className="text-indigo-200" />
           </div>
           <p className="text-xs font-bold uppercase tracking-[0.34em] text-indigo-200">
-            Interactive Ideas
+            Ibhaveda
           </p>
           <h1 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl">
             Preparing your venture map

@@ -35,7 +35,7 @@
 //  * Ideation Hub → Research Lab → Validation Center → Product Studio →
 //  * Development Zone → Launch Pad → Growth Engine → Unicorn Valley
 //  *
-//  * THEME: Interactive Ideas - Modern dark tech platform
+//  * THEME: Ibhaveda - Modern dark tech platform
 //  * Primary: #6366F1 (Indigo), Accent: #8B5CF6 (Purple), Cyan: #06B6D4
 //  */
 // export const VENTURE_BIOMES: VentureBiome[] = [

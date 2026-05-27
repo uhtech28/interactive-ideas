@@ -6,14 +6,14 @@ export const Logo = ({ className }: { className?: string; uniColor?: boolean; id
         <div className={cn('flex items-center gap-2', className)}>
             <Image
                 src="/logo.png"
-                alt="Interactive Ideas Logo"
+                alt="Ibhaveda Logo"
                 width={40}
                 height={40}
                 className="shrink-0"
                 priority
             />
             <span className="hidden md:block text-base md:text-lg font-bold tracking-tight bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">
-                Interactive Ideas
+                Ibhaveda
             </span>
         </div>
     )
@@ -23,7 +23,7 @@ export const LogoIcon = ({ className }: { className?: string; uniColor?: boolean
     return (
         <Image
             src="/logo.png"
-            alt="Interactive Ideas"
+            alt="Ibhaveda"
             width={36}
             height={36}
             className={cn('shrink-0', className)}

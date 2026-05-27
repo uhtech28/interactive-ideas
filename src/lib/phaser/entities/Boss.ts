@@ -2,7 +2,7 @@
  * Boss.ts
  *
  * BossSilhouette — a Phaser Container representing a Super Boss enemy on the
- * Interactive Ideas world-map. Renders a menacing humanoid silhouette with
+ * Ibhaveda world-map. Renders a menacing humanoid silhouette with
  * status-based alpha transitions.
  *
  * Each of the 3 Super Bosses (The Gravemind, The Unraveller, The Pale Architect)

@@ -1,6 +1,6 @@
 # Persona Sprite Sheets
 
-This directory contains sprite sheet assets for the Interactive Ideas persona/avatar system.
+This directory contains sprite sheet assets for the Ibhaveda persona/avatar system.
 
 ## Required Sprite Sheets
 

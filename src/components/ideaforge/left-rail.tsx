@@ -155,7 +155,7 @@ export function IdeaForgeLeftRail({
               </Avatar>
               <div className="mt-3">
                 <h2 className={cn(displayFontClass, "text-base font-semibold text-[#F9FAFB] truncate group-hover:text-white")}>
-                  {currentUser?.displayName || "InteractiveIdeas Member"}
+                  {currentUser?.displayName || "Ibhaveda Member"}
                 </h2>
               </div>
             </Link>
