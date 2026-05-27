@@ -5,11 +5,21 @@ import { useEffect, useState } from "react";
 export default function ContactPage() {
   const [opened, setOpened] = useState(false);
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('save') === 'true') {
+      // window.location.href is allowed on iOS Safari (unlike link.click())
+      // /api/vcard serves the VCF with a Refresh header that redirects to ibhaveda.com after 4s
+      window.location.href = '/api/vcard';
+    }
+  }, []);
+
+  useEffect(() => {
     if (opened) {
+      // Desktop fallback: page stays alive after VCF download, so redirect manually
       const timer = setTimeout(() => {
         window.location.href = website;
       }, 2200);
-  
+
       return () => clearTimeout(timer);
     }
   }, [opened]);
@@ -95,10 +105,8 @@ export default function ContactPage() {
             <div className="mt-10 border-t border-white/10 pt-8">
               {!opened ? (
                 <a
-                href="/aryan-awasthi.vcf"
-                onClick={() => {
-                  setOpened(true);
-                }}
+                  href="/api/vcard"
+                  onClick={() => setOpened(true)}
                   className="block w-full rounded-2xl bg-indigo-500 py-4 text-center font-semibold text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-400"
                 >
                   Save Contact
