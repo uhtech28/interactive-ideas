@@ -28,9 +28,24 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
   // Resolve conversation ID for direct chats if not provided
   const directConversationId = useQuery(api.chat.getDirectConversationId, isAuthenticated && receiverId && !conversationId ? { receiverId } : "skip");
 
-  const activeConversationId = conversationId || directConversationId;
+  // Resolve conversation ID for group chats if not provided
+  const groupChannels = useQuery(
+    api.communities.getChannels,
+    isAuthenticated && ideaId && !conversationId ? { ideaId } : "skip"
+  );
+  const resolvedGroupConversationId = groupChannels && groupChannels.length > 0
+    ? (groupChannels[0]._id as Id<"conversations">)
+    : null;
+
+  const activeConversationId = conversationId || directConversationId || resolvedGroupConversationId;
 
   const messages = useQuery(api.chat.getConversationMessages, isAuthenticated && activeConversationId ? { conversationId: activeConversationId } : "skip");
+  const displayedMessages = messages !== undefined
+    ? messages
+    : (ideaId && groupChannels && groupChannels.length === 0)
+      ? []
+      : undefined;
+
   const sendMessage = useMutation(api.chat.sendMessage);
   const users = useQuery(api.chat.getAllUsers, isAuthenticated ? {} : "skip");
   const currentUserDoc = useQuery(api.chat.getUserByClerkId, isAuthenticated ? {} : "skip");
@@ -57,7 +72,7 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
       const element = scrollAreaRef.current;
       element.scrollTop = element.scrollHeight;
     }
-  }, [messages]);
+  }, [displayedMessages]);
 
   const currentUserId = currentUserDoc?._id as Id<"users">;
 
@@ -71,7 +86,7 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
         // Group chat
         await sendMessage({
           content,
-          conversationId: conversationId || undefined,
+          conversationId: activeConversationId || undefined,
           ideaId: ideaId,
         });
       } else if (receiverId) {
@@ -84,8 +99,8 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
       } else {
         // Try to infer context from existing messages if no explicit context
         let recId = receiverId;
-        if (!recId && messages && messages.length > 0) {
-          const firstMessage = messages[0];
+        if (!recId && displayedMessages && displayedMessages.length > 0) {
+          const firstMessage = displayedMessages[0];
           recId = firstMessage.senderId === currentUserId
             ? firstMessage.receiverId
             : firstMessage.senderId;
@@ -108,7 +123,7 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
       setSendError("Failed to send message. Please try again.");
     } finally {
     }
-  }, [sendMessage, messages, currentUserId, receiverId, conversationId, activeConversationId, ideaId]);
+  }, [sendMessage, displayedMessages, currentUserId, receiverId, activeConversationId, ideaId]);
 
   // Resolve the header — show the recipient's name for DMs, or the idea
   // title for group/channel chats. Falls back to "Conversation" only as
@@ -196,7 +211,7 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
       </div>
       <div className="flex-1 p-4 max-w-full overflow-y-auto" ref={scrollAreaRef}>
         <div className="space-y-4 max-w-full overflow-x-auto pb-2">
-          {messages === undefined ? (
+          {displayedMessages === undefined ? (
             receiverId && !conversationId && directConversationId === undefined ? (
               <div className="text-center text-muted-foreground mt-8 text-sm">
                 Loading conversation...
@@ -210,12 +225,12 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
                 Loading messages...
               </div>
             )
-          ) : messages.length === 0 ? (
+          ) : displayedMessages.length === 0 ? (
             <div className="text-center text-muted-foreground mt-8 text-sm">
               No messages yet. Start the conversation!
             </div>
           ) : (
-            messages.map((message) => {
+            displayedMessages.map((message) => {
               const senderUser = users?.find(u => u.id === message.senderId);
               return (
                 <MessageBubble

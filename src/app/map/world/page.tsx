@@ -57,6 +57,9 @@ const TaskSubmissionModal = dynamic(() => import("@/components/map/TaskSubmissio
 const StageClearModal = dynamic(() => import("@/components/map/StageClearModal").then(mod => mod.StageClearModal), { ssr: false });
 const WorldMapTour = dynamic(() => import("@/components/map/WorldMapTour").then(mod => mod.WorldMapTour), { ssr: false });
 const ChatThread = dynamic(() => import("@/components/chat/ChatThread"), { ssr: false });
+const GroupList = dynamic(() => import("@/components/chat/GroupList"), { ssr: false });
+const ChannelList = dynamic(() => import("@/components/chat/ChannelList"), { ssr: false });
+import { useChat } from "@/components/chat/ChatContext";
 import {
   activeVentureAtom,
   userProgressAtom,
@@ -1073,6 +1076,50 @@ function MapPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+
+  const {
+    selectedConversationId,
+    selectedIdeaId,
+    selectedReceiverId,
+    closeChat,
+    resetSelection,
+    openGroupChat,
+  } = useChat();
+
+  const handleSelectGroup = useCallback(
+    (conversationId: Id<"conversations"> | undefined, ideaId: Id<"ideas">) => {
+      openGroupChat(ideaId, conversationId);
+    },
+    [openGroupChat]
+  );
+
+  const handleSelectChannel = useCallback(
+    (conversationId: Id<"conversations">) => {
+      if (selectedIdeaId) {
+        openGroupChat(selectedIdeaId, conversationId);
+      }
+    },
+    [openGroupChat, selectedIdeaId]
+  );
+
+  const handleBack = useCallback(() => {
+    if (selectedConversationId) {
+      if (selectedIdeaId) {
+        openGroupChat(selectedIdeaId, undefined);
+      } else {
+        resetSelection();
+      }
+    } else if (selectedIdeaId) {
+      resetSelection();
+    } else {
+      resetSelection();
+    }
+  }, [selectedConversationId, selectedIdeaId, openGroupChat, resetSelection]);
+
+  const handlePopupClose = useCallback(() => {
+    setIsGroupChatOpen(false);
+    closeChat();
+  }, [closeChat]);
 
   const paramCheckpointId = searchParams.get("checkpointId");
   const paramPanel = searchParams.get("panel");
@@ -3089,6 +3136,9 @@ function MapPageInner() {
               ventureName={ideaTitle}
               onOpenPanel={(tab) => {
                 if (tab === "chat") {
+                  if (activeVenture?.ideaId) {
+                    openGroupChat(activeVenture.ideaId, activeConversationId as Id<"conversations"> | undefined);
+                  }
                   setIsGroupChatOpen(true);
                 } else if (tab === "contributors") {
                   setIsContributorsOpen(true);
@@ -3115,7 +3165,12 @@ function MapPageInner() {
               activeTab={activeToolsTab}
               onTabChange={(tab) => updateUrlParams({ panel: "tools", tab })}
               activeVentureId={activeVenture?._id}
-              onOpenGroupChat={() => setIsGroupChatOpen(true)}
+              onOpenGroupChat={() => {
+                if (activeVenture?.ideaId) {
+                  openGroupChat(activeVenture.ideaId, activeConversationId as Id<"conversations"> | undefined);
+                }
+                setIsGroupChatOpen(true);
+              }}
               onOpenContributors={() => setIsContributorsOpen(true)}
               onOpenContributions={() => setIsContributionsOpen(true)}
               onOpenHierarchy={() => setIsHierarchyOpen(true)}
@@ -3564,7 +3619,7 @@ function MapPageInner() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  onClick={() => setIsGroupChatOpen(false)}
+                  onClick={handlePopupClose}
                   className="absolute inset-0 bg-black/60 backdrop-blur-md"
                 />
 
@@ -3580,28 +3635,37 @@ function MapPageInner() {
                     boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.7)",
                   }}
                 >
-                  {/* Embedded Comments/Chat Thread Component */}
-                  {activeVenture?.ideaId ? (
+                  {selectedConversationId || selectedReceiverId ? (
                     <div className="flex-1 h-full min-h-0 flex flex-col overflow-hidden rounded-3xl">
                       <ChatThread
-                        conversationId={activeConversationId ? (activeConversationId as Id<"conversations">) : null}
-                        onBack={() => setIsGroupChatOpen(false)}
-                        onClose={() => setIsGroupChatOpen(false)}
-                        ideaId={activeVenture.ideaId}
+                        conversationId={selectedConversationId}
+                        onBack={handleBack}
+                        onClose={handlePopupClose}
+                        ideaId={selectedIdeaId}
+                        receiverId={selectedReceiverId}
+                      />
+                    </div>
+                  ) : selectedIdeaId ? (
+                    <div className="flex-1 h-full min-h-0 flex flex-col overflow-hidden rounded-3xl">
+                      <ChannelList
+                        ideaId={selectedIdeaId}
+                        onBack={handleBack}
+                        onSelectChannel={handleSelectChannel}
                       />
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center flex-1 text-center p-6 space-y-4">
-                      <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center animate-spin">
-                        <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full" />
-                      </div>
-                      <p className="text-slate-400 text-sm font-semibold">Initializing group chat...</p>
+                    <div className="flex-1 h-full min-h-0 flex flex-col overflow-hidden rounded-3xl">
+                      <GroupList
+                        onSelectGroup={handleSelectGroup}
+                        onClose={handlePopupClose}
+                      />
                     </div>
                   )}
                 </motion.div>
               </div>
             )}
           </AnimatePresence>
+
         </>
       )}
     </div>
