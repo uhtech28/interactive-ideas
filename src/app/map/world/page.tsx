@@ -544,36 +544,11 @@ function CheckpointPanel({
           </button>
 
           <div className="flex flex-col gap-3.5 p-4 sm:p-5 pt-14 sm:pt-16 flex-1 overflow-y-auto no-scrollbar">
-            {/* Stage label */}
+            {/* Checkpoint Title at the top */}
             <div>
-              <p
-                className="text-[9px] sm:text-[10px] md:text-[11px] lg:text-xs tracking-[0.2em] font-bold uppercase mb-1 sm:mb-1.5 md:mb-2"
-                style={{ color: detail.stageGlow }}
-              >
-                Stage {detail.stage} · {detail.stageName}
-              </p>
               <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight leading-tight text-white mb-1.5 sm:mb-2 md:mb-3">
                 {detail.title}
               </h2>
-            </div>
-
-            {/* Status */}
-            <div className="flex items-center gap-2 mb-1">
-              <StatusDot status={detail.status} />
-              <span
-                className="text-[11px] font-semibold tracking-wider uppercase"
-                style={{ color: "#94a3b8" }}
-              >
-                {detail.status === "completed"
-                  ? "Completed"
-                  : detail.status === "gold"
-                    ? "Gold"
-                    : detail.status === "active"
-                      ? "Active"
-                      : detail.status === "partial"
-                        ? "In Progress"
-                        : "Locked"}
-              </span>
             </div>
 
             {/* Outcome */}
@@ -609,68 +584,13 @@ function CheckpointPanel({
               ))}
             </div>
 
-            {/* Progress dots */}
-            <div className="flex items-center gap-1.5 sm:gap-2 md:gap-2.5 px-0.5 sm:px-1 md:px-1.5 mt-1.5 sm:mt-2 md:mt-3">
-              {detail.tasks.map((t, i) => (
-                <div
-                  key={i}
-                  className="h-1.5 sm:h-2 md:h-2.5 lg:h-3 flex-1 rounded-full transition-all duration-300 relative overflow-hidden bg-white/5"
-                >
-                  <motion.div
-                    className="absolute inset-y-0 left-0"
-                    initial={{ width: 0 }}
-                    animate={{ width: t.done ? "100%" : "0%" }}
-                    style={{
-                      background: i === detail.tasks.length - 1 ? "#eab308" : "#818cf8",
-                      boxShadow: t.done
-                        ? `0 0 10px ${i === detail.tasks.length - 1 ? "#eab308" : "#818cf8"}`
-                        : "none",
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-            <p className="text-[10px] sm:text-[11px] md:text-xs lg:text-sm font-medium tracking-wide text-slate-400">
-              {doneTasks}/{detail.tasks.length} tasks ·{" "}
-              {2 - doneTasks > 0 && !canAdvance
-                ? `${2 - doneTasks} more to advance`
-                : canAdvance
-                  ? "Ready to advance"
-                  : ""}
-            </p>
-
-            <div className="rounded-lg sm:rounded-xl border border-amber-500/15 bg-amber-500/5 px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 md:py-3.5 lg:py-4">
-              <p className="text-[9px] sm:text-[10px] md:text-[11px] lg:text-xs font-black uppercase tracking-[0.18em] text-amber-300">
-                Gold Checkpoint
-              </p>
-              <p className="mt-1 text-[11px] sm:text-[12px] md:text-sm lg:text-base leading-relaxed text-slate-300">
-                {isGold
-                  ? `All ${detail.tasks.length} tasks are complete. This checkpoint will advance as gold.`
-                  : doneTasks >= 2
-                    ? `Advance is unlocked now, but completing the remaining tasks upgrades this checkpoint to gold.`
-                    : `Gold status requires all ${detail.tasks.length} tasks. Standard advance unlocks after any 2 tasks.`}
-              </p>
-            </div>
-
-            {/* Crossing animation label */}
-            <div className="flex items-center gap-2 px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 lg:py-3.5 rounded-lg sm:rounded-xl border border-white/5 bg-white/[0.02] mt-auto">
-              <span className="text-[9px] sm:text-[10px] md:text-[11px] lg:text-xs tracking-[0.15em] font-semibold uppercase text-slate-500">
-                Crossing:
-              </span>
-              <span
-                className="text-[10px] sm:text-[11px] md:text-xs lg:text-sm font-bold tracking-wide"
-                style={{ color: detail.stageGlow }}
-              >
-                {STAGE_ANIMATION[detail.stage]}
-              </span>
-            </div>
           </div>
 
           {/* Advance button */}
           {!isLocked &&
             (detail.status !== "completed" || isActiveNode) &&
             (detail.status !== "gold" || isActiveNode) && (
-              <div className="p-3 sm:p-4 md:p-5 lg:p-6 pt-0">
+              <div className="p-2.5 sm:p-3 pt-0">
                 <motion.button
                   onClick={() => {
                     audioManager.playTouch(canAdvance ? "confirm" : "error");
@@ -682,10 +602,10 @@ function CheckpointPanel({
                     if (canAdvance && !isAdvancing) audioManager.playUI("hover");
                   }}
                   whileHover={
-                    canAdvance && !isAdvancing ? { scale: 1.02, y: -2 } : {}
+                    canAdvance && !isAdvancing ? { scale: 1.02, y: -1 } : {}
                   }
                   whileTap={canAdvance && !isAdvancing ? { scale: 0.98 } : {}}
-                  className="w-full py-3 sm:py-3.5 md:py-4 lg:py-4.5 rounded-lg sm:rounded-xl text-[11px] sm:text-[12px] md:text-sm lg:text-base tracking-[0.1em] uppercase font-black transition-all duration-300 relative overflow-hidden"
+                  className="w-full py-2 sm:py-2.5 rounded-lg text-[10px] sm:text-[11px] tracking-[0.08em] uppercase font-black transition-all duration-300 relative overflow-hidden"
                   style={{
                     background: isGold
                       ? "linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(202, 138, 4, 0.1))"
@@ -799,7 +719,7 @@ function TaskCard({
       }}
       whileHover={locked || task.done ? {} : { x: 4 }}
       whileTap={locked || task.done ? {} : { scale: 0.98 }}
-      className="flex items-start gap-2.5 sm:gap-3.5 md:gap-4 px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 md:py-3.5 lg:py-4 rounded-lg sm:rounded-xl relative overflow-hidden cursor-pointer group/task transition-colors"
+      className="flex items-start gap-2 sm:gap-3 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl relative overflow-hidden cursor-pointer group/task transition-colors"
       style={{
         background: task.done
           ? "rgba(99, 102, 241, 0.05)"
@@ -818,13 +738,13 @@ function TaskCard({
       )}
       {/* Left accent bar */}
       <div
-        className="absolute left-0 top-0 bottom-0 w-[3px] sm:w-[4px] rounded-l-lg sm:rounded-l-xl"
+        className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-lg sm:rounded-l-xl"
         style={{ background: task.done ? "#818cf8" : accentColor }}
       />
 
       {/* Check circle */}
       <motion.div
-        className="w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[10px] sm:text-[11px] font-bold"
+        className="w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[9px] sm:text-[10px] font-bold"
         style={{
           background: task.done ? "#6366f1" : "rgba(255,255,255,0.05)",
           border: `1.5px solid ${task.done ? "#6366f1" : "rgba(255,255,255,0.15)"}`,
@@ -837,19 +757,8 @@ function TaskCard({
       </motion.div>
 
       <div className="flex-1 min-w-0 relative z-10">
-        <div className="flex items-center gap-2 mb-0.5 sm:mb-1">
-          <span
-            className="text-[9px] sm:text-[10px] tracking-[0.1em] font-bold uppercase"
-            style={{ color: accentColor }}
-          >
-            {task.label}
-          </span>
-        </div>
         <p className="text-[12px] sm:text-[13px] leading-relaxed text-slate-300 font-medium">
           {task.description}
-        </p>
-        <p className="text-[9px] sm:text-[10px] tracking-[0.1em] mt-1.5 sm:mt-2 font-semibold uppercase text-slate-500">
-          {task.tool}
         </p>
         {evaluationSummary?.isPending && (
           <p className="mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
@@ -1157,6 +1066,7 @@ function MapPageInner() {
     stage: 1,
     checkpoint: 1,
   });
+  const hasAutoOpenedRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1422,6 +1332,9 @@ function MapPageInner() {
   const [badgeQueue, setBadgeQueue] = useState<BadgePayload[]>([]);
   const [activeBadge, setActiveBadge] = useState<BadgePayload | null>(null);
   const badgeBufferTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Tracks a timestamp of the last local task submission to suppress duplicate
+  // DB-driven badge animations for the same event (within 5 seconds window).
+  const recentTaskSubmitRef = useRef<number>(0);
 
   useEffect(() => {
     if (badgeQueue.length === 0) {
@@ -1524,6 +1437,8 @@ function MapPageInner() {
 
   useEffect(() => {
     if (!activeVenture) return;
+    // Only automatically show the tour guide on Stage 1
+    if (activeVenture.currentStage !== 1) return;
     const tourCompletedKey = `worldMapTourCompleted_${activeVenture._id}`;
     const isCompleted = localStorage.getItem(tourCompletedKey);
     if (isCompleted !== "true") {
@@ -1599,12 +1514,8 @@ function MapPageInner() {
 
     const previousStage = prevStageRef.current;
     if (activeStage > previousStage) {
-      setShowStageResetNotice(true);
-      const timeout = window.setTimeout(() => {
-        setShowStageResetNotice(false);
-      }, 5000);
+      // StageResetNotice dialog disabled per user request
       prevStageRef.current = activeStage;
-      return () => window.clearTimeout(timeout);
     }
 
     prevStageRef.current = activeStage;
@@ -1781,6 +1692,19 @@ function MapPageInner() {
     }
   }, [paramCheckpointId, paramPanel, paramTab, checkpoints, buildCheckpointDetail]);
 
+  // ── Auto-open current active checkpoint on mount if no param is set ────────
+  useEffect(() => {
+    if (checkpoints.length > 0 && activeStage && activeCP && !paramCheckpointId && !hasAutoOpenedRef.current) {
+      const activeCheckpoint = checkpoints.find(
+        (cp) => cp.stage === activeStage && cp.checkpoint === activeCP,
+      );
+      if (activeCheckpoint) {
+        hasAutoOpenedRef.current = true;
+        updateUrlParams({ checkpointId: activeCheckpoint._id }, true);
+      }
+    }
+  }, [checkpoints, activeStage, activeCP, paramCheckpointId, updateUrlParams]);
+
   useEffect(() => {
     const previousActive = previousActiveRef.current;
     const activeChanged =
@@ -1910,6 +1834,14 @@ function MapPageInner() {
       prevBadgeCountRef.current !== null &&
       count > prevBadgeCountRef.current
     ) {
+      // Skip if a local task submission just happened — the task badge from
+      // handleTaskSubmissionSuccess already covers this animation.
+      const msSinceSubmit = Date.now() - recentTaskSubmitRef.current;
+      if (msSinceSubmit < 5000) {
+        prevBadgeCountRef.current = count;
+        return;
+      }
+
       // New badge(s) awarded — enqueue them
       const newCount = count - prevBadgeCountRef.current;
       const newBadges = myBadges.slice(0, newCount);
@@ -1937,6 +1869,14 @@ function MapPageInner() {
       prevVentureBadgeCountRef.current !== null &&
       count > prevVentureBadgeCountRef.current
     ) {
+      // Skip if a local task submission just happened — the task badge from
+      // handleTaskSubmissionSuccess already covers this animation.
+      const msSinceSubmit = Date.now() - recentTaskSubmitRef.current;
+      if (msSinceSubmit < 5000) {
+        prevVentureBadgeCountRef.current = count;
+        return;
+      }
+
       // New venture badge(s) awarded — enqueue them
       const newCount = count - prevVentureBadgeCountRef.current;
       // Sort by awardedAt descending to get newest first
@@ -2374,6 +2314,11 @@ function MapPageInner() {
     }) => {
       // ── 1. Close the modal immediately ─────────────────────────────────
       setSubmittingTask(null);
+
+      // Stamp the submission time so DB-driven badge detectors (myBadges /
+      // ventureMyBadges) skip re-showing a badge for the next 5 seconds —
+      // the local task badge animation already covers this event.
+      recentTaskSubmitRef.current = Date.now();
 
       setOptimisticCompletedTaskIds((current) => ({
         ...current,
@@ -2845,12 +2790,14 @@ function MapPageInner() {
         // is still in the same stage so activeStage/activeCP will be correct
         // once Convex propagates. We optimistically show it.
         setSelectedDetail(buildCheckpointDetail(nextCp));
+        updateUrlParams({ checkpointId: nextCp._id }, true);
         eventBridge.dispatchToPhaser({
           type: "SCROLL_TO_CHECKPOINT",
           checkpointId: nextCp._id,
         });
       } else {
         setSelectedDetail(null);
+        updateUrlParams({ checkpointId: null }, true);
       }
     } catch (err) {
       console.error("advanceCheckpoint failed:", err);
@@ -2869,6 +2816,7 @@ function MapPageInner() {
     setBadgeQueue,
     bypassInterCheckpoint,
     interCheckpointData,
+    updateUrlParams,
   ]);
 
   // Keep handleAdvanceRef always pointing at the latest handleAdvance
@@ -2944,7 +2892,6 @@ function MapPageInner() {
         searchQuery=""
         onSearchChange={() => { }}
         onOpenComposer={() => { }}
-        backHref="/my-ideas"
       />
 
       {/* HUD at bottom - Stage Info, Progress, Level, XP */}
@@ -2961,6 +2908,34 @@ function MapPageInner() {
               compact={true}
             />
           </div>
+
+          <div className="hidden h-5 w-px bg-white/10 sm:block shrink-0" />
+
+          {/* Active Tasks panel toggle */}
+          <button
+            onClick={() => {
+              if (checkpoints.length > 0 && activeStage && activeCP) {
+                const activeCheckpoint = checkpoints.find(
+                  (cp) => cp.stage === activeStage && cp.checkpoint === activeCP,
+                );
+                if (activeCheckpoint) {
+                  updateUrlParams({ checkpointId: activeCheckpoint._id }, true);
+                  eventBridge.dispatchToPhaser({
+                    type: "SCROLL_TO_CHECKPOINT",
+                    checkpointId: activeCheckpoint._id,
+                  });
+                }
+              }
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all duration-300 shrink-0 ${
+              !selectedDetail
+                ? "border-indigo-500/60 bg-indigo-500/20 text-indigo-200 hover:bg-indigo-500/30 hover:text-white shadow-[0_0_12px_rgba(99,102,241,0.2)] animate-[pulse_2s_infinite]"
+                : "border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <JournalIcon className={`w-3.5 h-3.5 ${!selectedDetail ? "text-indigo-400" : "text-slate-400"}`} />
+            <span>Tasks</span>
+          </button>
 
           <div className="hidden h-5 w-px bg-white/10 sm:block shrink-0" />
 
@@ -3050,13 +3025,6 @@ function MapPageInner() {
           {/* Phase banner removed per user request */}
 
           <AnimatePresence>
-            {showStageResetNotice && brightness && (
-              <StageResetNotice
-                baseBrightness={brightness.accumulatedBase}
-                stage={activeStage}
-                onClose={() => setShowStageResetNotice(false)}
-              />
-            )}
           </AnimatePresence>
 
           {/* Quest List removed per user request */}
@@ -3067,14 +3035,18 @@ function MapPageInner() {
           {/* Stage navigation strip removed */}
 
           {/* World Map Tour Walkthrough */}
-          <WorldMapTour
-            show={showTour}
-            onClose={() => setShowTour(false)}
-            ventureName={ideaTitle}
-          />
+          {activeStage === 1 && (
+            <WorldMapTour
+              show={showTour}
+              onClose={() => setShowTour(false)}
+              ventureName={ideaTitle}
+            />
+          )}
 
           {/* Tour replay toggle */}
-          <TourToggle onToggle={() => setShowTour(true)} />
+          {activeStage === 1 && (
+            <TourToggle onToggle={() => setShowTour(true)} />
+          )}
 
           <CrossingFlash trigger={flashTrigger} />
 
@@ -3108,27 +3080,33 @@ function MapPageInner() {
           />
 
           {/* Inter-checkpoint passage events overlay */}
-          {activeVenture && (
-            <InterCheckpointOverlay
-              isOpen={interCheckpointQueue.length > 0}
-              events={interCheckpointQueue}
-              templateId={activeVenture.templateId as any}
-              stage={activeVenture.currentStage}
-              checkpoint={activeVenture.currentCheckpoint}
-              ventureId={activeVenture._id}
-              onComplete={() => {
-                setBypassInterCheckpoint(true);
-                setInterCheckpointQueue([]);
-                // Trigger the advance since the events are now resolved.
-                // Small delay lets the overlay exit animation finish first,
-                // then handleAdvance fires the checkpoint animation + persona walk.
-                setTimeout(() => {
-                  handleAdvance(true);
-                }, 300);
-              }}
-              onClose={() => setInterCheckpointQueue([])}
-            />
-          )}
+          {activeVenture && (() => {
+            const currentCp = checkpoints.find(
+              (cp) => cp.stage === activeVenture.currentStage && cp.checkpoint === activeVenture.currentCheckpoint
+            );
+            return (
+              <InterCheckpointOverlay
+                isOpen={interCheckpointQueue.length > 0}
+                events={interCheckpointQueue}
+                templateId={activeVenture.templateId as any}
+                stage={activeVenture.currentStage}
+                checkpoint={activeVenture.currentCheckpoint}
+                ventureId={activeVenture._id}
+                checkpointId={currentCp?._id as any}
+                onComplete={() => {
+                  setBypassInterCheckpoint(true);
+                  setInterCheckpointQueue([]);
+                  // Trigger the advance since the events are now resolved.
+                  // Small delay lets the overlay exit animation finish first,
+                  // then handleAdvance fires the checkpoint animation + persona walk.
+                  setTimeout(() => {
+                    handleAdvance(true);
+                  }, 300);
+                }}
+                onClose={() => setInterCheckpointQueue([])}
+              />
+            );
+          })()}
 
           {/* Left Sidebar & Floating Popup Tools Panel Wrapper */}
           <div id="left-control-panel" className="absolute left-2 top-1/2 -translate-y-1/2 z-[60] sm:left-3 md:left-4 lg:left-5 flex items-center gap-3">

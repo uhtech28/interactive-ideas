@@ -15,6 +15,7 @@ interface InterCheckpointOverlayProps {
   stage: number;
   checkpoint: number;
   ventureId: Id<"ventures">;
+  checkpointId?: Id<"ventureCheckpoints">;
   onComplete: () => void;
   onClose: () => void;
   // Boss combat gate props (mandatory combat at every checkpoint)
@@ -121,6 +122,7 @@ export function InterCheckpointOverlay({
   stage,
   checkpoint,
   ventureId,
+  checkpointId,
   onComplete,
   onClose,
   isBossCombat = false,
@@ -173,6 +175,20 @@ export function InterCheckpointOverlay({
       : "skip"
   );
   const projectScore = stageQuality?.totalScore ?? 0;
+
+  // Per-checkpoint AI evaluation scores (sum of task evaluations in this checkpoint)
+  const checkpointEvals = useQuery(
+    api.aiScoring.getCheckpointEvaluationSummary,
+    checkpointId ? { checkpointId } : "skip"
+  );
+  const checkpointScore = (() => {
+    if (!checkpointEvals) return null;
+    const evaluated = checkpointEvals.filter((e) => e.evaluation !== null);
+    if (evaluated.length === 0) return null;
+    const total = evaluated.reduce((sum, e) => sum + (e.evaluation?.totalScore ?? 0), 0);
+    // Average per task so it stays within /12
+    return total / evaluated.length;
+  })();
 
   const resolveHenchman = useMutation(api.interCheckpoint.resolveHenchmanEncounter);
   const collectTreasure = useMutation(api.interCheckpoint.collectTreasureChest);
@@ -482,10 +498,7 @@ export function InterCheckpointOverlay({
                   : "⚔️ Boss Combat — Mid Stage"
                 : `Passage Event ${currentEventIndex + 1} of ${events.length}`}
             </span>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/5 border border-white/10">
-              <Coins className="w-3.5 h-3.5 text-yellow-400" />
-              <span className="text-xs font-mono text-yellow-400">{walletBalance} gold</span>
-            </div>
+
           </div>
 
           {/* Event Content Switcher */}
@@ -511,39 +524,28 @@ export function InterCheckpointOverlay({
                   </p>
 
                   {/* Combat Stats Panel */}
-                  <div className="grid grid-cols-3 gap-2.5 w-full mb-6">
-                    <div className="p-2 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center">
-                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">User Score</span>
-                      <span className="text-xs font-black text-indigo-400 mt-0.5">{userScore} XP</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center">
+                  <div className="flex justify-center gap-3 w-full mb-6">
+                    {checkpointScore !== null && checkpointScore > 0 && (
+                      <div className="p-2 px-4 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center">
+                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Checkpoint Score</span>
+                        <span className="text-xs font-black text-indigo-400 mt-0.5">{Math.round(checkpointScore * 10) / 10}/12</span>
+                      </div>
+                    )}
+                    <div className="p-2 px-4 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center">
                       <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Project Score</span>
-                      <span className="text-xs font-black text-emerald-400 mt-0.5">{projectScore}/12</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center">
-                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Your Gold</span>
-                      <span className="text-xs font-black text-yellow-400 mt-0.5">{walletBalance}g</span>
+                      <span className="text-xs font-black text-emerald-400 mt-0.5">{Math.round(projectScore * 10) / 10}/12</span>
                     </div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-3 w-full">
-                    <button
-                      onClick={() => {
-                        audioManager.playUI("click");
-                        setPhase("action");
-                      }}
-                      className="flex-1 py-3 rounded-xl font-bold bg-white text-black hover:bg-white/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                    >
-                      <Flame className="w-4 h-4" /> Engage Boss
-                    </button>
-                    <button
-                      onClick={handleSkip}
-                      disabled={isSubmitting || walletBalance < 5}
-                      className="py-3 px-6 rounded-xl font-bold border border-yellow-500/50 hover:bg-yellow-500/10 active:scale-[0.98] text-yellow-400 disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center justify-center gap-2"
-                    >
-                      Skip (5 Gold)
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => {
+                      audioManager.playUI("click");
+                      setPhase("action");
+                    }}
+                    className="w-full py-3 rounded-xl font-bold bg-white text-black hover:bg-white/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  >
+                    <Flame className="w-4 h-4" /> Engage Boss
+                  </button>
                 </>
               )}
 
@@ -573,18 +575,16 @@ export function InterCheckpointOverlay({
                   </div>
 
                   {/* Combat Stats Panel */}
-                  <div className="grid grid-cols-3 gap-2.5 w-full mb-4">
-                    <div className="p-2 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center">
-                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">User Score</span>
-                      <span className="text-xs font-black text-indigo-400 mt-0.5">{userScore} XP</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center">
+                  <div className="flex justify-center gap-3 w-full mb-4">
+                    {checkpointScore !== null && checkpointScore > 0 && (
+                      <div className="p-2 px-4 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center">
+                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Checkpoint Score</span>
+                        <span className="text-xs font-black text-indigo-400 mt-0.5">{Math.round(checkpointScore * 10) / 10}/12</span>
+                      </div>
+                    )}
+                    <div className="p-2 px-4 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center">
                       <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Project Score</span>
-                      <span className="text-xs font-black text-emerald-400 mt-0.5">{projectScore}/12</span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center">
-                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Your Gold</span>
-                      <span className="text-xs font-black text-yellow-400 mt-0.5">{walletBalance}g</span>
+                      <span className="text-xs font-black text-emerald-400 mt-0.5">{Math.round(projectScore * 10) / 10}/12</span>
                     </div>
                   </div>
 

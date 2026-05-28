@@ -7126,17 +7126,20 @@ export class WorldMapScene extends Phaser.Scene {
     ) {
       return; // Scene not fully initialized or being destroyed
     }
-    const stageStartX = (stageId - 1) * this.BIOME_WIDTH;
+    // We allow the camera bounds to expand from Stage 1 (0) up to the furthest unlocked stage.
+    // This allows panning back and forth across all unlocked stages.
+    const maxStage = Math.max(stageId, this.currentStage || 1);
+    const totalWidth = maxStage * this.BIOME_WIDTH;
     this.cameras.main.setBounds(
-      stageStartX,
       0,
-      this.BIOME_WIDTH,
+      0,
+      totalWidth,
       this.MAP_HEIGHT + 160,
     );
     this.physics.world.setBounds(
-      stageStartX,
       0,
-      this.BIOME_WIDTH,
+      0,
+      totalWidth,
       this.MAP_HEIGHT + 160,
     );
   }
