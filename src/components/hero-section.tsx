@@ -114,6 +114,10 @@ export default function HeroSection() {
           from { opacity: 0; transform: translateY(14px); filter: blur(5px); }
           to { opacity: 1; transform: translateY(0); filter: blur(0); }
         }
+        @keyframes lp-reveal-simple {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
         @keyframes lp-card-in {
           from { opacity: 0; transform: translateY(10px) scale(0.97); }
           to { opacity: 1; transform: translateY(0) scale(1); }
@@ -127,6 +131,23 @@ export default function HeroSection() {
         <PixelField />
 
         <div className="relative z-10 w-full max-w-5xl flex flex-col items-center">
+
+
+          {/* ── Already a member ── */}
+          <div
+            className="mb-4"
+            style={{ animation: "lp-reveal-simple 600ms ease both" }}
+          >
+            <SignInButton mode="modal" forceRedirectUrl="/feed" fallbackRedirectUrl="/feed">
+              <button
+                type="button"
+                className="text-sm text-slate-400 hover:text-slate-200 transition cursor-pointer"
+              >
+                Already a member?{" "}
+                <span className="text-[#F7D66D] font-semibold hover:underline">Log in</span>
+              </button>
+            </SignInButton>
+          </div>
 
           {/* ── Hero copy ── */}
           <div
@@ -144,25 +165,13 @@ export default function HeroSection() {
               Ibhaveda
             </p>
 
-            <h1 className="text-[1.85rem] sm:text-5xl lg:text-[3.25rem] font-black text-white leading-[1.07] tracking-tight max-w-2xl font-display">
-              Post an idea. Find people willing to build with you.
+            <h1 className="text-[1.85rem] sm:text-5xl lg:text-[3.25rem] font-black text-white leading-[1.07] tracking-tight max-w-3xl font-display">
+              Stop Thinking. Start Building.
             </h1>
 
-            <p className="mt-3 text-sm sm:text-base text-slate-300 max-w-md leading-6">
-              Turn your idea into a contribution request — we surface people likely to help for free.
+            <p className="mt-3 text-sm sm:text-base text-slate-300 max-w-xl leading-6">
+              Join projects, recruit teammates and start creating.
             </p>
-
-            <SignedOut>
-              <SignInButton mode="modal" forceRedirectUrl="/feed" fallbackRedirectUrl="/feed">
-                <button
-                  type="button"
-                  className="mt-3 text-xs text-slate-500 hover:text-slate-300 transition cursor-pointer"
-                >
-                  Already a member?{" "}
-                  <span className="text-[#F7D66D] font-semibold hover:underline">Log in</span>
-                </button>
-              </SignInButton>
-            </SignedOut>
           </div>
 
           {/* ── Role selector ── */}
