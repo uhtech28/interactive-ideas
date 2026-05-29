@@ -2396,234 +2396,459 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   private createArtisanTilePanel(
-    panelX: number,
-    panelOffsetY: number,
-    scale: number,
-    _biome: BiomeConfig,
-    _biomeIndex: number,
-  ): void {
-    void _biome;
-    void _biomeIndex;
+      panelX: number,
+      panelOffsetY: number,
+      scale: number,
+      _biome: BiomeConfig,
+      _biomeIndex: number,
+    ): void {
+      void _biome;
+      void _biomeIndex;
 
-    const tileSize = 16 * scale;
-    const cols = this.map.width;
-    const rows = this.map.height;
-    const panelW = cols * tileSize;
-    const panelH = rows * tileSize;
+      const tileSize = 16 * scale;
+      const cols  = this.map.width;
+      const rows  = this.map.height;
+      const panelW = cols * tileSize;
+      const panelH = rows * tileSize;
 
-    const toWorldX = (tileX: number) => panelX + tileX * tileSize;
-    const toWorldY = (tileY: number) => panelOffsetY + tileY * tileSize;
-    const centerX = toWorldX(cols / 2);
+      const tx = (c: number) => panelX       + c * tileSize;
+      const ty = (r: number) => panelOffsetY + r * tileSize;
+      const cx = tx(cols / 2);
 
-    const addProp = (
-      texture: string,
-      x: number,
-      y: number,
-      depth: number,
-      tint = 0xffffff,
-      spriteScale = 1,
-      alpha = 1,
-    ) => {
-      if (!this.textures.exists(texture)) return;
+      // ── Sprite helper ────────────────────────────────────────────────────────
+      const prop = (
+        key: string, col: number, row: number, depth: number,
+        tint = 0xffffff, sc = 1, alpha = 1,
+      ) => {
+        if (!this.textures.exists(key)) return;
+        const s = this.add.sprite(tx(col), ty(row), key);
+        s.setOrigin(0.5, 1).setScale(scale * sc).setTint(tint).setAlpha(alpha).setDepth(depth);
+        this.midgroundLayer.add(s);
+      };
 
-      const shadow = this.add.image(
-        panelX + x * tileSize + 6,
-        panelOffsetY + y * tileSize + 9,
-        "Shadow_Round_48x24_Flat_Black",
-      );
-      shadow.setOrigin(0.5, 0.5);
-      shadow.setScale(scale * spriteScale * 0.66);
-      shadow.setAlpha(0.2 * alpha);
-      shadow.setDepth(depth - 1);
-      this.midgroundLayer.add(shadow);
+      // ════════════════════════════════════════════════════════════════════════
+      //  LAYER 1 — GROUND  (deep twilight sky-blue/indigo gradient)
+      // ════════════════════════════════════════════════════════════════════════
+      const ground = this.add.graphics().setDepth(1);
+      ground.fillGradientStyle(0x06041a, 0x090724, 0x120d3c, 0x07051f, 1);
+      ground.fillRect(panelX, panelOffsetY, panelW, panelH);
+      this.backgroundLayer.add(ground);
 
-      const sprite = this.add.sprite(
-        panelX + x * tileSize,
-        panelOffsetY + y * tileSize,
-        texture,
-      );
-      sprite.setOrigin(0.5, 1);
-      sprite.setScale(scale * spriteScale);
-      sprite.setTint(tint);
-      sprite.setAlpha(alpha);
-      sprite.setDepth(depth);
-      this.midgroundLayer.add(sprite);
-    };
+      // ════════════════════════════════════════════════════════════════════════
+      //  LAYER 2 — COBBLESTONE FLOOR (Hand-laid running bond stone pavers)
+      // ════════════════════════════════════════════════════════════════════════
+      const floor = this.add.graphics().setDepth(2);
+      const paverW = 24;
+      const paverH = 12;
+      const stoneColors = [0x120e32, 0x17123d, 0x1c1748, 0x141035, 0x221c54, 0x1a1542];
+      for (let y = 0; y < panelH; y += paverH) {
+        const rowOffset = (Math.floor(y / paverH) % 2) * (paverW / 2);
+        for (let x = -paverW; x < panelW + paverW; x += paverW) {
+          const px = panelX + x + rowOffset;
+          if (px < panelX || px >= panelX + panelW) continue;
+          
+          // Seeded pseudo-randomness based on pixel coordinates to keep colors stable
+          const seed = Math.abs(Math.sin(px * 0.05 + (panelOffsetY + y) * 0.08));
+          const color = stoneColors[Math.floor(seed * stoneColors.length) % stoneColors.length];
+          floor.fillStyle(color, 0.72);
+          floor.fillRect(px, panelOffsetY + y, paverW - 1.5, paverH - 1.5);
+        }
+      }
+      this.backgroundLayer.add(floor);
 
-    // Premium artisan quarter base: deep violet stone with a clean tiled finish.
-    const ground = this.add.graphics();
-    ground.setDepth(1);
-    ground.fillGradientStyle(0x17143b, 0x1c1743, 0x2f2b66, 0x24205a, 1);
-    ground.fillRect(panelX, panelOffsetY, panelW, panelH);
-    this.backgroundLayer.add(ground);
+      // ════════════════════════════════════════════════════════════════════════
+      //  LAYER 3 — ROAD NETWORK (Outer ring + central cross, royal city avenue)
+      // ════════════════════════════════════════════════════════════════════════
+      const roads = this.add.graphics().setDepth(3);
+      const roadWidth = tileSize * 2.4; // ~77px wide (plenty of room for characters)
+      
+      const drawRoadSeg = (x1: number, y1: number, x2: number, y2: number) => {
+        const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+        const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+        const isVert = x1 === x2;
 
-    const stone = this.add.graphics();
-    stone.setDepth(2);
-    for (let row = 0; row < rows; row += 2) {
-      for (let col = 0; col < cols; col += 2) {
-        const alternate = (col / 2 + row / 2) % 2 === 0;
-        const shade = alternate ? 0x34306b : 0x29265a;
-        stone.fillStyle(shade, alternate ? 0.34 : 0.28);
-        stone.fillRect(
-          toWorldX(col),
-          toWorldY(row),
-          tileSize * 2,
-          tileSize * 2,
+        // 1. Road Drop Shadow
+        roads.lineStyle(roadWidth + 8, 0x000000, 0.25);
+        roads.beginPath();
+        roads.moveTo(x1, y1);
+        roads.lineTo(x2, y2);
+        roads.strokePath();
+
+        // 2. Road Paved Base
+        roads.lineStyle(roadWidth, 0x241d4c, 0.95);
+        roads.beginPath();
+        roads.moveTo(x1, y1);
+        roads.lineTo(x2, y2);
+        roads.strokePath();
+
+        // 3. Central Paved Ribbon
+        roads.lineStyle(8, 0x3d3282, 0.6);
+        roads.beginPath();
+        roads.moveTo(x1, y1);
+        roads.lineTo(x2, y2);
+        roads.strokePath();
+
+        // 4. Gold Outer Liners
+        roads.lineStyle(2, 0xc9a84c, 0.45);
+        if (isVert) {
+          roads.lineBetween(x1 - roadWidth/2, y1, x1 - roadWidth/2, y2);
+          roads.lineBetween(x1 + roadWidth/2, y1, x1 + roadWidth/2, y2);
+          // Grout/paving lines
+          roads.lineStyle(1, 0x0f0b24, 0.45);
+          for (let y = minY; y <= maxY; y += 18) {
+            roads.lineBetween(x1 - roadWidth/2 + 2, y, x1 + roadWidth/2 - 2, y);
+          }
+        } else {
+          roads.lineBetween(x1, y1 - roadWidth/2, x2, y1 - roadWidth/2);
+          roads.lineBetween(x1, y1 + roadWidth/2, x2, y1 + roadWidth/2);
+          // Grout/paving lines
+          roads.lineStyle(1, 0x0f0b24, 0.45);
+          for (let x = minX; x <= maxX; x += 18) {
+            roads.lineBetween(x, y1 - roadWidth/2 + 2, x, y1 + roadWidth/2 - 2);
+          }
+        }
+      };
+
+      // Draw horizontal roads
+      drawRoadSeg(tx(7), ty(9),  tx(33), ty(9));  // Top road
+      drawRoadSeg(tx(7), ty(20), tx(33), ty(20)); // Middle road
+      drawRoadSeg(tx(7), ty(35), tx(33), ty(35)); // Bottom road
+
+      // Draw vertical roads
+      drawRoadSeg(tx(7),  ty(9), tx(7),  ty(35)); // Left road
+      drawRoadSeg(tx(20), ty(9), tx(20), ty(35)); // Center spine
+      drawRoadSeg(tx(33), ty(9), tx(33), ty(35)); // Right road
+      
+      this.backgroundLayer.add(roads);
+
+      // ════════════════════════════════════════════════════════════════════════
+      //  LAYER 4 — GUILD HALL TERRACE & STEPS (Raised courtyard)
+      // ════════════════════════════════════════════════════════════════════════
+      const terrace = this.add.graphics().setDepth(3);
+      const tX = tx(12.4), tY = ty(5.2), tW = tileSize * 15.2, tH = tileSize * 10.0;
+      // Outer drop shadow
+      terrace.fillStyle(0x000000, 0.35);
+      terrace.fillRoundedRect(tX + 7, tY + 9, tW, tH, 18);
+      // Platform body — raised stone platform
+      terrace.fillStyle(0x19143c, 0.96);
+      terrace.fillRoundedRect(tX, tY, tW, tH, 18);
+      // Inner tiles on terrace
+      for (let tc = 0; tc < 6; tc++) {
+        const shade = tc % 2 === 0 ? 0x201b4e : 0x151138;
+        terrace.fillStyle(shade, 0.55);
+        terrace.fillRect(tX + 10 + tc * (tW - 20) / 6, tY + 10, (tW - 20) / 6 - 1.5, tH - 20);
+      }
+      // Gold outer border
+      terrace.lineStyle(3.5, 0xc9a84c, 0.75);
+      terrace.strokeRoundedRect(tX, tY, tW, tH, 18);
+      // Violet inner accent line
+      terrace.lineStyle(1.5, 0x8b7fd4, 0.45);
+      terrace.strokeRoundedRect(tX + 7, tY + 7, tW - 14, tH - 14, 13);
+      this.backgroundLayer.add(terrace);
+
+      // Terrace staircase leading to the road
+      const steps = this.add.graphics().setDepth(3);
+      const sX = tx(18.0), sW = tileSize * 4;
+      for (let s = 0; s < 4; s++) {
+        const sY = ty(15.2) + s * 8;
+        steps.fillStyle(0x130e28, 0.95);
+        steps.fillRect(sX, sY, sW, 8);
+        steps.lineStyle(1.5, 0xc9a84c, 0.6);
+        steps.strokeRect(sX, sY, sW, 8);
+      }
+      this.backgroundLayer.add(steps);
+
+      // ════════════════════════════════════════════════════════════════════════
+      //  LAYER 5 — CENTRAL MEDALLION (Grand ornamental plaza ring)
+      // ════════════════════════════════════════════════════════════════════════
+      const med = this.add.graphics().setDepth(4);
+      const mW  = tileSize * 7.5;   // width
+      const mH  = tileSize * 4.6;   // height
+      const midRow  = rows / 2;
+      const midY    = ty(midRow);
+      
+      // Drop shadow
+      med.fillStyle(0x000000, 0.42);
+      med.fillEllipse(cx + 7, midY + 10, mW + 14, mH + 10);
+      // Base fill
+      med.fillStyle(0x130f36, 1);
+      med.fillEllipse(cx, midY, mW, mH);
+      // Outer gold ring
+      med.lineStyle(4.5, 0xc9a84c, 0.95);
+      med.strokeEllipse(cx, midY, mW, mH);
+      // Second gold ring
+      med.lineStyle(2, 0xc9a84c, 0.55);
+      med.strokeEllipse(cx, midY, mW * 0.76, mH * 0.76);
+      // Violet accent ring
+      med.lineStyle(2, 0x9b8fd4, 0.7);
+      med.strokeEllipse(cx, midY, mW * 0.52, mH * 0.52);
+      
+      // 8 radial star points / spokes
+      med.lineStyle(1.5, 0xc9a84c, 0.35);
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+        med.lineBetween(
+          cx + Math.cos(a) * mW * 0.12, midY + Math.sin(a) * mH * 0.12,
+          cx + Math.cos(a) * mW * 0.38, midY + Math.sin(a) * mH * 0.38,
         );
       }
+      
+      // Centre gem
+      med.fillStyle(0xc9a84c, 0.95);
+      med.fillCircle(cx, midY, tileSize * 0.7);
+      med.fillStyle(0xfff5cc, 0.85);
+      med.fillCircle(cx - tileSize * 0.15, midY - tileSize * 0.15, tileSize * 0.28);
+      this.backgroundLayer.add(med);
+
+      // Elegant pulse bloom
+      const gemGlow = this.add.circle(cx, midY, tileSize * 1.5, 0xc9a84c, 0.0);
+      gemGlow.setDepth(5);
+      this.backgroundLayer.add(gemGlow);
+      this.tweens.add({
+        targets: gemGlow,
+        alpha: { from: 0.06, to: 0.18 },
+        scale: { from: 0.9, to: 1.1 },
+        duration: 3400,
+        yoyo: true, repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+
+      // ════════════════════════════════════════════════════════════════════════
+      //  LAYER 6 — CORNER PILLARS (Anchors at intersections)
+      // ════════════════════════════════════════════════════════════════════════
+      const pillars = this.add.graphics().setDepth(4);
+      ([
+        [7.0, 9.2], [33.0, 9.2], [7.0, 35.2], [33.0, 35.2],
+      ] as [number, number][]).forEach(([pc, pr]) => {
+        const px = tx(pc), py = ty(pr);
+        pillars.fillStyle(0x000000, 0.25);
+        pillars.fillRoundedRect(px - tileSize * 1.6 + 4, py - tileSize * 1.2 + 5, tileSize * 3.2, tileSize * 2.4, 9);
+        pillars.fillStyle(0x100d26, 0.96);
+        pillars.fillRoundedRect(px - tileSize * 1.6, py - tileSize * 1.2, tileSize * 3.2, tileSize * 2.4, 9);
+        pillars.lineStyle(2.5, 0xc9a84c, 0.8);
+        pillars.strokeRoundedRect(px - tileSize * 1.6, py - tileSize * 1.2, tileSize * 3.2, tileSize * 2.4, 9);
+        pillars.fillStyle(0x1c1744, 0.6);
+        pillars.fillRoundedRect(px - tileSize * 1.1, py - tileSize * 0.8, tileSize * 2.2, tileSize * 1.6, 6);
+        pillars.fillStyle(0xc9a84c, 0.9);
+        pillars.fillCircle(px, py, tileSize * 0.38);
+        pillars.fillStyle(0xfff5cc, 0.6);
+        pillars.fillCircle(px - tileSize * 0.1, py - tileSize * 0.1, tileSize * 0.14);
+      });
+      this.backgroundLayer.add(pillars);
+
+      // ════════════════════════════════════════════════════════════════════════
+      //  LAYER 7 — GUILD BANNERS
+      // ════════════════════════════════════════════════════════════════════════
+      const banners = this.add.graphics().setDepth(7);
+      const bW = tileSize * 2.0, bH = tileSize * 3.2;
+      ([
+        [tx(6.8),  ty(6.8)],
+        [tx(33.2), ty(6.8)],
+        [tx(6.8),  ty(32.8)],
+        [tx(33.2), ty(32.8)],
+      ] as [number, number][]).forEach(([bx, by]) => {
+        // Pole shadow
+        banners.fillStyle(0x000000, 0.35);
+        banners.fillRect(bx - 1, by + 2, 6, bH + tileSize * 0.8);
+        // Pole
+        banners.fillStyle(0x8a7428, 1);
+        banners.fillRect(bx - 3, by, 6, bH + tileSize * 0.6);
+        // Pole cap
+        banners.fillStyle(0xc9a84c, 1);
+        banners.fillCircle(bx, by, 6);
+        // Banner body shadow
+        banners.fillStyle(0x000000, 0.28);
+        banners.fillRect(bx - bW / 2 + 4, by + 4, bW, bH);
+        // Banner body
+        banners.fillStyle(0x271463, 0.98);
+        banners.fillRect(bx - bW / 2, by, bW, bH);
+        // Gold outer border
+        banners.lineStyle(2, 0xc9a84c, 0.9);
+        banners.strokeRect(bx - bW / 2, by, bW, bH);
+        // Gold stripe
+        banners.fillStyle(0xc9a84c, 0.65);
+        banners.fillRect(bx - bW / 2 + 4, by + bH * 0.33, bW - 8, 3.5);
+        // Notched bottom
+        banners.fillStyle(0x0a071c, 1);
+        banners.fillTriangle(
+          bx - bW / 2, by + bH,
+          bx + bW / 2, by + bH,
+          bx, by + bH - tileSize * 0.6,
+        );
+      });
+      this.backgroundLayer.add(banners);
+
+      // ════════════════════════════════════════════════════════════════════════
+      //  LAYER 8 — GUILD HOUSES & WORKSHOP LIGHTS
+      // ════════════════════════════════════════════════════════════════════════
+      const houseCol = cols / 2;
+      const houseRow = 13.4;
+      const bldShadow = this.add.ellipse(tx(houseCol) + 10, ty(houseRow) - 6, 230, 68, 0x000000, 0.4);
+      bldShadow.setDepth(8);
+      this.midgroundLayer.add(bldShadow);
+      
+      prop("House_Hay_4_Purple", houseCol,       houseRow,       9, 0xb8adff, 1.25);
+      prop("House_Hay_2",        houseCol - 5.8, houseRow + 0.8, 8, 0x9c8be6, 0.86);
+      prop("House_Hay_3",        houseCol + 5.8, houseRow + 0.8, 8, 0x9c8be6, 0.86);
+
+      // Add warm lit window highlights on houses
+      const windowLights = this.add.graphics().setDepth(10);
+      windowLights.fillStyle(0xffaa00, 0.85); // glowing amber
+      
+      // Central guild hall windows
+      windowLights.fillRect(tx(houseCol) - 28, ty(houseRow) - 46, 8, 12);
+      windowLights.fillRect(tx(houseCol) + 20, ty(houseRow) - 46, 8, 12);
+      // Flanking workshops windows
+      windowLights.fillRect(tx(houseCol - 5.8) - 12, ty(houseRow + 0.8) - 22, 6, 8);
+      windowLights.fillRect(tx(houseCol + 5.8) + 6, ty(houseRow + 0.8) - 22, 6, 8);
+      this.midgroundLayer.add(windowLights);
+
+      // ════════════════════════════════════════════════════════════════════════
+      //  LAYER 9 — MERCHANT SHOP STALLS & DECORATIVE PROPS
+      // ════════════════════════════════════════════════════════════════════════
+      // 1. LEFT Blacksmith Stall at (col 11, row 27)
+      prop("Table_Medium_1", 11.0, 27.2, 12, 0x7c6abf, 0.95);
+      prop("Crate_Large_Empty", 9.4, 27.2, 13, 0x8173bd, 0.85);
+      prop("Barrel_Small_Empty", 12.4, 27.4, 13, 0x7365b2, 0.82);
+
+      const smithCanopy = this.add.graphics().setDepth(15);
+      // Canopy Drop shadow
+      smithCanopy.fillStyle(0x000000, 0.3);
+      smithCanopy.fillRect(tx(9.8) + 4, ty(27.2) - 34, 72, 40);
+      // Striped awning (Alternating Orange and Black)
+      const stripeW = 12;
+      for (let s = 0; s < 6; s++) {
+        const color = s % 2 === 0 ? 0xf97316 : 0x1f1f23;
+        smithCanopy.fillStyle(color, 0.96);
+        smithCanopy.fillRect(tx(9.8) + s * stripeW, ty(27.2) - 38, stripeW, 36);
+      }
+      smithCanopy.lineStyle(1.5, 0xc9a84c, 0.8);
+      smithCanopy.strokeRect(tx(9.8), ty(27.2) - 38, 72, 36);
+      this.midgroundLayer.add(smithCanopy);
+
+      // 2. RIGHT Alchemist Stall at (col 29, row 27)
+      prop("Table_Medium_1", 29.0, 27.2, 12, 0x7c6abf, 0.95);
+      prop("Barrel_Small_Empty", 27.6, 27.4, 13, 0x7365b2, 0.82);
+      prop("Crate_Medium_Closed", 30.6, 27.2, 13, 0x8173bd, 0.88);
+
+      const alchCanopy = this.add.graphics().setDepth(15);
+      // Canopy Drop shadow
+      alchCanopy.fillStyle(0x000000, 0.3);
+      alchCanopy.fillRect(tx(27.8) + 4, ty(27.2) - 34, 72, 40);
+      // Striped awning (Alternating Violet and Gold)
+      for (let s = 0; s < 6; s++) {
+        const color = s % 2 === 0 ? 0x8b5cf6 : 0xfbbf24;
+        alchCanopy.fillStyle(color, 0.96);
+        alchCanopy.fillRect(tx(27.8) + s * stripeW, ty(27.2) - 38, stripeW, 36);
+      }
+      alchCanopy.lineStyle(1.5, 0xc9a84c, 0.8);
+      alchCanopy.strokeRect(tx(27.8), ty(27.2) - 38, 72, 36);
+      this.midgroundLayer.add(alchCanopy);
+
+      // Guild Signs & Street markers
+      prop("Sign_2", 9.0, 21.6, 12, 0xc9a84c, 0.96);
+      prop("Sign_1", 31.0, 21.6, 12, 0xc9a84c, 0.96);
+      prop("BulletinBoard_1", 20.0, 23.4, 12, 0x7c6abf, 0.92);
+      
+      // Bench and crates flanking the main road
+      prop("Bench_1", 15.0, 21.4, 11, 0x7c6abf, 0.9);
+      prop("Bench_1", 25.0, 21.4, 11, 0x7c6abf, 0.9);
+      prop("Sack_3", 13.8, 21.5, 12, 0x7365b2, 0.9);
+      prop("Sack_3", 26.2, 21.5, 12, 0x7365b2, 0.9);
+
+      // Greenery framing the steps
+      prop("Plant_2", 13.2, 14.8, 10, 0x808ec6, 0.95);
+      prop("Plant_2", 26.8, 14.8, 10, 0x808ec6, 0.95);
+
+      // ════════════════════════════════════════════════════════════════════════
+      //  LAYER 10 — FRAMING VEGETATION (Blends city streets with nature biome)
+      // ════════════════════════════════════════════════════════════════════════
+      // Left border trees & bushes
+      prop("Tree_Emerald_3", 2.2, 12.0, 10, 0x7067ab, 1.05);
+      prop("Tree_Emerald_4", 3.0, 21.0, 10, 0x7067ab, 0.95);
+      prop("Tree_Emerald_3", 2.4, 30.0, 10, 0x7067ab, 1.02);
+      prop("Bush_Emerald_1", 3.4, 13.5, 11, 0x7c73b8, 0.88);
+      prop("Bush_Emerald_5", 2.8, 22.5, 11, 0x7c73b8, 0.84);
+      prop("Bush_Emerald_2", 3.6, 31.5, 11, 0x7c73b8, 0.88);
+
+      // Right border trees & bushes
+      prop("Tree_Emerald_4", 37.8, 12.0, 10, 0x7067ab, 1.05);
+      prop("Tree_Emerald_3", 37.0, 21.0, 10, 0x7067ab, 0.95);
+      prop("Tree_Emerald_4", 37.6, 30.0, 10, 0x7067ab, 1.02);
+      prop("Bush_Emerald_2", 36.6, 13.5, 11, 0x7c73b8, 0.88);
+      prop("Bush_Emerald_6", 37.2, 22.5, 11, 0x7c73b8, 0.84);
+      prop("Bush_Emerald_1", 36.4, 31.5, 11, 0x7c73b8, 0.88);
+
+      // ════════════════════════════════════════════════════════════════════════
+      //  LAYER 11 — LAMP POSTS WITH LIGHT HALO ANIMATIONS
+      // ════════════════════════════════════════════════════════════════════════
+      prop("LampPost_3", 7.0,  9.8,  14, 0xc9a84c, 0.96);
+      prop("LampPost_3", 33.0, 9.8,  14, 0xc9a84c, 0.96);
+      prop("LampPost_3", 7.0,  35.8, 14, 0xc9a84c, 0.96);
+      prop("LampPost_3", 33.0, 35.8, 14, 0xc9a84c, 0.96);
+
+      ([
+        [tx(7.0),  ty(8.4)],
+        [tx(33.0), ty(8.4)],
+        [tx(7.0),  ty(34.4)],
+        [tx(33.0), ty(34.4)],
+      ] as [number, number][]).forEach(([lx, ly], li) => {
+        // Soft ambient yellow circle for lamp glow
+        const halo = this.add.circle(lx, ly, tileSize * 2.5, 0xc9a84c, 0.0);
+        halo.setDepth(15);
+        this.midgroundLayer.add(halo);
+        this.tweens.add({
+          targets: halo,
+          alpha: { from: 0.06, to: 0.18 },
+          scale: { from: 0.95, to: 1.05 },
+          duration: 2200 + li * 300,
+          yoyo: true, repeat: -1,
+          ease: "Sine.easeInOut",
+        });
+      });
+
+      // ════════════════════════════════════════════════════════════════════════
+      //  LAYER 12 — ACTIVE DUST/EMBERS & AMBIENT SHADOW VIGNETTE
+      // ════════════════════════════════════════════════════════════════════════
+      // Blacksmith workshop chimney embers (House_Hay_2)
+      for (let p = 0; p < 6; p++) {
+        const spark = this.add.circle(tx(houseCol - 5.8) + 12 + Math.random() * 8, ty(houseRow + 0.8) - 34, 1.5 + Math.random() * 1.5, 0xf97316, 0.85);
+        spark.setDepth(16);
+        this.midgroundLayer.add(spark);
+        this.tweens.add({
+          targets: spark,
+          y: spark.y - 45 - Math.random() * 25,
+          x: spark.x - 20 - Math.random() * 15, // blow slightly left
+          alpha: 0,
+          scale: 0.4,
+          duration: 1600 + Math.random() * 800,
+          delay: Math.random() * 1500,
+          loop: -1,
+        });
+      }
+
+      // Alchemist workshop magical steam (House_Hay_3)
+      for (let p = 0; p < 6; p++) {
+        const steam = this.add.circle(tx(houseCol + 5.8) - 10 + Math.random() * 8, ty(houseRow + 0.8) - 34, 2 + Math.random() * 2, 0x8b5cf6, 0.65);
+        steam.setDepth(16);
+        this.midgroundLayer.add(steam);
+        this.tweens.add({
+          targets: steam,
+          y: steam.y - 40 - Math.random() * 20,
+          x: steam.x + 20 + Math.random() * 15, // blow slightly right
+          alpha: 0,
+          scale: 1.8,
+          duration: 1800 + Math.random() * 700,
+          delay: Math.random() * 1500,
+          loop: -1,
+        });
+      }
+
+      // Ambient Central bloom
+      const bloom = this.add.graphics().setDepth(0);
+      bloom.fillStyle(0x312782, 0.08);
+      bloom.fillEllipse(cx, panelOffsetY + panelH * 0.5, panelW * 0.7, panelH * 0.6);
+      this.backgroundLayer.add(bloom);
     }
-    // Removed the square strokeRect borders to keep the artisan plaza clean.
-    this.backgroundLayer.add(stone);
-
-    // Clean plaza network — intentional horizontal/vertical artisan streets,
-    // with no random diagonal beams crossing the checkpoint area.
-    const plaza = this.add.graphics();
-    plaza.setDepth(3);
-    const mainStreetY = toWorldY(26.5);
-    const upperStreetY = toWorldY(19.4);
-    const lowerStreetY = toWorldY(33.2);
-    const streetLeft = toWorldX(6.0);
-    const streetRight = toWorldX(cols - 6.0);
-
-    plaza.fillStyle(0x46417f, 0.88);
-    plaza.fillRoundedRect(
-      streetLeft,
-      mainStreetY - tileSize,
-      streetRight - streetLeft,
-      tileSize * 2,
-      12,
-    );
-    plaza.fillRoundedRect(
-      centerX - tileSize,
-      toWorldY(12.0),
-      tileSize * 2,
-      toWorldY(35.2) - toWorldY(12.0),
-      12,
-    );
-    plaza.fillStyle(0x332f70, 0.74);
-    plaza.fillRoundedRect(
-      toWorldX(10.0),
-      upperStreetY - tileSize * 0.72,
-      tileSize * 20.0,
-      tileSize * 1.44,
-      10,
-    );
-    plaza.fillRoundedRect(
-      toWorldX(9.0),
-      lowerStreetY - tileSize * 0.72,
-      tileSize * 22.0,
-      tileSize * 1.44,
-      10,
-    );
-
-    // Central mosaic medallion.
-    plaza.fillStyle(0x111033, 0.5);
-    plaza.fillEllipse(
-      centerX + 8,
-      mainStreetY + 12,
-      tileSize * 10.4,
-      tileSize * 6.2,
-    );
-    plaza.fillStyle(0x24205b, 0.96);
-    plaza.fillEllipse(centerX, mainStreetY, tileSize * 9.6, tileSize * 5.6);
-    plaza.lineStyle(5, 0x9ddcff, 0.4);
-    plaza.strokeEllipse(centerX, mainStreetY, tileSize * 9.6, tileSize * 5.6);
-    plaza.lineStyle(3, 0xffd166, 0.28);
-    plaza.strokeEllipse(centerX, mainStreetY, tileSize * 6.4, tileSize * 3.6);
-    plaza.lineStyle(2, 0xffffff, 0.14);
-    plaza.lineBetween(
-      centerX - tileSize * 3.4,
-      mainStreetY,
-      centerX + tileSize * 3.4,
-      mainStreetY,
-    );
-    plaza.lineBetween(
-      centerX,
-      mainStreetY - tileSize * 1.8,
-      centerX,
-      mainStreetY + tileSize * 1.8,
-    );
-
-    // Top workshop terrace, kept visually separate from checkpoint markers.
-    plaza.fillStyle(0x141238, 0.52);
-    plaza.fillRoundedRect(
-      toWorldX(13.4),
-      toWorldY(6.4),
-      tileSize * 13.2,
-      tileSize * 7.7,
-      18,
-    );
-    plaza.lineStyle(3, 0xffd166, 0.2);
-    plaza.strokeRoundedRect(
-      toWorldX(13.4),
-      toWorldY(6.4),
-      tileSize * 13.2,
-      tileSize * 7.7,
-      18,
-    );
-
-    plaza.lineStyle(2, 0xffd166, 0.16);
-    [upperStreetY, mainStreetY, lowerStreetY].forEach((y) => {
-      plaza.lineBetween(
-        streetLeft + tileSize * 1.2,
-        y,
-        streetRight - tileSize * 1.2,
-        y,
-      );
-    });
-    this.backgroundLayer.add(plaza);
-
-    // Small premium details: tidy corners, not clutter.
-    const details = this.add.graphics();
-    details.setDepth(4);
-    [
-      [7.0, 9.0],
-      [33.0, 9.0],
-      [7.0, 35.0],
-      [33.0, 35.0],
-    ].forEach(([x, y]) => {
-      details.fillStyle(0x0f0d2e, 0.32);
-      details.fillRoundedRect(
-        toWorldX(x) - tileSize * 1.4,
-        toWorldY(y) - tileSize * 1.0,
-        tileSize * 2.8,
-        tileSize * 2.0,
-        8,
-      );
-      details.lineStyle(2, 0x8fdcff, 0.12);
-      details.strokeRoundedRect(
-        toWorldX(x) - tileSize * 1.4,
-        toWorldY(y) - tileSize * 1.0,
-        tileSize * 2.8,
-        tileSize * 2.0,
-        8,
-      );
-    });
-    this.backgroundLayer.add(details);
-
-    // Hero workshop: grounded on a premium workshop terrace with shadow.
-    const houseX = cols / 2;
-    const houseY = 13.8;
-
-    const houseShadow = this.add.ellipse(
-      toWorldX(houseX) + 8,
-      toWorldY(houseY) - 12,
-      180,
-      60,
-      0x000000,
-      0.28,
-    );
-    houseShadow.setDepth(8.5);
-    this.midgroundLayer.add(houseShadow);
-
-    addProp("House_Hay_4_Purple", houseX, houseY, 9, 0xa79cff, 1.16);
-
-    // Lamp posts placed strictly on the 4 corner box details.
-    addProp("LampPost_3", 7.0, 9.6, 10, 0xd0c8ff, 0.88);
-    addProp("LampPost_3", 33.0, 9.6, 10, 0xd0c8ff, 0.88);
-    addProp("LampPost_3", 7.0, 35.6, 10, 0xd0c8ff, 0.88);
-    addProp("LampPost_3", 33.0, 35.6, 10, 0xd0c8ff, 0.88);
-  }
 
   // ─────────────────────────────────────────────────────────────
   //  HELPER: draw a simple pixel tree (trunk + canopy)
@@ -5207,69 +5432,82 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   private createArtisanLandmarks(stageId: number): void {
-    const nodes = this.getStageNodes(stageId);
-    if (nodes.length === 0) return;
+      const nodes = this.getStageNodes(stageId);
+      if (nodes.length === 0) return;
 
-    const first = nodes[0];
-    const last = nodes[nodes.length - 1];
-    const centerX = (first.x + last.x) / 2;
-    const centerY = (first.y + last.y) / 2;
+      const first = nodes[0];
+      const last  = nodes[nodes.length - 1];
+      const centerX = (first.x + last.x) / 2;
+      const centerY = (first.y + last.y) / 2;
 
-    // Checkpoint pads — centered under each node so the actual node reads as
-    // the clickable marker, not as a detached decoration.
-    const pads = this.add.graphics();
-    pads.setDepth(14);
-    nodes.forEach((node, index) => {
-      const padY = node.y + 42;
-      const isTopNode = index === 2;
+      // ── Checkpoint pads ───────────────────────────────────────────────────────
+      const pads = this.add.graphics().setDepth(14);
+      nodes.forEach((node, index) => {
+        // Skip pad for the central medallion (CP 5 / index 4) since the medallion is already a custom pad
+        if (index === 4) return;
 
-      pads.fillStyle(0x000000, 0.26);
-      pads.fillEllipse(node.x + 5, padY + 12, 118, 38);
-      pads.fillStyle(0x17143d, 0.78);
-      pads.fillEllipse(node.x, padY, 104, 32);
-      pads.lineStyle(4, 0x9ddcff, 0.74);
-      pads.strokeEllipse(node.x, padY, 104, 32);
-      pads.lineStyle(2, 0xffd166, 0.42);
-      pads.strokeEllipse(node.x, padY, 72, 20);
+        const padY = node.y + 42;
 
-      if (!isTopNode) {
-        const lampOffset = index < 2 ? -48 : 48;
-        this.addLandmarkSprite(
-          "LampPost_3",
-          node.x + lampOffset,
-          padY + 48,
-          0.74,
-          0.86,
-        );
-      }
-    });
-    this.midgroundLayer.add(pads);
+        // Drop shadow
+        pads.fillStyle(0x000000, 0.3);
+        pads.fillEllipse(node.x + 5, padY + 12, 126, 42);
+        // Base — deep indigo
+        pads.fillStyle(0x14113a, 0.92);
+        pads.fillEllipse(node.x, padY, 112, 36);
+        // Outer gold ring — the key visual anchor
+        pads.lineStyle(4, 0xc9a84c, 0.85);
+        pads.strokeEllipse(node.x, padY, 112, 36);
+        // Violet mid ring
+        pads.lineStyle(2, 0x9b8fd4, 0.55);
+        pads.strokeEllipse(node.x, padY, 80, 24);
+        // Inner gold ring
+        pads.lineStyle(1, 0xc9a84c, 0.35);
+        pads.strokeEllipse(node.x, padY, 52, 15);
+        // Centre gold dot
+        pads.fillStyle(0xc9a84c, 0.8);
+        pads.fillCircle(node.x, padY, 4.5);
+        pads.fillStyle(0xfff5cc, 0.55);
+        pads.fillCircle(node.x - 1.5, padY - 1.5, 1.8);
 
-    // Supporting props tucked around the plaza edges so they do not compete
-    // with checkpoint readability.
-    this.addLandmarkSprite(
-      "Rock_Brown_2",
-      centerX - 250,
-      centerY + 214,
-      0.78,
-      0.64,
-    );
-    this.addLandmarkSprite(
-      "Rock_Brown_4",
-      centerX + 250,
-      centerY + 210,
-      0.76,
-      0.64,
-    );
-    this.addLandmarkSprite("Sign_2", centerX - 205, centerY + 96, 0.78, 0.76);
-    this.addLandmarkSprite(
-      "Barrel_Small_Empty",
-      centerX + 204,
-      centerY + 98,
-      0.72,
-      0.72,
-    );
-  }
+        // Flanking lamp posts (skip central medallion node / index 4)
+        if (index !== 4) {
+          const side = index < 2 ? -52 : 52;
+          this.addLandmarkSprite("LampPost_3", node.x + side, padY + 52, 0.78, 0.92);
+          const halo = this.add.circle(node.x + side, padY + 4, 20, 0xc9a84c, 0.0);
+          halo.setDepth(16);
+          this.midgroundLayer.add(halo);
+          this.tweens.add({
+            targets: halo,
+            alpha: { from: 0.08, to: 0.2 },
+            duration: 1800 + index * 220,
+            yoyo: true, repeat: -1,
+            ease: "Sine.easeInOut",
+          });
+        }
+      });
+      this.midgroundLayer.add(pads);
+
+      // ── Flanking props — intentionally grouped, not scattered ─────────────────
+      // Left cluster
+      this.addLandmarkSprite("Rock_Brown_2",      centerX - 258, centerY + 210, 0.76, 0.58);
+      this.addLandmarkSprite("Sign_2",            centerX - 212, centerY + 92,  0.80, 0.82);
+      // Right cluster
+      this.addLandmarkSprite("Rock_Brown_4",      centerX + 254, centerY + 206, 0.74, 0.58);
+      this.addLandmarkSprite("Barrel_Small_Empty",centerX + 210, centerY + 94,  0.74, 0.78);
+
+      // ── Single soft ambient glow under the whole landmark area ────────────────
+      const glow = this.add.graphics().setDepth(13);
+      glow.fillStyle(0x5a4fc0, 0.07);
+      glow.fillEllipse(centerX, centerY + 80, 500, 300);
+      this.midgroundLayer.add(glow);
+      this.tweens.add({
+        targets: glow,
+        alpha: { from: 0.65, to: 1.0 },
+        duration: 4500,
+        yoyo: true, repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
 
   private createMineLandmarks(stageId: number): void {
     const nodes = this.getStageNodes(stageId);
@@ -6289,7 +6527,7 @@ export class WorldMapScene extends Phaser.Scene {
         { x: 112, y: 144 }, // CP 2: Top-left corner
         { x: 528, y: 144 }, // CP 3: Top-right corner
         { x: 528, y: 560 }, // CP 4: Bottom-right corner
-        { x: 320, y: 424 }, // CP 5: Central medallion (Middle)
+        { x: 320, y: 320 }, // CP 5: Central medallion (Middle)
       ];
       const anchor =
         artisanAnchors[Math.min(checkpointIndex, artisanAnchors.length - 1)];
