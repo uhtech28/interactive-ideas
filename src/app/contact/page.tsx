@@ -7,20 +7,20 @@ export default function ContactPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('save') === 'true') {
-      // Trigger the VCF download programmatically
-      const link = document.createElement('a');
-      link.href = '/aryan-awasthi.vcf';
-      link.click();
-      // Then set opened so the UI updates and redirect timer starts
-      setOpened(true);
+      // 300ms lets images paint before iOS shows the Add to Contacts sheet
+      setTimeout(() => {
+        window.location.href = '/api/vcard';
+      }, 300);
     }
   }, []);
+
   useEffect(() => {
     if (opened) {
+      // Desktop fallback: page stays alive after VCF download, so redirect manually
       const timer = setTimeout(() => {
         window.location.href = website;
       }, 2200);
-  
+
       return () => clearTimeout(timer);
     }
   }, [opened]);
@@ -106,10 +106,8 @@ export default function ContactPage() {
             <div className="mt-10 border-t border-white/10 pt-8">
               {!opened ? (
                 <a
-                href="/aryan-awasthi.vcf"
-                onClick={() => {
-                  setOpened(true);
-                }}
+                  href="/api/vcard"
+                  onClick={() => setOpened(true)}
                   className="block w-full rounded-2xl bg-indigo-500 py-4 text-center font-semibold text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-400"
                 >
                   Save Contact

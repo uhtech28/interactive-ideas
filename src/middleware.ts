@@ -8,6 +8,7 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 const isPublicRoute = createRouteMatcher([
   '/',
   '/contact',
+  '/api/vcard',
   '/intro-preview',
   '/aryan-awasthi.vcf',
   '/sign-in(.*)',
