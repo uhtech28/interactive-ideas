@@ -30,9 +30,11 @@ function formatINR(value: number): string {
 
 
 function getScoreColor(score: number) {
-  if (score >= 8) return { bar: "from-emerald-600 via-green-400 to-emerald-300", text: "text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]", glow: "rgba(52,211,153,0.6)" };
-  if (score >= 6) return { bar: "from-cyan-700 via-cyan-500 to-cyan-300", text: "text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]", glow: "rgba(34,211,238,0.6)" };
-  if (score >= 4) return { bar: "from-amber-700 via-amber-500 to-amber-300", text: "text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.4)]", glow: "rgba(245,158,11,0.5)" };
+  // Cumulative score: 8 stages × 12 max = 96 total max.
+  // Thresholds scaled accordingly: ≥48 (≥4/stage) = amber, ≥64 (≥8/stage) = cyan, ≥80 = emerald
+  if (score >= 64) return { bar: "from-emerald-600 via-green-400 to-emerald-300", text: "text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]", glow: "rgba(52,211,153,0.6)" };
+  if (score >= 48) return { bar: "from-cyan-700 via-cyan-500 to-cyan-300", text: "text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]", glow: "rgba(34,211,238,0.6)" };
+  if (score >= 24) return { bar: "from-amber-700 via-amber-500 to-amber-300", text: "text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.4)]", glow: "rgba(245,158,11,0.5)" };
   return { bar: "from-rose-800 via-rose-600 to-rose-400", text: "text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.5)]", glow: "rgba(244,63,94,0.4)" };
 }
 

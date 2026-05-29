@@ -513,6 +513,7 @@ function CheckpointPanel({
   onClose,
   onAdvance,
   onTaskToggle,
+  onTaskRedo,
   evaluationSummary,
   isAdvancing,
   activeStage,
@@ -522,6 +523,7 @@ function CheckpointPanel({
   onClose: () => void;
   onAdvance: () => void;
   onTaskToggle: (taskIdx: number) => void;
+  onTaskRedo: (taskIdx: number) => void;
   evaluationSummary?: Array<{
     taskLevel: "t1" | "t2" | "t3";
     taskStatus: string;
@@ -610,6 +612,10 @@ function CheckpointPanel({
                   onToggle={() => {
                     audioManager.playTouch("click");
                     onTaskToggle(i);
+                  }}
+                  onRedo={() => {
+                    audioManager.playTouch("click");
+                    onTaskRedo(i);
                   }}
                 />
               ))}
@@ -720,6 +726,7 @@ function TaskCard({
   locked,
   evaluationSummary,
   onToggle,
+  onRedo,
 }: {
   task: Task;
   index?: number;
@@ -734,6 +741,7 @@ function TaskCard({
     };
   };
   onToggle: () => void;
+  onRedo?: () => void;
 }) {
   const accentColor =
     task.difficulty === "stretch"
@@ -744,13 +752,13 @@ function TaskCard({
 
   return (
     <motion.div
-      onClick={locked || task.done ? undefined : onToggle}
+      onClick={locked ? undefined : task.done ? undefined : onToggle}
       onMouseEnter={() => {
         if (!locked && !task.done) audioManager.playUI("hover");
       }}
       whileHover={locked || task.done ? {} : { x: 4 }}
       whileTap={locked || task.done ? {} : { scale: 0.98 }}
-      className="flex items-start gap-2 sm:gap-3 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl relative overflow-hidden cursor-pointer group/task transition-colors"
+      className="flex items-start gap-2 sm:gap-3 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl relative overflow-hidden group/task transition-colors"
       style={{
         background: task.done
           ? "rgba(99, 102, 241, 0.05)"
@@ -763,7 +771,7 @@ function TaskCard({
           : locked
             ? "rgba(255, 255, 255, 0.02)"
             : "rgba(255,255,255,0.05)",
-        cursor: locked || task.done ? "default" : "pointer",
+        cursor: locked ? "default" : task.done ? "default" : "pointer",
         opacity: locked ? 0.4 : task.done ? 0.6 : 1,
       }}
     >
@@ -804,9 +812,34 @@ function TaskCard({
       </motion.div>
 
       <div className="flex-1 min-w-0 relative z-10">
-        <p className="text-[12px] sm:text-[13px] leading-relaxed text-slate-300 font-medium">
-          {task.description}
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-[12px] sm:text-[13px] leading-relaxed text-slate-300 font-medium flex-1">
+            {task.description}
+          </p>
+          {/* Redo button - always visible for completed tasks */}
+          {task.done && onRedo && !locked && (
+            <motion.button
+              onClick={(e) => {
+                e.stopPropagation();
+                audioManager.playTouch("click");
+                onRedo();
+              }}
+              onMouseEnter={() => audioManager.playUI("hover")}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-md text-[12px] font-black transition-all"
+              style={{
+                background: "linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(139, 92, 246, 0.2))",
+                border: "1px solid rgba(168, 85, 247, 0.5)",
+                color: "#e9d5ff",
+                boxShadow: "0 2px 8px rgba(168, 85, 247, 0.2)",
+              }}
+              title="Redo Task"
+            >
+              ↺
+            </motion.button>
+          )}
+        </div>
         {evaluationSummary?.isPending && (
           <p className="mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
             AI evaluating...
@@ -1229,6 +1262,9 @@ function MapPageInner() {
   // Live badge subscription — detects new awards and fires BadgeAwardSequence
   const myBadges = useQuery(api.badges.getMyBadges);
   const prevBadgeCountRef = useRef<number | null>(null);
+  // Guards: suppress duplicate DB-driven badge popups triggered within 5s of a local event
+  const recentTaskSubmitRef = useRef<number>(0);
+  const shownBadgesRef = useRef<Set<string>>(new Set());
 
   // Venture badge subscription (62-badge system)
   const ventureMyBadges = useQuery(
@@ -1237,7 +1273,12 @@ function MapPageInner() {
   );
   const prevVentureBadgeCountRef = useRef<number | null>(null);
 
-  // Quality score for the current stage
+  // Cumulative quality scores across ALL stages (grows checkpoint-by-checkpoint)
+  const allStageQualities = useQuery(
+    api.aiScoring.getVentureQualityScores,
+    activeVenture ? { ventureId: activeVenture._id } : "skip",
+  );
+  // Keep the per-stage query too (still used by the passage event overlay)
   const stageQuality = useQuery(
     api.aiScoring.getStageQualityScore,
     activeVenture && worldMapData?.venture
@@ -1256,6 +1297,7 @@ function MapPageInner() {
 
   // ── Convex mutations ───────────────────────────────────────────────────────
   const advanceCheckpoint = useMutation(api.ventures.advanceCheckpoint);
+  const redoTask = useMutation(api.worldMap.redoTask);
   const ensureVentureStructure = useMutation(
     api.ventures.ensureVentureStructure,
   );
@@ -1847,22 +1889,29 @@ function MapPageInner() {
   // Streak from Convex
   const streak = streakData?.currentStreak ?? 0;
 
-  // Quality score from AI scoring backend (0–12 total, 0 when not yet scored)
-  const qualityScore = stageQuality?.totalScore ?? 0;
-  const valuationScore = stageQuality?.valuationScore ?? 0;
+  // Cumulative score = sum of totalScore across all stages that have been scored
+  // (grows from 0 as more checkpoints/stages are completed)
+  const qualityScore = allStageQualities
+    ? allStageQualities.reduce((sum, s) => sum + (s.totalScore ?? 0), 0)
+    : 0;
+  // Cumulative valuation = sum of all stage valuations
+  const valuationScore = allStageQualities
+    ? allStageQualities.reduce((sum, s) => sum + (s.valuationScore ?? 0), 0)
+    : 0;
 
   // ── Detect new badges via Convex subscription ─────────────────────────────
-  // getMyBadges returns badges newest-first. When the count increases, the
-  // badge at index 0 is the most recently awarded one.
   useEffect(() => {
     if (!myBadges) return;
     const count = myBadges.length;
 
-    if (
-      prevBadgeCountRef.current !== null &&
-      count > prevBadgeCountRef.current
-    ) {
-      // New badge(s) awarded — enqueue them
+    if (prevBadgeCountRef.current !== null && count > prevBadgeCountRef.current) {
+      // Skip if a local submission just happened (local badge animation already covers it)
+      const msSinceSubmit = Date.now() - recentTaskSubmitRef.current;
+      if (msSinceSubmit < 5000) {
+        prevBadgeCountRef.current = count;
+        return;
+      }
+
       const newCount = count - prevBadgeCountRef.current;
       const newBadges = myBadges.slice(0, newCount);
       const payloads: BadgePayload[] = newBadges.map((b) => ({
@@ -1874,7 +1923,11 @@ function MapPageInner() {
         awardedAt: b.awardedAt,
       }));
       console.log(`[MapPage] 🎖️ New badge(s) detected: ${newCount}`, payloads);
-      setBadgeQueue((q) => [...q, ...payloads]);
+      setBadgeQueue((q) => {
+        const existingNames = new Set(q.map((b) => b.name));
+        const unique = payloads.filter((p) => !existingNames.has(p.name) && !shownBadgesRef.current.has(p.name));
+        return [...q, ...unique];
+      });
     }
 
     prevBadgeCountRef.current = count;
@@ -1885,16 +1938,16 @@ function MapPageInner() {
     if (!ventureMyBadges) return;
     const count = ventureMyBadges.length;
 
-    if (
-      prevVentureBadgeCountRef.current !== null &&
-      count > prevVentureBadgeCountRef.current
-    ) {
-      // New venture badge(s) awarded — enqueue them
+    if (prevVentureBadgeCountRef.current !== null && count > prevVentureBadgeCountRef.current) {
+      // Skip if a local submission just happened
+      const msSinceSubmit = Date.now() - recentTaskSubmitRef.current;
+      if (msSinceSubmit < 5000) {
+        prevVentureBadgeCountRef.current = count;
+        return;
+      }
+
       const newCount = count - prevVentureBadgeCountRef.current;
-      // Sort by awardedAt descending to get newest first
-      const sorted = [...ventureMyBadges].sort(
-        (a, b) => b.awardedAt - a.awardedAt,
-      );
+      const sorted = [...ventureMyBadges].sort((a, b) => b.awardedAt - a.awardedAt);
       const newBadges = sorted.slice(0, newCount);
 
       const payloads: BadgePayload[] = newBadges
@@ -1919,17 +1972,11 @@ function MapPageInner() {
         }));
 
       if (payloads.length > 0) {
-        console.log(
-          `[MapPage] 🏆 New venture badge(s) detected: ${newCount}`,
-          payloads,
-        );
+        console.log(`[MapPage] 🏆 New venture badge(s) detected: ${newCount}`, payloads);
         setBadgeQueue((q) => {
-          // Deduplicate by id to prevent showing the same badge twice
-          const existing = new Set(q.map((b) => b.id));
-          const unique = payloads.filter((p) => !existing.has(p.id));
-          console.log(
-            `[MapPage] Badge queue updated: ${unique.length} new, ${q.length} existing`,
-          );
+          const existingNames = new Set(q.map((b) => b.name));
+          const unique = payloads.filter((p) => !existingNames.has(p.name) && !shownBadgesRef.current.has(p.name));
+          console.log(`[MapPage] Badge queue updated: ${unique.length} new, ${q.length} existing`);
           return [...q, ...unique];
         });
       }
@@ -2354,9 +2401,60 @@ function MapPageInner() {
     [selectedDetail, setSubmittingTask],
   );
 
+  // ── Task redo → Reset and reopen submission modal ────────────────────────
+  const handleTaskRedo = useCallback(
+    async (taskIdx: number) => {
+      if (!selectedDetail) return;
+      const task = selectedDetail.tasks[taskIdx];
+      if (!task || !task.done) return; // can only redo completed tasks
+
+      const checkpointId = task._convexCheckpointId;
+      const taskLevel = task._taskLevel;
+
+      if (!checkpointId || !taskLevel) {
+        console.error("[React] Missing checkpointId or taskLevel for redo", {
+          checkpointId,
+          taskLevel,
+        });
+        return;
+      }
+
+      try {
+        console.log("[React] Redoing task:", { checkpointId, taskLevel });
+        audioManager.playUI("confirm");
+
+        // Call the redo mutation to reset the task
+        await redoTask({ checkpointId, taskLevel });
+
+        // Remove from optimistic completed state
+        const taskId = `${checkpointId}_${taskLevel}`;
+        setOptimisticCompletedTaskIds((current) => {
+          const updated = { ...current };
+          delete updated[taskId];
+          return updated;
+        });
+
+        // Open the submission modal for resubmission
+        setSubmittingTask({
+          id: taskId,
+          checkpointId,
+          taskLevel,
+          title: task.label,
+          description: task.description,
+          toolType: task.tool,
+          points: taskLevel === "t1" ? 20 : taskLevel === "t2" ? 20 : 35,
+        });
+      } catch (err) {
+        console.error("[React] Failed to redo task:", err);
+        audioManager.playUI("error");
+      }
+    },
+    [selectedDetail, redoTask, setSubmittingTask],
+  );
+
   // Stable ref so handleTaskSubmissionSuccess can call handleAdvance
   // without creating a circular useCallback dependency.
-  const handleAdvanceRef = useRef<(forceBypass?: boolean) => void>(() => { });
+  const handleAdvanceRef = useRef<(forceBypass?: boolean, skipDoneTasksCheck?: boolean) => void>(() => { });
 
   const handleTaskSubmissionSuccess = useCallback(
     ({
@@ -2481,23 +2579,29 @@ function MapPageInner() {
         taskTagline = "Manage your time wisely and build consistency.";
       }
 
-      setBadgeQueue((q) => [
-        ...q,
-        {
-          id: `task_${checkpointId}_${taskLevel}_${Date.now()}`,
-          name: taskBadgeLabel,
-          description: taskBadgeDesc,
-          icon: taskBadgeIcon,
-          rarity: taskBadgeRarity,
-          category: "idea_milestones",
-          isProfileStyle: true,
-          primaryColor: taskPrimaryColor,
-          secondaryColor: taskSecondaryColor,
-          tagline: taskTagline,
-          awardedAt: Date.now(),
-          scoreEarned: taskLevel === "t3" ? 35 : 20,
-        },
-      ]);
+      recentTaskSubmitRef.current = Date.now();
+      setBadgeQueue((q) => {
+        if (q.some((b) => b.name === taskBadgeLabel) || shownBadgesRef.current.has(taskBadgeLabel)) {
+          return q;
+        }
+        return [
+          ...q,
+          {
+            id: `task_${checkpointId}_${taskLevel}_${Date.now()}`,
+            name: taskBadgeLabel,
+            description: taskBadgeDesc,
+            icon: taskBadgeIcon,
+            rarity: taskBadgeRarity,
+            category: "idea_milestones",
+            isProfileStyle: true,
+            primaryColor: taskPrimaryColor,
+            secondaryColor: taskSecondaryColor,
+            tagline: taskTagline,
+            awardedAt: Date.now(),
+            scoreEarned: taskLevel === "t3" ? 35 : 20,
+          },
+        ];
+      });
 
       const nextLabelMap: Record<"t1" | "t2" | "t3", string> = {
         t1: "T1",
@@ -2560,7 +2664,7 @@ function MapPageInner() {
         // Delay gives the badge animation time to breathe before transitioning.
         if (doneCount >= 2) {
           setTimeout(() => {
-            handleAdvanceRef.current();
+            handleAdvanceRef.current(false, true);
           }, 1800);
         }
 
@@ -2591,7 +2695,7 @@ function MapPageInner() {
 
   // ── Advance checkpoint → Convex mutation ──────────────────────────────────
   const handleAdvance = useCallback(
-    async (forceBypass = false) => {
+    async (forceBypass = false, skipDoneTasksCheck = false) => {
       if (!selectedDetail || !venture || isAdvancingCheckpoint) return;
 
       // Find the real Convex checkpoint document
@@ -2601,7 +2705,7 @@ function MapPageInner() {
       const doneTasks = [cp.t1Completed, cp.t2Completed, cp.t3Completed].filter(
         Boolean,
       ).length;
-      if (doneTasks < 2) return;
+      if (doneTasks < 2 && !skipDoneTasksCheck) return;
 
       // ── Boss combat gate: must defeat boss before every checkpoint advance ─
       const bossCombatKey = `${cp.stage}-${cp.checkpoint}`;
@@ -2621,41 +2725,8 @@ function MapPageInner() {
         return;
       }
 
-      // Check for unresolved inter-checkpoint events (treasure/shield/insight — NOT henchman, that's handled above)
-      const unresolvedEvents =
-        interCheckpointData?.events.filter((evt) => {
-          if (evt === "clear" || evt === "henchman") return false;
-          const state = interCheckpointData.existingState;
-          if (!state) return true;
-          if (
-            evt === "treasure" &&
-            state.treasuresFound &&
-            state.treasuresFound > 0
-          )
-            return false;
-          if (
-            evt === "shield" &&
-            state.shieldsEarned &&
-            state.shieldsEarned > 0
-          )
-            return false;
-          if (
-            evt === "insight" &&
-            state.insightFragments &&
-            state.insightFragments > 0
-          )
-            return false;
-          return true;
-        }) ?? [];
-
-      if (
-        unresolvedEvents.length > 0 &&
-        !bypassInterCheckpoint &&
-        !forceBypass
-      ) {
-        setInterCheckpointQueue(unresolvedEvents as any);
-        return;
-      }
+      // ── Inter-checkpoint passage events removed as requested (only Boss combat and Badge animations should exist)
+      const unresolvedEvents: any[] = [];
 
       const isGold = doneTasks >= 3;
 
@@ -2722,6 +2793,7 @@ function MapPageInner() {
           });
         }
 
+        recentTaskSubmitRef.current = Date.now();
         await advanceCheckpoint({
           checkpointId: cp._id as Id<"ventureCheckpoints">,
         });
@@ -2786,23 +2858,28 @@ function MapPageInner() {
               ? "#64748B"
               : "#B45309";
 
-        setBadgeQueue((q) => [
-          ...q,
-          {
-            id: `level_${cp._id}_${Date.now()}`,
-            name: levelBadgeLabel,
-            description: levelBadgeDesc,
-            icon: levelBadgeIcon,
-            rarity: levelBadgeRarity,
-            category: "idea_milestones",
-            shape: "trophy",
-            primaryColor: checkpointBadgePrimary,
-            secondaryColor: checkpointBadgeSecondary,
-            tagline: levelBadgeDesc,
-            awardedAt: Date.now(),
-            scoreEarned: levelBadgeRarity === "legendary" ? 50 : levelBadgeRarity === "rare" ? 20 : 10,
-          },
-        ]);
+        setBadgeQueue((q) => {
+          if (q.some((b) => b.name === levelBadgeLabel) || shownBadgesRef.current.has(levelBadgeLabel)) {
+            return q;
+          }
+          return [
+            ...q,
+            {
+              id: `level_${cp._id}_${Date.now()}`,
+              name: levelBadgeLabel,
+              description: levelBadgeDesc,
+              icon: levelBadgeIcon,
+              rarity: levelBadgeRarity,
+              category: "idea_milestones",
+              shape: "trophy",
+              primaryColor: checkpointBadgePrimary,
+              secondaryColor: checkpointBadgeSecondary,
+              tagline: levelBadgeDesc,
+              awardedAt: Date.now(),
+              scoreEarned: levelBadgeRarity === "legendary" ? 50 : levelBadgeRarity === "rare" ? 20 : 10,
+            },
+          ];
+        });
 
         if (isLastInStage) {
           // Stage boundary — show stage clear modal!
@@ -3161,12 +3238,17 @@ function MapPageInner() {
             onSkip={() => setShowLevelUp(false)}
           />
 
-          {/* Gap 4 fix: BadgeAwardSequence wired to badge queue */}
           <BadgeAwardSequence
             isVisible={!!activeBadge}
             badge={activeBadge}
-            onComplete={() => setActiveBadge(null)}
-            onSkip={() => setActiveBadge(null)}
+            onComplete={() => {
+              if (activeBadge) shownBadgesRef.current.add(activeBadge.name);
+              setActiveBadge(null);
+            }}
+            onSkip={() => {
+              if (activeBadge) shownBadgesRef.current.add(activeBadge.name);
+              setActiveBadge(null);
+            }}
           />
 
           {/* Gold checkpoint notification popup */}
@@ -3329,6 +3411,7 @@ function MapPageInner() {
                 onClose={() => updateUrlParams({ checkpointId: null })}
                 onAdvance={handleAdvance}
                 onTaskToggle={handleTaskToggle}
+                onTaskRedo={handleTaskRedo}
                 evaluationSummary={checkpointEvaluationSummary ?? undefined}
                 isAdvancing={isAdvancingCheckpoint}
                 activeStage={activeStage}

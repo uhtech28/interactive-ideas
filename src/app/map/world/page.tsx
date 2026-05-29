@@ -30,7 +30,7 @@ import type { Id } from "@convex/_generated/dataModel";
 import { eventBridge } from "@/lib/phaser/utils/event-bridge";
 import type { CheckpointState } from "@/lib/phaser/utils/event-bridge";
 import { CommentsSection } from "@/components/comments/CommentsSection";
-import { MessageSquare, X, Users, Send, Share2, ExternalLink, Check, Copy } from "lucide-react";
+import { MessageSquare, X, Users, Send, Share2, ExternalLink, Check, Copy, Lock } from "lucide-react";
 import { QuestList, BossHPBar, StageInfo, XPBar } from "@/components/hud";
 import { InterCheckpointOverlay } from "@/components/map/InterCheckpointOverlay";
 import { getTemplate, type TemplateId } from "@/config/templates";
@@ -483,6 +483,7 @@ function CheckpointPanel({
   onClose,
   onAdvance,
   onTaskToggle,
+  onTaskRedo,
   evaluationSummary,
   isAdvancing,
   activeStage,
@@ -492,6 +493,7 @@ function CheckpointPanel({
   onClose: () => void;
   onAdvance: () => void;
   onTaskToggle: (taskIdx: number) => void;
+  onTaskRedo: (taskIdx: number) => void;
   evaluationSummary?: Array<{
     taskLevel: "t1" | "t2" | "t3";
     taskStatus: string;
@@ -572,13 +574,17 @@ function CheckpointPanel({
                   key={i}
                   task={task}
                   index={i}
-                  locked={isLocked}
+                  locked={isLocked || (i > 0 && !detail.tasks[i - 1].done)}
                   evaluationSummary={evaluationSummary?.find(
                     (entry) => entry.taskLevel === task._taskLevel,
                   )}
                   onToggle={() => {
                     audioManager.playTouch("click");
                     onTaskToggle(i);
+                  }}
+                  onRedo={() => {
+                    audioManager.playTouch("click");
+                    onTaskRedo(i);
                   }}
                 />
               ))}
@@ -689,6 +695,7 @@ function TaskCard({
   locked,
   evaluationSummary,
   onToggle,
+  onRedo,
 }: {
   task: Task;
   index?: number;
@@ -703,6 +710,7 @@ function TaskCard({
     };
   };
   onToggle: () => void;
+  onRedo?: () => void;
 }) {
   const accentColor =
     task.difficulty === "stretch"
@@ -713,23 +721,27 @@ function TaskCard({
 
   return (
     <motion.div
-      onClick={locked || task.done ? undefined : onToggle}
+      onClick={locked ? undefined : task.done ? undefined : onToggle}
       onMouseEnter={() => {
         if (!locked && !task.done) audioManager.playUI("hover");
       }}
       whileHover={locked || task.done ? {} : { x: 4 }}
       whileTap={locked || task.done ? {} : { scale: 0.98 }}
-      className="flex items-start gap-2 sm:gap-3 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl relative overflow-hidden cursor-pointer group/task transition-colors"
+      className="flex items-start gap-2 sm:gap-3 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl relative overflow-hidden group/task transition-colors"
       style={{
         background: task.done
           ? "rgba(99, 102, 241, 0.05)"
-          : "rgba(255, 255, 255, 0.02)",
+          : locked
+            ? "rgba(255, 255, 255, 0.01)"
+            : "rgba(255, 255, 255, 0.02)",
         border: "1px solid",
         borderColor: task.done
           ? "rgba(99, 102, 241, 0.2)"
-          : "rgba(255,255,255,0.05)",
-        cursor: locked || task.done ? "default" : "pointer",
-        opacity: task.done ? 0.6 : 1,
+          : locked
+            ? "rgba(255, 255, 255, 0.02)"
+            : "rgba(255,255,255,0.05)",
+        cursor: locked ? "default" : task.done ? "default" : "pointer",
+        opacity: locked ? 0.4 : task.done ? 0.6 : 1,
       }}
     >
       {/* Hover glow */}
@@ -739,27 +751,64 @@ function TaskCard({
       {/* Left accent bar */}
       <div
         className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-lg sm:rounded-l-xl"
-        style={{ background: task.done ? "#818cf8" : accentColor }}
+        style={{
+          background: task.done ? "#818cf8" : locked ? "#475569" : accentColor,
+        }}
       />
 
       {/* Check circle */}
       <motion.div
         className="w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[9px] sm:text-[10px] font-bold"
         style={{
-          background: task.done ? "#6366f1" : "rgba(255,255,255,0.05)",
-          border: `1.5px solid ${task.done ? "#6366f1" : "rgba(255,255,255,0.15)"}`,
-          color: task.done ? "#ffffff" : "transparent",
+          background: task.done
+            ? "#6366f1"
+            : locked
+              ? "rgba(255,255,255,0.01)"
+              : "rgba(255,255,255,0.05)",
+          border: `1.5px solid ${task.done ? "#6366f1" : locked ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.15)"}`,
+          color: task.done ? "#ffffff" : locked ? "#64748b" : "transparent",
         }}
         animate={task.done ? { scale: [0.8, 1.2, 1] } : { scale: 1 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
       >
-        {task.done && "✓"}
+        {task.done ? (
+          "✓"
+        ) : locked ? (
+          <Lock className="h-2.5 w-2.5 text-slate-500" />
+        ) : (
+          ""
+        )}
       </motion.div>
 
       <div className="flex-1 min-w-0 relative z-10">
-        <p className="text-[12px] sm:text-[13px] leading-relaxed text-slate-300 font-medium">
-          {task.description}
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-[12px] sm:text-[13px] leading-relaxed text-slate-300 font-medium flex-1">
+            {task.description}
+          </p>
+          {/* Redo button - always visible for completed tasks */}
+          {task.done && onRedo && !locked && (
+            <motion.button
+              onClick={(e) => {
+                e.stopPropagation();
+                audioManager.playTouch("click");
+                onRedo();
+              }}
+              onMouseEnter={() => audioManager.playUI("hover")}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-md text-[12px] font-black transition-all"
+              style={{
+                background: "linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(139, 92, 246, 0.2))",
+                border: "1px solid rgba(168, 85, 247, 0.5)",
+                color: "#e9d5ff",
+                boxShadow: "0 2px 8px rgba(168, 85, 247, 0.2)",
+              }}
+              title="Redo Task"
+            >
+              ↺
+            </motion.button>
+          )}
+        </div>
         {evaluationSummary?.isPending && (
           <p className="mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
             AI evaluating...
@@ -1222,7 +1271,12 @@ function MapPageInner() {
   );
   const prevVentureBadgeCountRef = useRef<number | null>(null);
 
-  // Quality score for the current stage
+  // Cumulative quality scores across ALL stages (grows checkpoint-by-checkpoint)
+  const allStageQualities = useQuery(
+    api.aiScoring.getVentureQualityScores,
+    activeVenture ? { ventureId: activeVenture._id } : "skip",
+  );
+  // Keep the per-stage query too (still used by the passage event overlay)
   const stageQuality = useQuery(
     api.aiScoring.getStageQualityScore,
     activeVenture && worldMapData?.venture
@@ -1297,6 +1351,7 @@ function MapPageInner() {
   const [isJournalOpen, setIsJournalOpen] = useState(false);
 
   const saveToolData = useMutation(api.worldMap.saveToolData);
+  const redoTask = useMutation(api.worldMap.redoTask);
 
   const kanbanData = useQuery(
     api.worldMap.getToolData,
@@ -1335,6 +1390,7 @@ function MapPageInner() {
   // Tracks a timestamp of the last local task submission to suppress duplicate
   // DB-driven badge animations for the same event (within 5 seconds window).
   const recentTaskSubmitRef = useRef<number>(0);
+  const shownBadgesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (badgeQueue.length === 0) {
@@ -1423,6 +1479,20 @@ function MapPageInner() {
   // Inter-checkpoint events state
   const [interCheckpointQueue, setInterCheckpointQueue] = useState<Array<"henchman" | "treasure" | "shield" | "insight" | "clear">>([]);
   const [bypassInterCheckpoint, setBypassInterCheckpoint] = useState(false);
+
+  // ── Boss combat gate state ────────────────────────────────────────────────
+  // Tracks which checkpoints have already had boss defeated (key = "stage-checkpoint")
+  const [bossDefeatedCheckpoints, setBossDefeatedCheckpoints] = useState<Set<string>>(
+    () => new Set()
+  );
+  // When non-null the boss combat overlay is open for this checkpoint
+  const [bossCombatTarget, setBossCombatTarget] = useState<{
+    stage: number;
+    checkpoint: number;
+    checkpointId: string;
+    isLastInStage: boolean;
+    isGold: boolean;
+  } | null>(null);
 
   const interCheckpointData = useQuery(
     api.interCheckpoint.getInterCheckpointEvents,
@@ -1819,9 +1889,15 @@ function MapPageInner() {
   // Streak from Convex
   const streak = streakData?.currentStreak ?? 0;
 
-  // Quality score from AI scoring backend (0–12 total, 0 when not yet scored)
-  const qualityScore = stageQuality?.totalScore ?? 0;
-  const valuationScore = stageQuality?.valuationScore ?? 0;
+  // Cumulative score = sum of totalScore across all stages that have been scored
+  // (grows from 0 as more checkpoints/stages are completed)
+  const qualityScore = allStageQualities
+    ? allStageQualities.reduce((sum, s) => sum + (s.totalScore ?? 0), 0)
+    : 0;
+  // Cumulative valuation = sum of all stage valuations
+  const valuationScore = allStageQualities
+    ? allStageQualities.reduce((sum, s) => sum + (s.valuationScore ?? 0), 0)
+    : 0;
 
   // ── Detect new badges via Convex subscription ─────────────────────────────
   // getMyBadges returns badges newest-first. When the count increases, the
@@ -1854,7 +1930,11 @@ function MapPageInner() {
         awardedAt: b.awardedAt,
       }));
       console.log(`[MapPage] 🎖️ New badge(s) detected: ${newCount}`, payloads);
-      setBadgeQueue((q) => [...q, ...payloads]);
+      setBadgeQueue((q) => {
+        const existingNames = new Set(q.map((b) => b.name));
+        const unique = payloads.filter((p) => !existingNames.has(p.name) && !shownBadgesRef.current.has(p.name));
+        return [...q, ...unique];
+      });
     }
 
     prevBadgeCountRef.current = count;
@@ -1912,9 +1992,8 @@ function MapPageInner() {
           payloads,
         );
         setBadgeQueue((q) => {
-          // Deduplicate by id to prevent showing the same badge twice
-          const existing = new Set(q.map((b) => b.id));
-          const unique = payloads.filter((p) => !existing.has(p.id));
+          const existingNames = new Set(q.map((b) => b.name));
+          const unique = payloads.filter((p) => !existingNames.has(p.name) && !shownBadgesRef.current.has(p.name));
           console.log(
             `[MapPage] Badge queue updated: ${unique.length} new, ${q.length} existing`,
           );
@@ -2298,9 +2377,60 @@ function MapPageInner() {
     [selectedDetail, setSubmittingTask],
   );
 
+  // ── Task redo → Reset and reopen submission modal ────────────────────────
+  const handleTaskRedo = useCallback(
+    async (taskIdx: number) => {
+      if (!selectedDetail) return;
+      const task = selectedDetail.tasks[taskIdx];
+      if (!task || !task.done) return; // can only redo completed tasks
+
+      const checkpointId = task._convexCheckpointId;
+      const taskLevel = task._taskLevel;
+
+      if (!checkpointId || !taskLevel) {
+        console.error("[React] Missing checkpointId or taskLevel for redo", {
+          checkpointId,
+          taskLevel,
+        });
+        return;
+      }
+
+      try {
+        console.log("[React] Redoing task:", { checkpointId, taskLevel });
+        audioManager.playUI("confirm");
+
+        // Call the redo mutation to reset the task
+        await redoTask({ checkpointId, taskLevel });
+
+        // Remove from optimistic completed state
+        const taskId = `${checkpointId}_${taskLevel}`;
+        setOptimisticCompletedTaskIds((current) => {
+          const updated = { ...current };
+          delete updated[taskId];
+          return updated;
+        });
+
+        // Open the submission modal for resubmission
+        setSubmittingTask({
+          id: taskId,
+          checkpointId,
+          taskLevel,
+          title: task.label,
+          description: task.description,
+          toolType: task.tool,
+          points: taskLevel === "t1" ? 20 : taskLevel === "t2" ? 20 : 35,
+        });
+      } catch (err) {
+        console.error("[React] Failed to redo task:", err);
+        audioManager.playUI("error");
+      }
+    },
+    [selectedDetail, redoTask, setSubmittingTask],
+  );
+
   // Stable ref so handleTaskSubmissionSuccess can call handleAdvance
   // without creating a circular useCallback dependency.
-  const handleAdvanceRef = useRef<(forceBypass?: boolean) => void>(() => { });
+  const handleAdvanceRef = useRef<(forceBypass?: boolean, skipDoneTasksCheck?: boolean) => void>(() => { });
 
   const handleTaskSubmissionSuccess = useCallback(
     ({
@@ -2430,23 +2560,28 @@ function MapPageInner() {
         taskTagline = "Manage your time wisely and build consistency.";
       }
 
-      setBadgeQueue((q) => [
-        ...q,
-        {
-          id: `task_${checkpointId}_${taskLevel}_${Date.now()}`,
-          name: taskBadgeLabel,
-          description: taskBadgeDesc,
-          icon: taskBadgeIcon,
-          rarity: taskBadgeRarity,
-          category: "idea_milestones",
-          isProfileStyle: true,
-          primaryColor: taskPrimaryColor,
-          secondaryColor: taskSecondaryColor,
-          tagline: taskTagline,
-          awardedAt: Date.now(),
-          scoreEarned: taskLevel === "t3" ? 35 : 20,
-        },
-      ]);
+      setBadgeQueue((q) => {
+        if (q.some((b) => b.name === taskBadgeLabel) || shownBadgesRef.current.has(taskBadgeLabel)) {
+          return q;
+        }
+        return [
+          ...q,
+          {
+            id: `task_${checkpointId}_${taskLevel}_${Date.now()}`,
+            name: taskBadgeLabel,
+            description: taskBadgeDesc,
+            icon: taskBadgeIcon,
+            rarity: taskBadgeRarity,
+            category: "idea_milestones",
+            isProfileStyle: true,
+            primaryColor: taskPrimaryColor,
+            secondaryColor: taskSecondaryColor,
+            tagline: taskTagline,
+            awardedAt: Date.now(),
+            scoreEarned: taskLevel === "t3" ? 35 : 20,
+          },
+        ];
+      });
 
       const nextLabelMap: Record<"t1" | "t2" | "t3", string> = {
         t1: "T1",
@@ -2509,7 +2644,7 @@ function MapPageInner() {
         // Delay gives the badge animation time to breathe before transitioning.
         if (doneCount >= 2) {
           setTimeout(() => {
-            handleAdvanceRef.current();
+            handleAdvanceRef.current(false, true);
           }, 1800);
         }
 
@@ -2539,7 +2674,7 @@ function MapPageInner() {
   );
 
   // ── Advance checkpoint → Convex mutation ──────────────────────────────────
-  const handleAdvance = useCallback(async (forceBypass = false) => {
+  const handleAdvance = useCallback(async (forceBypass = false, skipDoneTasksCheck = false) => {
     if (!selectedDetail || !venture || isAdvancingCheckpoint) return;
 
     // Find the real Convex checkpoint document
@@ -2549,24 +2684,27 @@ function MapPageInner() {
     const doneTasks = [cp.t1Completed, cp.t2Completed, cp.t3Completed].filter(
       Boolean,
     ).length;
-    if (doneTasks < 2) return;
+    if (doneTasks < 2 && !skipDoneTasksCheck) return;
 
-    // Check for unresolved inter-checkpoint events
-    const unresolvedEvents = interCheckpointData?.events.filter((evt) => {
-      if (evt === "clear") return false;
-      const state = interCheckpointData.existingState;
-      if (!state) return true;
-      if (evt === "henchman" && state.henchmanOutcome) return false;
-      if (evt === "treasure" && state.treasuresFound && state.treasuresFound > 0) return false;
-      if (evt === "shield" && state.shieldsEarned && state.shieldsEarned > 0) return false;
-      if (evt === "insight" && state.insightFragments && state.insightFragments > 0) return false;
-      return true;
-    }) ?? [];
-
-    if (unresolvedEvents.length > 0 && !bypassInterCheckpoint && !forceBypass) {
-      setInterCheckpointQueue(unresolvedEvents as any);
+    // ── Boss combat gate: must defeat boss before every checkpoint advance ──
+    const bossCombatKey = `${cp.stage}-${cp.checkpoint}`;
+    if (!bossDefeatedCheckpoints.has(bossCombatKey) && !forceBypass) {
+      const isLastCp = !checkpoints.find(
+        (c) => c.stage === cp.stage && c.checkpoint === cp.checkpoint + 1,
+      );
+      const isGoldCp = doneTasks >= 3;
+      setBossCombatTarget({
+        stage: cp.stage,
+        checkpoint: cp.checkpoint,
+        checkpointId: cp._id,
+        isLastInStage: isLastCp,
+        isGold: isGoldCp,
+      });
       return;
     }
+
+    // ── Inter-checkpoint passage events removed as requested (only Boss combat and Badge animations should exist)
+    const unresolvedEvents: any[] = [];
 
     const isGold = doneTasks >= 3;
 
@@ -2633,6 +2771,7 @@ function MapPageInner() {
         });
       }
 
+      recentTaskSubmitRef.current = Date.now();
       await advanceCheckpoint({
         checkpointId: cp._id as Id<"ventureCheckpoints">,
       });
@@ -2693,23 +2832,28 @@ function MapPageInner() {
             ? "#64748B"
             : "#B45309";
 
-      setBadgeQueue((q) => [
-        ...q,
-        {
-          id: `level_${cp._id}_${Date.now()}`,
-          name: levelBadgeLabel,
-          description: levelBadgeDesc,
-          icon: levelBadgeIcon,
-          rarity: levelBadgeRarity,
-          category: "idea_milestones",
-          shape: "trophy",
-          primaryColor: checkpointBadgePrimary,
-          secondaryColor: checkpointBadgeSecondary,
-          tagline: levelBadgeDesc,
-          awardedAt: Date.now(),
-          scoreEarned: levelBadgeRarity === "legendary" ? 50 : levelBadgeRarity === "rare" ? 20 : 10,
-        },
-      ]);
+      setBadgeQueue((q) => {
+        if (q.some((b) => b.name === levelBadgeLabel) || shownBadgesRef.current.has(levelBadgeLabel)) {
+          return q;
+        }
+        return [
+          ...q,
+          {
+            id: `level_${cp._id}_${Date.now()}`,
+            name: levelBadgeLabel,
+            description: levelBadgeDesc,
+            icon: levelBadgeIcon,
+            rarity: levelBadgeRarity,
+            category: "idea_milestones",
+            shape: "trophy",
+            primaryColor: checkpointBadgePrimary,
+            secondaryColor: checkpointBadgeSecondary,
+            tagline: levelBadgeDesc,
+            awardedAt: Date.now(),
+            scoreEarned: levelBadgeRarity === "legendary" ? 50 : levelBadgeRarity === "rare" ? 20 : 10,
+          },
+        ];
+      });
 
       if (isLastInStage) {
         // Stage boundary — show stage clear modal!
@@ -2817,6 +2961,8 @@ function MapPageInner() {
     bypassInterCheckpoint,
     interCheckpointData,
     updateUrlParams,
+    bossDefeatedCheckpoints,
+    setBossCombatTarget,
   ]);
 
   // Keep handleAdvanceRef always pointing at the latest handleAdvance
@@ -3062,12 +3208,17 @@ function MapPageInner() {
             onSkip={() => setShowLevelUp(false)}
           />
 
-          {/* Gap 4 fix: BadgeAwardSequence wired to badge queue */}
           <BadgeAwardSequence
             isVisible={!!activeBadge}
             badge={activeBadge}
-            onComplete={() => setActiveBadge(null)}
-            onSkip={() => setActiveBadge(null)}
+            onComplete={() => {
+              if (activeBadge) shownBadgesRef.current.add(activeBadge.name);
+              setActiveBadge(null);
+            }}
+            onSkip={() => {
+              if (activeBadge) shownBadgesRef.current.add(activeBadge.name);
+              setActiveBadge(null);
+            }}
           />
 
           {/* Gold checkpoint notification popup */}
@@ -3078,6 +3229,65 @@ function MapPageInner() {
             checkpoint={goldCheckpointNotification?.checkpoint ?? 0}
             onDismiss={() => setGoldCheckpointNotification(null)}
           />
+
+          {/* ── Boss combat gate overlay — fires for every checkpoint at 2/3 tasks ── */}
+          {bossCombatTarget && activeVenture && (
+            <InterCheckpointOverlay
+              isOpen={true}
+              events={["henchman"]}
+              templateId={activeVenture.templateId as any}
+              stage={bossCombatTarget.stage}
+              checkpoint={bossCombatTarget.checkpoint}
+              ventureId={activeVenture._id}
+              checkpointId={checkpoints.find((cp) => cp.stage === bossCombatTarget.stage && cp.checkpoint === bossCombatTarget.checkpoint)?._id as any}
+              isBossCombat={true}
+              isLastCheckpointInStage={bossCombatTarget.isLastInStage}
+              isGoldCheckpoint={bossCombatTarget.isGold}
+              onBossVictory={() => {
+                const key = `${bossCombatTarget.stage}-${bossCombatTarget.checkpoint}`;
+                setBossDefeatedCheckpoints((prev) => {
+                  const next = new Set(prev);
+                  next.add(key);
+                  return next;
+                });
+                if (bossCombatTarget.isLastInStage) {
+                  eventBridge.dispatchToPhaser({
+                    type: "BOSS_FINAL_OUTCOME",
+                    stage: bossCombatTarget.stage,
+                    outcome: bossCombatTarget.isGold ? "slay_gold" : "retreat_permanent",
+                  });
+                } else {
+                  eventBridge.dispatchToPhaser({
+                    type: "BOSS_COMBAT_RETREAT",
+                    stage: bossCombatTarget.stage,
+                    checkpoint: bossCombatTarget.checkpoint,
+                  });
+                }
+                setBossCombatTarget(null);
+                setTimeout(() => handleAdvanceRef.current(true), 300);
+              }}
+              onBossSkip={() => {
+                const key = `${bossCombatTarget.stage}-${bossCombatTarget.checkpoint}`;
+                setBossDefeatedCheckpoints((prev) => {
+                  const next = new Set(prev);
+                  next.add(key);
+                  return next;
+                });
+                eventBridge.dispatchToPhaser({
+                  type: "BOSS_COMBAT_RETREAT",
+                  stage: bossCombatTarget.stage,
+                  checkpoint: bossCombatTarget.checkpoint,
+                });
+                setBossCombatTarget(null);
+                setTimeout(() => handleAdvanceRef.current(true), 300);
+              }}
+              onBossRetreat={() => {
+                setBossCombatTarget(null);
+              }}
+              onComplete={() => setBossCombatTarget(null)}
+              onClose={() => setBossCombatTarget(null)}
+            />
+          )}
 
           {/* Inter-checkpoint passage events overlay */}
           {activeVenture && (() => {
@@ -3166,6 +3376,7 @@ function MapPageInner() {
                 onClose={() => updateUrlParams({ checkpointId: null })}
                 onAdvance={handleAdvance}
                 onTaskToggle={handleTaskToggle}
+                onTaskRedo={handleTaskRedo}
                 evaluationSummary={checkpointEvaluationSummary ?? undefined}
                 isAdvancing={isAdvancingCheckpoint}
                 activeStage={activeStage}

@@ -793,6 +793,12 @@ export const advanceCheckpoint = mutation({
       checkpoint as CheckpointProgressDoc,
       now,
     );
+    // Explicitly mark checkpoint status as completed since the user is advancing beyond it
+    await ctx.db.patch(args.checkpointId, {
+      status: "completed",
+      completedAt: checkpoint.completedAt ?? now,
+      partialStartedAt: undefined,
+    });
     const refreshedCheckpoint = await ctx.db.get(args.checkpointId);
     if (refreshedCheckpoint) {
       await advanceVenturePointerAfterCheckpoint(
@@ -1467,7 +1473,7 @@ async function advanceVenturePointerAfterCheckpoint(
   checkpoint: CheckpointProgressDoc,
   now: number,
 ) {
-  if (getCompletedTaskCount(checkpoint) < 3) return;
+  if (getCompletedTaskCount(checkpoint) < 2) return;
 
   // First, try to find the next checkpoint in the same stage
   const nextCheckpoint = await ctx.db

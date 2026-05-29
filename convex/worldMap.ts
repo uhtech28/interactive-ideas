@@ -439,7 +439,7 @@ async function advanceWorldMapPointerAfterCheckpoint(
   checkpoint: WorldMapCheckpointDoc,
   now: number,
 ) {
-  if (getCompletedTaskCount(checkpoint) < 3) return;
+  if (getCompletedTaskCount(checkpoint) < 2) return;
 
   const nextCheckpoint = await ctx.db
     .query("ventureCheckpoints")
@@ -966,6 +966,90 @@ export const markTaskComplete = mutation({
     return {
       success: true,
       goldEarned: allThreeDone && !checkpoint.goldBonusEarned,
+    };
+  },
+});
+
+/**
+ * Redo Task — Reset a completed task so user can resubmit
+ * Allows users to redo tasks if they got a low score or want to improve
+ */
+export const redoTask = mutation({
+  args: {
+    checkpointId: v.id("ventureCheckpoints"),
+    taskLevel: v.union(v.literal("t1"), v.literal("t2"), v.literal("t3")),
+  },
+  handler: async (ctx, args) => {
+    // ── Auth ──────────────────────────────────────────────────────────────────
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    const checkpoint = await ctx.db.get(args.checkpointId);
+    if (!checkpoint) throw new Error("Checkpoint not found");
+
+    // ── Ownership ─────────────────────────────────────────────────────────────
+    const venture = await ctx.db.get(checkpoint.ventureId);
+    if (!venture) throw new Error("Venture not found");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+    if (!user) throw new Error("User not found");
+    if (venture.userId !== user._id) throw new Error("Not your venture");
+
+    // ── Find the task row ────────────────────────────────────────────────────
+    const task = await ctx.db
+      .query("ventureTasks")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("checkpointId"), args.checkpointId),
+          q.eq(q.field("taskLevel"), args.taskLevel),
+        ),
+      )
+      .first();
+
+    if (!task)
+      throw new Error(`Task ${args.taskLevel} not found for checkpoint`);
+
+    // ── Check if task is completed ────────────────────────────────────────────
+    const flagField =
+      args.taskLevel === "t1"
+        ? "t1Completed"
+        : args.taskLevel === "t2"
+          ? "t2Completed"
+          : "t3Completed";
+
+    if (!checkpoint[flagField]) {
+      throw new Error("Task is not completed yet, cannot redo");
+    }
+
+    // ── Reset task status ─────────────────────────────────────────────────────
+    await ctx.db.patch(task._id, {
+      status: "not_started",
+      evidenceId: undefined,
+      completedAt: undefined,
+    });
+
+    // ── Reset checkpoint flag ─────────────────────────────────────────────────
+    const cpPatch: Record<string, unknown> = {
+      [flagField]: false,
+    };
+
+    // If this was a gold checkpoint, remove the gold bonus flag
+    const wasGold =
+      checkpoint.t1Completed &&
+      checkpoint.t2Completed &&
+      checkpoint.t3Completed;
+    if (wasGold) {
+      cpPatch.goldBonusEarned = false;
+    }
+
+    await ctx.db.patch(args.checkpointId, cpPatch);
+
+    return {
+      success: true,
+      message: "Task reset successfully. You can now resubmit your work.",
     };
   },
 });

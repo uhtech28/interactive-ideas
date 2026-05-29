@@ -7203,12 +7203,19 @@ export class WorldMapScene extends Phaser.Scene {
    * Auto-scroll to active checkpoint when venture loads
    */
   private autoScrollToActive(): void {
-    // Find the first active or in_progress checkpoint
-    for (const [id, node] of this.checkpointNodes.entries()) {
-      if (node.status === "active" || node.status === "in_progress") {
-        this.scrollToCheckpoint(id, true);
-        break;
-      }
+    const allNodes = Array.from(this.checkpointNodes.values());
+    // Find the furthest-forward node that is unlocked/active (status !== locked)
+    let targetNode = allNodes
+      .filter((n) => n.status !== "locked")
+      .sort((a, b) => b.globalIndex - a.globalIndex)[0] ?? null;
+
+    if (!targetNode) {
+      // Fallback: first checkpoint
+      targetNode = allNodes.sort((a, b) => a.globalIndex - b.globalIndex)[0] ?? null;
+    }
+
+    if (targetNode) {
+      this.scrollToCheckpoint(targetNode.checkpointId, true);
     }
   }
 
