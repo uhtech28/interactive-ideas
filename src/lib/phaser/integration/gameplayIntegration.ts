@@ -58,6 +58,10 @@ export function updateBiomeState(
   stageNumber: number,
   corruptionLevel: number,
 ): void {
+  if (!scene || !scene.cameras || !scene.cameras.main) {
+    return; // Scene cameras not ready yet
+  }
+
   const stageChanged = currentState.currentStage !== stageNumber;
   const templateChanged = currentState.templateId !== templateId;
   const corruptionChanged =
@@ -117,6 +121,10 @@ function applyCorruptionVisuals(
   scene: Phaser.Scene,
   corruptionLevel: number,
 ): void {
+  if (!scene || !scene.cameras || !scene.cameras.main) {
+    return; // Scene cameras not ready yet
+  }
+
   const visual = getCorruptionVisualState(corruptionLevel);
 
   // Remove existing corruption overlay if present
@@ -276,6 +284,10 @@ export async function executeCheckpointFlow(
   scene: Phaser.Scene,
   options: CheckpointFlowOptions,
 ): Promise<void> {
+  if (!scene || !scene.cameras || !scene.cameras.main) {
+    return; // Scene cameras not ready yet
+  }
+
   const {
     checkpointId,
     stage,
@@ -364,6 +376,10 @@ export function applyBiomeParticles(
   templateId: TemplateId,
   stageNumber: number,
 ): void {
+  if (!scene || !scene.cameras || !scene.cameras.main) {
+    return; // Scene cameras not ready yet
+  }
+
   const biomeConfig = getBiomeConfig(templateId, stageNumber);
 
   // Remove existing biome particles
