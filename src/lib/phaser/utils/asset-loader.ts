@@ -1263,6 +1263,7 @@ export class AssetLoader {
       "Bench_1", "Bench_3", "Barrel_Small_Empty", "Basket_Empty",
       "Crate_Large_Empty", "Crate_Medium_Closed", "Crate_Water_1",
       "LampPost_3", "BulletinBoard_1", "HayStack_2", "Plant_2", "Sack_3",
+      "Fireplace_1", "Crate_Water_1",
       "Rock_Brown_1", "Rock_Brown_2", "Rock_Brown_4", "Rock_Brown_6", "Rock_Brown_9",
       "Tree_Emerald_1", "Tree_Emerald_2", "Tree_Emerald_3", "Tree_Emerald_4",
       "Bush_Emerald_1", "Bush_Emerald_2", "Bush_Emerald_3", "Bush_Emerald_4",
