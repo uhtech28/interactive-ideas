@@ -980,43 +980,272 @@ export class MiniBoss extends Phaser.GameObjects.Container {
   /**
    * Draw "Unfinished Golem" - a blocky stone figure with glowing cracks.
    */
+  /**
+   * Draw "Unfinished Golem" - a detailed stone construct with glowing runes, pulsing elemental core, and floating stone blocks.
+   */
   private drawUnfinishedGolem(): void {
     const g = this.bossGraphics;
-    const offsetX = -45;
-    const offsetY = -70;
+    const cx = 0;
+    const cy = 0;
 
-    g.fillStyle(0x52525b, 1); // Dark stone
+    g.clear();
 
-    // Head (blocky)
-    g.fillRect(offsetX + 30, offsetY + 0, 30, 25);
+    // ── 1. Orange Elemental Back-Glow/Aura ───────────────────────────────
+    g.fillStyle(0xe25822, 0.12);
+    g.fillCircle(cx, cy - 20, 60);
+    g.fillStyle(0xffa500, 0.06);
+    g.fillCircle(cx, cy - 20, 90);
 
-    // Torso (massive)
-    g.fillRect(offsetX + 10, offsetY + 30, 70, 50);
+    // ── 2. Rubble/Debris Base (Floating Rocks and Dust) ───────────────────
+    g.fillStyle(0x3f3f46, 0.7); // Dark grey rubble
+    g.fillEllipse(cx - 25, cy + 50, 15, 8);
+    g.fillEllipse(cx + 25, cy + 50, 18, 10);
+    g.fillStyle(0x27272a, 0.9);
+    g.fillEllipse(cx - 10, cy + 55, 20, 9);
+    g.fillEllipse(cx + 10, cy + 56, 16, 8);
+    g.fillCircle(cx, cy + 58, 12);
 
-    // Arms (asymmetrical)
-    g.fillRect(offsetX + 0, offsetY + 35, 15, 60);
-    g.fillRect(offsetX + 75, offsetY + 35, 15, 40);
+    // Rubble sparks / dust cloud
+    g.fillStyle(0xe25822, 0.3);
+    g.fillCircle(cx - 35, cy + 45, 4);
+    g.fillCircle(cx + 35, cy + 48, 5);
+    g.fillCircle(cx - 5, cy + 62, 3);
+    g.fillCircle(cx + 15, cy + 60, 4);
 
-    // Glowing core
+    // ── 3. Torso / Chest Plate (Stone blocks with glowing energy cracks) ─
+    // Draw outer stone silhouette
+    g.fillStyle(0x18181b, 1); // Deepest stone shadow
+    g.beginPath();
+    g.moveTo(cx - 35, cy - 30);
+    g.lineTo(cx + 35, cy - 30);
+    g.lineTo(cx + 25, cy + 30);
+    g.lineTo(cx - 25, cy + 30);
+    g.closePath();
+    g.fillPath();
+
+    // Layered main torso stone (granite gray)
+    g.fillStyle(0x3f3f46, 1);
+    g.beginPath();
+    g.moveTo(cx - 30, cy - 26);
+    g.lineTo(cx + 30, cy - 26);
+    g.lineTo(cx + 20, cy + 24);
+    g.lineTo(cx - 20, cy + 24);
+    g.closePath();
+    g.fillPath();
+
+    // Gold/Bronze Shoulder Mounts
+    g.fillStyle(0x9a3412, 1); // Dark gold/bronze
+    g.fillRect(cx - 38, cy - 32, 12, 16);
+    g.fillRect(cx + 26, cy - 32, 12, 16);
+    g.fillStyle(0xd97706, 1); // Bright bronze/gold
+    g.fillRect(cx - 36, cy - 30, 8, 12);
+    g.fillRect(cx + 28, cy - 30, 8, 12);
+
+    // Engraved Rune lines on chest
+    g.lineStyle(1.5, 0xf97316, 0.85); // Glowing orange runes
+    g.beginPath();
+    g.moveTo(cx - 15, cy - 15);
+    g.lineTo(cx - 5, cy - 5);
+    g.lineTo(cx - 15, cy + 10);
+    g.moveTo(cx + 15, cy - 15);
+    g.lineTo(cx + 5, cy - 5);
+    g.lineTo(cx + 15, cy + 10);
+    g.strokePath();
+
+    // ── 4. Glowing Red/Orange Core (Floating in the center) ───────────────
+    // Draw core socket/void
+    g.fillStyle(0x09090b, 1);
+    g.fillCircle(cx, cy - 2, 14);
+
     const core = new Phaser.GameObjects.Arc(
       this.scene,
-      offsetX + 45,
-      offsetY + 50,
-      8,
+      cx,
+      cy - 2,
+      9,
       0,
       360,
       false,
-      0xef4444,
+      0xff3300,
       1,
     );
+    core.setStrokeStyle(3, 0xffcc00, 1);
     this.add(core);
+
+    // Inner core lens flare / glow ring
+    const coreGlow = new Phaser.GameObjects.Arc(
+      this.scene,
+      cx,
+      cy - 2,
+      16,
+      0,
+      360,
+      false,
+      0xff5500,
+      0.4,
+    );
+    coreGlow.setBlendMode(Phaser.BlendModes.ADD);
+    this.add(coreGlow);
+
+    // Core pulsing tween
     this.scene.tweens.add({
-      targets: core,
-      scale: 1.5,
-      alpha: 0.5,
-      duration: 1000,
+      targets: [core, coreGlow],
+      scaleX: 1.35,
+      scaleY: 1.35,
+      alpha: { from: 0.6, to: 1 },
+      duration: 900,
       yoyo: true,
       repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    // ── 5. Head (Blocky, cracked granite, hovering slightly) ──────────────
+    // Shadow base of head
+    g.fillStyle(0x27272a, 1);
+    g.fillRect(cx - 15, cy - 54, 30, 24);
+    // Face block
+    g.fillStyle(0x52525b, 1);
+    g.fillRect(cx - 13, cy - 52, 26, 20);
+    // Face highlight
+    g.fillStyle(0x71717a, 1);
+    g.fillRect(cx - 13, cy - 52, 12, 8);
+    // Head cracks
+    g.lineStyle(1, 0x18181b, 0.9);
+    g.beginPath();
+    g.moveTo(cx - 4, cy - 52);
+    g.lineTo(cx - 8, cy - 42);
+    g.lineTo(cx - 2, cy - 34);
+    g.strokePath();
+
+    // Eyes
+    const eyeLeftX = cx - 6;
+    const eyeLeftY = cy - 43;
+    const eyeRightX = cx + 6;
+    const eyeRightY = cy - 43;
+
+    this.eyeLeft = new Phaser.GameObjects.Arc(this.scene, eyeLeftX, eyeLeftY, 3, 0, 360, false, 0xff3300, 1);
+    this.eyeRight = new Phaser.GameObjects.Arc(this.scene, eyeRightX, eyeRightY, 3, 0, 360, false, 0xff3300, 1);
+    this.eyeLeft.setStrokeStyle(1.5, 0xffaa00, 1);
+    this.eyeRight.setStrokeStyle(1.5, 0xffaa00, 1);
+
+    const eyeGlowL = new Phaser.GameObjects.Arc(this.scene, eyeLeftX, eyeLeftY, 6, 0, 360, false, 0xff5500, 0.45);
+    const eyeGlowR = new Phaser.GameObjects.Arc(this.scene, eyeRightX, eyeRightY, 6, 0, 360, false, 0xff5500, 0.45);
+    eyeGlowL.setBlendMode(Phaser.BlendModes.ADD);
+    eyeGlowR.setBlendMode(Phaser.BlendModes.ADD);
+
+    this.add([eyeGlowL, eyeGlowR]);
+
+    this.scene.tweens.add({
+      targets: [this.eyeLeft, this.eyeRight, eyeGlowL, eyeGlowR],
+      alpha: { from: 0.5, to: 1.0 },
+      scale: { from: 0.9, to: 1.15 },
+      duration: 1100,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    // ── 6. Asymmetrical Arms (Unfinished construct style) ──────────────────
+    // LEFT ARM: Massive stone fist/shoulder (Heavy rock plates)
+    // Left shoulder plate (floating)
+    g.fillStyle(0x3f3f46, 1);
+    g.fillRoundedRect(cx - 52, cy - 28, 16, 20, 4);
+    g.lineStyle(1, 0x71717a, 0.8);
+    g.strokeRoundedRect(cx - 52, cy - 28, 16, 20, 4);
+
+    // Left forearm & giant fist (hanging low)
+    g.fillStyle(0x27272a, 1);
+    g.fillRoundedRect(cx - 54, cy - 4, 18, 34, 5);
+    g.fillStyle(0x52525b, 1);
+    g.fillRoundedRect(cx - 52, cy - 2, 14, 30, 4);
+
+    // Glowing orange bands around left wrist
+    g.fillStyle(0xf97316, 0.85);
+    g.fillRect(cx - 52, cy + 18, 14, 4);
+
+    // RIGHT ARM: Segmented/floating apart (broken/unfinished design)
+    // Right shoulder (floating)
+    g.fillStyle(0x3f3f46, 1);
+    g.fillRoundedRect(cx + 36, cy - 28, 14, 16, 3);
+
+    // Right elbow rock (completely detached)
+    g.fillStyle(0x27272a, 1);
+    g.fillCircle(cx + 44, cy - 4, 6);
+
+    // Right small hand/claws (hovering below elbow rock)
+    g.fillStyle(0x52525b, 1);
+    g.fillRect(cx + 40, cy + 10, 10, 12);
+    g.fillStyle(0xf97316, 0.9);
+    g.fillRect(cx + 42, cy + 12, 6, 2); // tiny energy connector
+
+    // ── 7. Orbiting Debris / Debris Tweens ────────────────────────────────
+    // We add 3 small stone blocks that orbit or hover around the golem
+    const shard1 = this.scene.add.graphics();
+    shard1.fillStyle(0x3f3f46, 1);
+    shard1.fillRect(-6, -6, 12, 10);
+    shard1.lineStyle(1, 0x18181b, 1);
+    shard1.strokeRect(-6, -6, 12, 10);
+    shard1.setPosition(cx - 45, cy - 45);
+    this.add(shard1);
+
+    const shard2 = this.scene.add.graphics();
+    shard2.fillStyle(0x27272a, 1);
+    shard2.fillRect(-4, -4, 8, 8);
+    shard2.setPosition(cx + 42, cy - 42);
+    this.add(shard2);
+
+    const shard3 = this.scene.add.graphics();
+    shard3.fillStyle(0x52525b, 1);
+    shard3.fillRect(-5, -3, 10, 6);
+    shard3.setPosition(cx + 28, cy + 38);
+    this.add(shard3);
+
+    // Floating tweens for fragments and arms
+    this.scene.tweens.add({
+      targets: shard1,
+      y: cy - 55,
+      angle: 15,
+      duration: 1800,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+    this.scene.tweens.add({
+      targets: shard2,
+      y: cy - 35,
+      angle: -20,
+      duration: 2200,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+    this.scene.tweens.add({
+      targets: shard3,
+      y: cy + 44,
+      angle: 10,
+      duration: 2000,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    // ── 8. Golem Main Hover and Breathing Tweens ─────────────────────────
+    this.scene.tweens.add({
+      targets: g,
+      scaleX: { from: 1.0, to: 1.04 },
+      scaleY: { from: 1.0, to: 1.04 },
+      duration: 2400,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    this.scene.tweens.add({
+      targets: this,
+      y: this.y - 8,
+      duration: 2800,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
     });
   }
 
