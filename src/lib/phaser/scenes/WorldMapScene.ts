@@ -4644,7 +4644,7 @@ export class WorldMapScene extends Phaser.Scene {
     y: number,
     scale: number,
     alpha = 1,
-    depth = 15,
+    depth = 19,
   ): void {
     const shadow = this.add.image(
       x + 6,
@@ -4654,14 +4654,14 @@ export class WorldMapScene extends Phaser.Scene {
     shadow.setOrigin(0.5, 0.5);
     shadow.setScale(scale * 0.7);
     shadow.setAlpha(0.16);
-    shadow.setDepth(depth - 1);
+    shadow.setDepth(depth - 0.1 + y * 0.001);
     this.midgroundLayer.add(shadow);
 
     const sprite = this.add.sprite(x, y, "sprout_forest_decor_sheet", frame);
     sprite.setOrigin(0.5, 1);
     sprite.setScale(scale);
     sprite.setAlpha(alpha);
-    sprite.setDepth(depth);
+    sprite.setDepth(depth + y * 0.001);
     this.midgroundLayer.add(sprite);
   }
 
@@ -5041,6 +5041,10 @@ export class WorldMapScene extends Phaser.Scene {
     const centerX = (first.x + last.x) / 2;
     const centerY = (first.y + last.y) / 2;
 
+    // Add cozy forest huts
+    this.addLandmarkSprite("Forest_Hut_1", centerX - 240, centerY - 60, 0.58);
+    this.addLandmarkSprite("Forest_Hut_1", centerX + 240, centerY + 90, 0.55);
+
     this.addForestLandmarkSprite(2, first.x - 130, first.y + 128, 2.1, 0.96);
     this.addForestLandmarkSprite(0, centerX - 160, centerY + 144, 2.2, 0.94);
     this.addForestLandmarkSprite(9, centerX + 170, centerY + 138, 2.05, 0.94);
@@ -5072,6 +5076,11 @@ export class WorldMapScene extends Phaser.Scene {
   ): void {
     const shrubFrames = [27, 28, 29, 30, 31, 32];
 
+    // Add cozy forest huts nestled in the trees
+    this.addLandmarkSprite("Forest_Hut_1", nodes[0].x - 130, nodes[0].y - 90, 0.54);
+    this.addLandmarkSprite("Forest_Hut_1", nodes[2].x + 130, nodes[2].y - 70, 0.52);
+    this.addLandmarkSprite("Forest_Hut_1", nodes[nodes.length - 1].x - 150, nodes[nodes.length - 1].y + 110, 0.56);
+
     nodes.forEach((node, index) => {
       const side = index % 2 === 0 ? -1 : 1;
       this.addForestLandmarkSprite(
@@ -5080,7 +5089,7 @@ export class WorldMapScene extends Phaser.Scene {
         node.y + 96,
         1.16,
         0.84,
-        14,
+        19,
       );
     });
 
@@ -5097,7 +5106,7 @@ export class WorldMapScene extends Phaser.Scene {
         y as number,
         spriteScale as number,
         0.78,
-        13,
+        19,
       );
     });
   }
