@@ -1258,7 +1258,7 @@ export class AssetLoader {
 
     // Image Collections (Individual objects)
     const objects = [
-      "House_Hay_1", "House_Hay_2", "House_Hay_3", "House_Hay_4_Purple",
+      "House_Hay_1", "House_Hay_2", "House_Hay_3", "House_Hay_4_Purple", "Forest_Hut_1",
       "CityWall_Gate_1", "Well_Hay_1", "Sign_1", "Sign_2", "Table_Medium_1",
       "Bench_1", "Bench_3", "Barrel_Small_Empty", "Basket_Empty",
       "Crate_Large_Empty", "Crate_Medium_Closed", "Crate_Water_1",
