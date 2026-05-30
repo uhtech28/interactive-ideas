@@ -2,6 +2,10 @@ import { v } from "convex/values";
 import { action, mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { awardPointsHelper } from "./levels";
+import {
+  computeCumulativeVentureScores,
+  finalizeCompletedStageScores,
+} from "./cumulativeVentureScore";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -664,6 +668,10 @@ export const saveEvaluationResult = internalMutation({
       // Average new score with existing (rolling update)
       const avgScore = (existing.totalScore + args.totalScore) / 2;
       const newTier = getQualityTier(Math.round(avgScore));
+      const valuationScore = Math.max(
+        existing.valuationScore ?? 0,
+        VALUATION_MAP[newTier],
+      );
       await ctx.db.patch(existing._id, {
         completeness: (existing.completeness + args.completeness) / 2,
         specificity: (existing.specificity + args.specificity) / 2,
@@ -671,7 +679,7 @@ export const saveEvaluationResult = internalMutation({
         originality: (existing.originality + args.originality) / 2,
         totalScore: avgScore,
         qualityTier: newTier,
-        valuationScore: VALUATION_MAP[newTier],
+        valuationScore,
         evaluatedAt: now,
       });
     } else {
@@ -958,6 +966,35 @@ export const getVentureQualityScores = query({
       .query("qualityScores")
       .withIndex("by_venture", (q) => q.eq("ventureId", args.ventureId))
       .collect();
+  },
+});
+
+/**
+ * Cumulative HUD score + valuation that grows stage-by-stage.
+ */
+export const getVentureCumulativeHUDScores = query({
+  args: {
+    ventureId: v.id("ventures"),
+  },
+  handler: async (ctx, args) => {
+    const venture = await ctx.db.get(args.ventureId);
+    if (!venture) {
+      return { qualityScore: 0, valuationScore: 0 };
+    }
+
+    const stageScores = await ctx.db
+      .query("qualityScores")
+      .withIndex("by_venture", (q) => q.eq("ventureId", args.ventureId))
+      .collect();
+
+    return computeCumulativeVentureScores(
+      stageScores.map((row) => ({
+        stageNumber: row.stageNumber,
+        totalScore: row.totalScore,
+        valuationScore: row.valuationScore,
+      })),
+      venture.currentStage,
+    );
   },
 });
 
