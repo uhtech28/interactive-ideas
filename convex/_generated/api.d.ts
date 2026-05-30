@@ -20,6 +20,7 @@ import type * as contributionRequests from "../contributionRequests.js";
 import type * as corruptionEngine from "../corruptionEngine.js";
 import type * as creative_creativeConstants from "../creative/creativeConstants.js";
 import type * as crons from "../crons.js";
+import type * as cumulativeVentureScore from "../cumulativeVentureScore.js";
 import type * as debug from "../debug.js";
 import type * as emailReengagement from "../emailReengagement.js";
 import type * as emailTemplates from "../emailTemplates.js";
@@ -69,6 +70,7 @@ declare const fullApi: ApiFromModules<{
   corruptionEngine: typeof corruptionEngine;
   "creative/creativeConstants": typeof creative_creativeConstants;
   crons: typeof crons;
+  cumulativeVentureScore: typeof cumulativeVentureScore;
   debug: typeof debug;
   emailReengagement: typeof emailReengagement;
   emailTemplates: typeof emailTemplates;

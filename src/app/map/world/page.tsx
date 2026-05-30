@@ -24,6 +24,7 @@ import { useQuery, useMutation } from "convex/react";
 import { useAuth } from "@clerk/nextjs";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { audioManager } from "@/lib/audio/audioManager";
+import { computeCumulativeVentureScores } from "@/lib/scoring/cumulativeVentureScore";
 import { api } from "@convex/_generated/api";
 import { LEVEL_DEFINITIONS } from "@convex/ventureConstants";
 import type { Id } from "@convex/_generated/dataModel";
@@ -1905,15 +1906,21 @@ function MapPageInner() {
   // Streak from Convex
   const streak = streakData?.currentStreak ?? 0;
 
-  // Cumulative score = sum of totalScore across all stages that have been scored
-  // (grows from 0 as more checkpoints/stages are completed)
-  const qualityScore = allStageQualities
-    ? allStageQualities.reduce((sum, s) => sum + (s.totalScore ?? 0), 0)
-    : 0;
-  // Cumulative valuation = sum of all stage valuations
-  const valuationScore = allStageQualities
-    ? allStageQualities.reduce((sum, s) => sum + (s.valuationScore ?? 0), 0)
-    : 0;
+  // Cumulative score/value grows stage-by-stage (sum of stages 1..activeStage)
+  const { qualityScore, valuationScore } = useMemo(() => {
+    if (!allStageQualities) {
+      return { qualityScore: 0, valuationScore: 0 };
+    }
+
+    return computeCumulativeVentureScores(
+      allStageQualities.map((row) => ({
+        stageNumber: row.stageNumber,
+        totalScore: row.totalScore ?? 0,
+        valuationScore: row.valuationScore ?? 0,
+      })),
+      activeStage,
+    );
+  }, [allStageQualities, activeStage]);
 
   // ── Detect new badges via Convex subscription ─────────────────────────────
   // getMyBadges returns badges newest-first. When the count increases, the

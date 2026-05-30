@@ -21,6 +21,7 @@ import {
 import type { TemplateId } from "./templateEngine";
 import { Id } from "./_generated/dataModel";
 import { recalculateAndAwardBadgesHelper } from "./badges";
+import { finalizeCompletedStageScores } from "./cumulativeVentureScore";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MUTATIONS
@@ -1615,6 +1616,73 @@ function buildSlainBosses(
     });
 }
 
+async function syncStageQualityOnStageAdvance(
+  ctx: { db: MutationDbCtx },
+  ventureId: Id<"ventures">,
+  completedStage: number,
+  nextStage?: number,
+) {
+  const now = Date.now();
+
+  const completedRow = await ctx.db
+    .query("qualityScores")
+    .withIndex("by_venture_stage", (q) =>
+      q.eq("ventureId", ventureId).eq("stageNumber", completedStage),
+    )
+    .first();
+
+  const finalized = finalizeCompletedStageScores(
+    completedRow?.totalScore ?? 0,
+    completedRow?.valuationScore ?? 0,
+  );
+
+  if (completedRow) {
+    await ctx.db.patch(completedRow._id, {
+      totalScore: finalized.totalScore,
+      qualityTier: finalized.qualityTier,
+      valuationScore: finalized.valuationScore,
+      evaluatedAt: now,
+    });
+  } else {
+    await ctx.db.insert("qualityScores", {
+      ventureId,
+      stageNumber: completedStage,
+      completeness: 0,
+      specificity: 0,
+      evidence: 0,
+      originality: 0,
+      totalScore: finalized.totalScore,
+      qualityTier: finalized.qualityTier,
+      valuationScore: finalized.valuationScore,
+      evaluatedAt: now,
+    });
+  }
+
+  if (!nextStage) return;
+
+  const nextRow = await ctx.db
+    .query("qualityScores")
+    .withIndex("by_venture_stage", (q) =>
+      q.eq("ventureId", ventureId).eq("stageNumber", nextStage),
+    )
+    .first();
+
+  if (!nextRow) {
+    await ctx.db.insert("qualityScores", {
+      ventureId,
+      stageNumber: nextStage,
+      completeness: 0,
+      specificity: 0,
+      evidence: 0,
+      originality: 0,
+      totalScore: 0,
+      qualityTier: "low",
+      valuationScore: 0,
+      evaluatedAt: now,
+    });
+  }
+}
+
 async function tryAdvanceStage(
   ctx: { db: MutationDbCtx; scheduler?: MutationCtx["scheduler"] },
   venture: VentureProgressDoc,
@@ -1681,6 +1749,12 @@ async function tryAdvanceStage(
       .first();
 
     if (firstCheckpointOfNextStage) {
+      await syncStageQualityOnStageAdvance(
+        ctx,
+        venture._id,
+        currentStage,
+        nextStage,
+      );
       await ctx.db.patch(venture._id, {
         currentStage: nextStage,
         currentCheckpoint: firstCheckpointOfNextStage.checkpoint,
