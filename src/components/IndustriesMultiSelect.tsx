@@ -13,60 +13,100 @@ export interface IndustryOption {
   label: string;
 }
 
-// Group industries for better organization
-const groupIndustries = (industries: IndustryOption[]) => {
-  const groups: { [key: string]: IndustryOption[] } = {};
+// Explicit group mapping keyed by option value — aligned with the Industry Cards document
+const INDUSTRY_GROUP_MAP: Record<string, string> = {
+  "Software and Technology": "Technology & Digital",
+  "Telecommunications": "Technology & Digital",
+  "Consumer Electronics": "Technology & Digital",
 
-  industries.forEach(industry => {
-    // Categorize industries based on their content
-    let group = "Other";
+  "Healthcare and Life Sciences": "Healthcare",
 
-    if (industry.label.includes("Software") || industry.label.includes("Electronics") || industry.label.includes("Telecommunication")) {
-      group = "Technology & Digital";
-    } else if (industry.label.includes("Healthcare") || industry.label.includes("Medicine")) {
-      group = "Healthcare";
-    } else if (industry.label.includes("Finance") || industry.label.includes("Insurance")) {
-      group = "Financial Services";
-    } else if (industry.label.includes("Manufacturing") || industry.label.includes("Chemicals") || industry.label.includes("Metals") || industry.label.includes("Construction")) {
-      group = "Manufacturing & Industrial";
-    } else if (industry.label.includes("Media") || industry.label.includes("Entertainment") || industry.label.includes("Film")) {
-      group = "Media & Entertainment";
-    } else if (industry.label.includes("Automobiles") || industry.label.includes("Transportation") || industry.label.includes("Aerospace") || industry.label.includes("Aviation")) {
-      group = "Transportation & Aerospace";
-    } else if (industry.label.includes("Food") || industry.label.includes("Beverages") || industry.label.includes("Retail") || industry.label.includes("Houseware")) {
-      group = "Consumer Goods & Retail";
-    } else if (industry.label.includes("Energy") || industry.label.includes("Public Utilities")) {
-      group = "Energy & Utilities";
-    } else if (industry.label.includes("Real Estate") || industry.label.includes("Construction")) {
-      group = "Real Estate & Construction";
-    } else if (industry.label.includes("Hospitality") || industry.label.includes("Travelling") || industry.label.includes("Tourism")) {
-      group = "Hospitality & Tourism";
-    } else if (industry.label.includes("Agriculture") || industry.label.includes("Fishing") || industry.label.includes("Animal Husbandry")) {
-      group = "Agriculture";
-    } else if (industry.label.includes("Defence") || industry.label.includes("Aerospace")) {
-      group = "Defence & Aerospace";
-    } else if (industry.label.includes("Education") || industry.label.includes("Academia")) {
-      group = "Education";
-    } else if (industry.label.includes("Law") || industry.label.includes("Legal")) {
-      group = "Legal Services";
-    } else if (industry.label.includes("General Management") || industry.label.includes("Sales") || industry.label.includes("Marketing") || industry.label.includes("Consultancy")) {
-      group = "Business Services";
-    } else if (industry.label.includes("Social Services") || industry.label.includes("Environmentalism")) {
-      group = "Social & Environmental";
-    } else if (industry.label.includes("Artistic") || industry.label.includes("Professional Services")) {
-      group = "Professional Services";
-    }
+  "Finance": "Finance",
 
-    if (!groups[group]) {
-      groups[group] = [];
-    }
-    groups[group].push(industry);
-  });
+  "Chemicals": "Manufacturing & Industrial",
+  "Metals and Mining": "Manufacturing & Industrial",
+  "Manufacturing (General)": "Manufacturing & Industrial",
+  "Industrial Equipment and Services": "Manufacturing & Industrial",
 
-  return Object.entries(groups).map(([group, items]) => ({ group, items }));
+  "Media and Entertainment": "Media & Entertainment",
+  "Creator Economy": "Media & Entertainment",
+
+  "Automobiles and Private Transportation": "Transportation & Logistics",
+  "Public Transportation": "Transportation & Logistics",
+  "Aerospace and Aviation": "Transportation & Logistics",
+  "Logistics and Supply Chain": "Transportation & Logistics",
+
+  "Household Goods and Appliances": "Consumer Goods & Retail",
+  "Food, Beverage, Tobacco, and Consumables": "Consumer Goods & Retail",
+  "Retail and Commerce": "Consumer Goods & Retail",
+  "Textiles and Apparel": "Consumer Goods & Retail",
+
+  "Energy": "Energy & Utilities",
+  "Utilities": "Energy & Utilities",
+
+  "Real Estate": "Real Estate & Construction",
+  "Construction and Building Materials": "Real Estate & Construction",
+
+  "Travel, Tourism, and Hospitality": "Hospitality & Tourism",
+
+  "Agriculture and Natural Resources": "Agriculture & Environment",
+  "Environmental and Social Impact": "Agriculture & Environment",
+
+  "Defence and Security": "Defence & Security",
+  "Security and Risk Management": "Defence & Security",
+
+  "Education and Academia": "Education",
+
+  "Labour and Workforce": "Business Services",
+  "Corporate and Management Services": "Business Services",
+  "Sales and Marketing": "Business Services",
+  "Professional Services": "Business Services",
+
+  "Sports Industry": "Lifestyle & Culture",
+  "Religious and Cultural Institutions": "Lifestyle & Culture",
+  "Pet Industry": "Lifestyle & Culture",
+  "Luxury Industry": "Lifestyle & Culture",
+
+  "Government and Public Administration": "Government & Public",
+  "Research and Development": "Government & Public",
+
+  "Space Economy": "Emerging Industries",
 };
 
-const INDUSTRY_GROUPS = groupIndustries(industryCardOptions);
+const GROUP_ORDER = [
+  "Technology & Digital",
+  "Healthcare",
+  "Finance",
+  "Manufacturing & Industrial",
+  "Media & Entertainment",
+  "Transportation & Logistics",
+  "Consumer Goods & Retail",
+  "Energy & Utilities",
+  "Real Estate & Construction",
+  "Hospitality & Tourism",
+  "Agriculture & Environment",
+  "Defence & Security",
+  "Education",
+  "Business Services",
+  "Lifestyle & Culture",
+  "Government & Public",
+  "Emerging Industries",
+  "Other",
+];
+
+const buildIndustryGroups = (industries: IndustryOption[]) => {
+  const groups: Record<string, IndustryOption[]> = {};
+  for (const ind of industries) {
+    const group = INDUSTRY_GROUP_MAP[ind.value] ?? "Other";
+    if (!groups[group]) groups[group] = [];
+    groups[group].push(ind);
+  }
+  return GROUP_ORDER
+    .filter(g => groups[g])
+    .map(g => ({ group: g, items: groups[g] }));
+};
+
+const INDUSTRY_GROUPS = buildIndustryGroups(industryCardOptions);
 
 interface IndustriesMultiSelectProps {
   selectedIndustries: string[];
@@ -239,7 +279,7 @@ export function IndustriesMultiSelect({
               <Badge
                 key={industry}
                 variant="outline"
-                className="pl-2.5 pr-1.5 py-0.5 flex items-center gap-1 max-w-full text-[11px] font-medium bg-purple-500/10 border-purple-500/30 text-purple-300 rounded-lg hover:bg-purple-500/15 transition-all duration-200 animate-in fade-in zoom-in-95 duration-150"
+                className="pl-2.5 pr-1.5 py-0.5 flex items-center gap-1 max-w-full text-[11px] font-medium bg-purple-500/10 border-purple-500/20 text-purple-600 rounded-lg hover:bg-purple-500/15 transition-all duration-200 animate-in fade-in zoom-in-95 duration-150"
               >
                 <span className="truncate">{industry}</span>
                 {!isMandatory && (
@@ -253,7 +293,7 @@ export function IndustriesMultiSelect({
                     onMouseDown={(e) => {
                       e.stopPropagation();
                     }}
-                    className="ml-1 shrink-0 hover:bg-red-500/20 text-purple-300/60 hover:text-red-400 rounded-full p-0.5 transition-colors focus:outline-none cursor-pointer"
+                    className="ml-1 shrink-0 hover:bg-red-500/20 text-purple-600/60 hover:text-red-400 rounded-full p-0.5 transition-colors focus:outline-none cursor-pointer"
                     aria-label={`Remove ${industry}`}
                   >
                     <X className="h-3 w-3 pointer-events-none" />

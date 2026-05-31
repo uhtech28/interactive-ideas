@@ -13,40 +13,68 @@ export interface SkillOption {
   label: string;
 }
 
-// Group skills for better organization
-const groupSkills = (skills: SkillOption[]) => {
-  const groups: { [key: string]: SkillOption[] } = {};
+// Explicit group mapping keyed by option value — aligned with the Skill Cards document
+const SKILL_GROUP_MAP: Record<string, string> = {
+  "Sciences": "Sciences",
 
-  skills.forEach(skill => {
-    // Categorize skills based on their content
-    let group = "Other";
+  "Engineering and Technology": "Engineering & Technical",
+  "Mathematics and Quantitative Skills": "Engineering & Technical",
+  "Architecture and Built Environment": "Engineering & Technical",
+  "Digital Economy Skills": "Engineering & Technical",
 
-    if (skill.label.includes("Engineering") || skill.label.includes("Mathematics") || skill.label.includes("Architecture")) {
-      group = "Engineering & Technical";
-    } else if (skill.label.includes("Physics") || skill.label.includes("Chemistry") || skill.label.includes("Biology") || skill.label.includes("Science")) {
-      group = "Sciences";
-    } else if (skill.label.includes("Arts") || skill.label.includes("Painting") || skill.label.includes("Photography") || skill.label.includes("Music") || skill.label.includes("Film") || skill.label.includes("Fashion") || skill.label.includes("Designer") || skill.label.includes("Animator")) {
-      group = "Arts & Design";
-    } else if (skill.label.includes("Finance") || skill.label.includes("Management") || skill.label.includes("Law") || skill.label.includes("Consultancy") || skill.label.includes("Accountancy") || skill.label.includes("Entrepreneurs")) {
-      group = "Business & Services";
-    } else if (skill.label.includes("Healthcare") || skill.label.includes("Medicine") || skill.label.includes("Psychology")) {
-      group = "Healthcare & Social";
-    } else if (skill.label.includes("Services") || skill.label.includes("Hospitality") || skill.label.includes("Training") || skill.label.includes("Research")) {
-      group = "Professional Services";
-    } else if (skill.label.includes("Sociology") || skill.label.includes("Journalism") || skill.label.includes("History") || skill.label.includes("Geography") || skill.label.includes("Economics") || skill.label.includes("Philosophy")) {
-      group = "Social Sciences";
-    }
+  "Creative and Artistic Skills": "Arts & Design",
 
-    if (!groups[group]) {
-      groups[group] = [];
-    }
-    groups[group].push(skill);
-  });
+  "Humanities and Social Sciences": "Social Sciences",
+  "Political and Diplomatic Skills": "Social Sciences",
 
-  return Object.entries(groups).map(([group, items]) => ({ group, items }));
+  "Business and Economic Skills": "Business & Economics",
+  "Legal and Governance Skills": "Business & Economics",
+  "Logistics and Operations": "Business & Economics",
+
+  "Healthcare and Medicine": "Healthcare & Social",
+  "Social Impact and Public Sector": "Healthcare & Social",
+
+  "Education and Knowledge Transfer": "Professional Services",
+  "Hospitality and Tourism": "Professional Services",
+  "Service Sector Skills": "Professional Services",
+  "Communication Skills": "Professional Services",
+  "Leadership and Organizational Skills": "Professional Services",
+
+  "Physical and Performance Skills": "Physical & Lifestyle",
+  "Skilled Trades and Crafts": "Physical & Lifestyle",
+  "Agriculture and Natural Resource Skills": "Physical & Lifestyle",
+  "Religious and Spiritual Skills": "Physical & Lifestyle",
+  "Survival and Field Skills": "Physical & Lifestyle",
+
+  "Personal and Cognitive Skills": "Personal & Cognitive",
 };
 
-const SKILL_GROUPS = groupSkills(skillCardOptions);
+const SKILL_GROUP_ORDER = [
+  "Sciences",
+  "Engineering & Technical",
+  "Arts & Design",
+  "Social Sciences",
+  "Business & Economics",
+  "Healthcare & Social",
+  "Professional Services",
+  "Physical & Lifestyle",
+  "Personal & Cognitive",
+  "Other",
+];
+
+const buildSkillGroups = (skills: SkillOption[]) => {
+  const groups: Record<string, SkillOption[]> = {};
+  for (const skill of skills) {
+    const group = SKILL_GROUP_MAP[skill.value] ?? "Other";
+    if (!groups[group]) groups[group] = [];
+    groups[group].push(skill);
+  }
+  return SKILL_GROUP_ORDER
+    .filter(g => groups[g])
+    .map(g => ({ group: g, items: groups[g] }));
+};
+
+const SKILL_GROUPS = buildSkillGroups(skillCardOptions);
 
 interface SkillsMultiSelectProps {
   selectedSkills: string[];
@@ -181,7 +209,7 @@ export function SkillsMultiSelect({
               <Badge
                 key={skill}
                 variant="outline"
-                className="pl-2.5 pr-1.5 py-0.5 flex items-center gap-1 text-[11px] font-medium bg-blue-500/10 border-blue-500/30 text-blue-300 rounded-lg hover:bg-blue-500/15 transition-all duration-200 animate-in fade-in zoom-in-95 duration-150"
+                className="pl-2.5 pr-1.5 py-0.5 flex items-center gap-1 text-[11px] font-medium bg-blue-500/10 border-blue-500/20 text-blue-600 rounded-lg hover:bg-blue-500/15 transition-all duration-200 animate-in fade-in zoom-in-95 duration-150"
               >
                 {skill}
                 <button
@@ -189,7 +217,7 @@ export function SkillsMultiSelect({
                     e.preventDefault();
                     handleSelect(skill);
                   }}
-                  className="ml-1 shrink-0 hover:bg-red-500/20 text-blue-300/60 hover:text-red-400 rounded-full p-0.5 transition-colors focus:outline-none cursor-pointer"
+                  className="ml-1 shrink-0 hover:bg-red-500/20 text-blue-600/60 hover:text-red-400 rounded-full p-0.5 transition-colors focus:outline-none cursor-pointer"
                 >
                   <X className="h-3 w-3 pointer-events-none" />
                   <span className="sr-only">Remove {skill}</span>
