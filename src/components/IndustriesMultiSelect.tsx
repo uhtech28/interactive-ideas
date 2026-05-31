@@ -6,107 +6,12 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { industryCardOptions } from "@/lib/options";
+import { industryCardGroups } from "@/lib/options";
 
 export interface IndustryOption {
   value: string;
   label: string;
 }
-
-// Explicit group mapping keyed by option value — aligned with the Industry Cards document
-const INDUSTRY_GROUP_MAP: Record<string, string> = {
-  "Software and Technology": "Technology & Digital",
-  "Telecommunications": "Technology & Digital",
-  "Consumer Electronics": "Technology & Digital",
-
-  "Healthcare and Life Sciences": "Healthcare",
-
-  "Finance": "Finance",
-
-  "Chemicals": "Manufacturing & Industrial",
-  "Metals and Mining": "Manufacturing & Industrial",
-  "Manufacturing (General)": "Manufacturing & Industrial",
-  "Industrial Equipment and Services": "Manufacturing & Industrial",
-
-  "Media and Entertainment": "Media & Entertainment",
-  "Creator Economy": "Media & Entertainment",
-
-  "Automobiles and Private Transportation": "Transportation & Logistics",
-  "Public Transportation": "Transportation & Logistics",
-  "Aerospace and Aviation": "Transportation & Logistics",
-  "Logistics and Supply Chain": "Transportation & Logistics",
-
-  "Household Goods and Appliances": "Consumer Goods & Retail",
-  "Food, Beverage, Tobacco, and Consumables": "Consumer Goods & Retail",
-  "Retail and Commerce": "Consumer Goods & Retail",
-  "Textiles and Apparel": "Consumer Goods & Retail",
-
-  "Energy": "Energy & Utilities",
-  "Utilities": "Energy & Utilities",
-
-  "Real Estate": "Real Estate & Construction",
-  "Construction and Building Materials": "Real Estate & Construction",
-
-  "Travel, Tourism, and Hospitality": "Hospitality & Tourism",
-
-  "Agriculture and Natural Resources": "Agriculture & Environment",
-  "Environmental and Social Impact": "Agriculture & Environment",
-
-  "Defence and Security": "Defence & Security",
-  "Security and Risk Management": "Defence & Security",
-
-  "Education and Academia": "Education",
-
-  "Labour and Workforce": "Business Services",
-  "Corporate and Management Services": "Business Services",
-  "Sales and Marketing": "Business Services",
-  "Professional Services": "Business Services",
-
-  "Sports Industry": "Lifestyle & Culture",
-  "Religious and Cultural Institutions": "Lifestyle & Culture",
-  "Pet Industry": "Lifestyle & Culture",
-  "Luxury Industry": "Lifestyle & Culture",
-
-  "Government and Public Administration": "Government & Public",
-  "Research and Development": "Government & Public",
-
-  "Space Economy": "Emerging Industries",
-};
-
-const GROUP_ORDER = [
-  "Technology & Digital",
-  "Healthcare",
-  "Finance",
-  "Manufacturing & Industrial",
-  "Media & Entertainment",
-  "Transportation & Logistics",
-  "Consumer Goods & Retail",
-  "Energy & Utilities",
-  "Real Estate & Construction",
-  "Hospitality & Tourism",
-  "Agriculture & Environment",
-  "Defence & Security",
-  "Education",
-  "Business Services",
-  "Lifestyle & Culture",
-  "Government & Public",
-  "Emerging Industries",
-  "Other",
-];
-
-const buildIndustryGroups = (industries: IndustryOption[]) => {
-  const groups: Record<string, IndustryOption[]> = {};
-  for (const ind of industries) {
-    const group = INDUSTRY_GROUP_MAP[ind.value] ?? "Other";
-    if (!groups[group]) groups[group] = [];
-    groups[group].push(ind);
-  }
-  return GROUP_ORDER
-    .filter(g => groups[g])
-    .map(g => ({ group: g, items: groups[g] }));
-};
-
-const INDUSTRY_GROUPS = buildIndustryGroups(industryCardOptions);
 
 interface IndustriesMultiSelectProps {
   selectedIndustries: string[];
@@ -130,42 +35,32 @@ export function IndustriesMultiSelect({
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
-  const filteredIndustries = useMemo(() => {
-    if (!searchValue) return INDUSTRY_GROUPS;
-
-    return INDUSTRY_GROUPS.map(group => ({
-      ...group,
-      items: group.items.filter(item =>
-        item.label.toLowerCase().includes(searchValue.toLowerCase()) ||
-        item.value.toLowerCase().includes(searchValue.toLowerCase())
-      ),
-    })).filter(group => group.items.length > 0);
+  const filteredGroups = useMemo(() => {
+    if (!searchValue) return industryCardGroups;
+    const q = searchValue.toLowerCase();
+    return industryCardGroups
+      .map(g => ({ ...g, items: g.items.filter(item => item.label.toLowerCase().includes(q)) }))
+      .filter(g => g.items.length > 0);
   }, [searchValue]);
 
   const handleSelect = (value: string) => {
     let newSelected: string[];
-
     if (singleSelect) {
-      // Single select mode
       newSelected = selectedIndustries.includes(value) ? [] : [value];
     } else {
-      // Multi select mode
       newSelected = selectedIndustries.includes(value)
         ? mandatoryIndustries.includes(value)
-          ? selectedIndustries // Cannot remove mandatory industries
-          : selectedIndustries.filter(industry => industry !== value)
+          ? selectedIndustries
+          : selectedIndustries.filter(i => i !== value)
         : maxSelection && selectedIndustries.length >= maxSelection
           ? selectedIndustries
           : [...selectedIndustries, value];
     }
-
     onChange(newSelected);
   };
 
   const displayValue = selectedIndustries.length > 0
-    ? singleSelect
-      ? selectedIndustries[0]
-      : `${selectedIndustries.length} selected`
+    ? singleSelect ? selectedIndustries[0] : `${selectedIndustries.length} selected`
     : placeholder;
 
   return (
@@ -199,8 +94,8 @@ export function IndustriesMultiSelect({
             />
             <CommandList className="flex-1 overflow-y-auto max-h-none">
               <CommandEmpty>No industries found.</CommandEmpty>
-              {filteredIndustries.map(group => (
-                <CommandGroup key={group.group} heading={group.group} className="hidden md:block">
+              {filteredGroups.map(group => (
+                <CommandGroup key={group.group} heading={group.group}>
                   {group.items.map(item => (
                     <CommandItem
                       key={item.value}
@@ -230,41 +125,6 @@ export function IndustriesMultiSelect({
                   ))}
                 </CommandGroup>
               ))}
-              {/* Mobile view with collapsed groups */}
-              <div className="md:hidden">
-                <CommandGroup>
-                  <div className="px-1 py-2 text-sm font-semibold text-muted-foreground">All Industries</div>
-                  {filteredIndustries.flatMap(group =>
-                    group.items.map(item => (
-                      <CommandItem
-                        key={item.value}
-                        value={item.value}
-                        onSelect={() => handleSelect(item.value)}
-                        className="cursor-pointer"
-                      >
-                        {singleSelect ? (
-                          <>
-                            {selectedIndustries.includes(item.value) && (
-                              <Check className="mr-2 h-4 w-4 opacity-50" />
-                            )}
-                            {item.label}
-                          </>
-                        ) : (
-                          <>
-                            <input
-                              type="checkbox"
-                              checked={selectedIndustries.includes(item.value)}
-                              className="mr-2"
-                              readOnly
-                            />
-                            {item.label}
-                          </>
-                        )}
-                      </CommandItem>
-                    ))
-                  )}
-                </CommandGroup>
-              </div>
             </CommandList>
           </Command>
         </PopoverContent>
@@ -285,14 +145,8 @@ export function IndustriesMultiSelect({
                 {!isMandatory && (
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleSelect(industry);
-                    }}
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                    }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSelect(industry); }}
+                    onMouseDown={(e) => e.stopPropagation()}
                     className="ml-1 shrink-0 hover:bg-red-500/20 text-purple-600/60 hover:text-red-400 rounded-full p-0.5 transition-colors focus:outline-none cursor-pointer"
                     aria-label={`Remove ${industry}`}
                   >
