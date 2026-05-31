@@ -334,16 +334,16 @@ export const NotificationList = () => {
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+      <div className="flex items-center justify-between pl-4 pr-12 py-3 border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <h3 className="font-semibold text-sm">Notifications</h3>
         {notifications.length > 0 && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => handleDismissAll()}
-            className="h-7 text-xs text-muted-foreground hover:text-red-600 hover:bg-red-50 px-2"
+            className="h-6 text-[11px] text-muted-foreground hover:text-red-600 hover:bg-red-50 px-1.5"
           >
-            Clear all
+            Clear
           </Button>
         )}
       </div>

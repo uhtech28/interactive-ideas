@@ -164,7 +164,7 @@ export const ProfileProgress: React.FC<ProfileProgressProps> = ({ userId }) => {
   } else if (currentStreak > 0) {
     streakDetail = `${currentStreak} ${currentStreak === 1 ? "day" : "days"}`;
   } else {
-    streakDetail = isAuthenticated ? "Starts on your first sign-in today" : "Sign in to start";
+    streakDetail = isAuthenticated ? "1 day" : "Sign in to start";
   }
 
   // Calculate dynamic Prestige Score totals

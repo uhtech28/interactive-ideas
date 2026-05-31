@@ -181,7 +181,7 @@ export function SkillsMultiSelect({
               <Badge
                 key={skill}
                 variant="outline"
-                className="pl-2.5 pr-1.5 py-0.5 flex items-center gap-1 text-[11px] font-medium bg-purple-500/10 border-purple-500/30 text-purple-300 rounded-lg hover:bg-purple-500/15 transition-all duration-200 animate-in fade-in zoom-in-95 duration-150"
+                className="pl-2.5 pr-1.5 py-0.5 flex items-center gap-1 text-[11px] font-medium bg-blue-500/10 border-blue-500/30 text-blue-300 rounded-lg hover:bg-blue-500/15 transition-all duration-200 animate-in fade-in zoom-in-95 duration-150"
               >
                 {skill}
                 <button
@@ -189,7 +189,7 @@ export function SkillsMultiSelect({
                     e.preventDefault();
                     handleSelect(skill);
                   }}
-                  className="ml-1 shrink-0 hover:bg-red-500/20 text-purple-300/60 hover:text-red-400 rounded-full p-0.5 transition-colors focus:outline-none cursor-pointer"
+                  className="ml-1 shrink-0 hover:bg-red-500/20 text-blue-300/60 hover:text-red-400 rounded-full p-0.5 transition-colors focus:outline-none cursor-pointer"
                 >
                   <X className="h-3 w-3 pointer-events-none" />
                   <span className="sr-only">Remove {skill}</span>

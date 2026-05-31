@@ -282,22 +282,27 @@ export const CompactProfileView: React.FC<CompactProfileViewProps> = ({
 
                 {/* Skills & Industries — clickable, navigates to a filtered community page */}
                 <div className="pt-1.5 space-y-2">
-                  {(profile.industry || (profile.skills && profile.skills.length > 0)) && (
+                  {((profile.industries && profile.industries.length > 0) || (profile.industry) || (profile.skills && profile.skills.length > 0)) && (
                     <div className="flex flex-wrap gap-1.5">
-                      {profile.industry && (
+                      {/* Show all industries from the array, fall back to legacy single field */}
+                      {(profile.industries && profile.industries.length > 0
+                        ? profile.industries
+                        : profile.industry ? [profile.industry] : []
+                      ).map((ind, index) => (
                         <Link
-                          href={`/community?q=${encodeURIComponent(profile.industry)}`}
-                          aria-label={`Browse community filtered by ${profile.industry}`}
-                          title={`See others in ${profile.industry}`}
+                          key={index}
+                          href={`/community?q=${encodeURIComponent(ind)}`}
+                          aria-label={`Browse community filtered by ${ind}`}
+                          title={`See others in ${ind}`}
                         >
                           <Badge
                             variant="outline"
                             className="cursor-pointer rounded-md px-2.5 py-0 text-[10px] font-medium h-5 bg-purple-500/10 text-purple-600 border border-purple-500/20 hover:bg-purple-500/20 hover:border-purple-500/40 transition-colors"
                           >
-                            {profile.industry}
+                            {ind}
                           </Badge>
                         </Link>
-                      )}
+                      ))}
                       {profile.skills && profile.skills.slice(0, 5).map((skill, index) => (
                         <Link
                           key={index}

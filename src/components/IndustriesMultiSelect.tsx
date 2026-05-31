@@ -239,7 +239,7 @@ export function IndustriesMultiSelect({
               <Badge
                 key={industry}
                 variant="outline"
-                className="pl-2.5 pr-1.5 py-0.5 flex items-center gap-1 max-w-full text-[11px] font-medium bg-indigo-500/10 border-indigo-500/30 text-indigo-300 rounded-lg hover:bg-indigo-500/15 transition-all duration-200 animate-in fade-in zoom-in-95 duration-150"
+                className="pl-2.5 pr-1.5 py-0.5 flex items-center gap-1 max-w-full text-[11px] font-medium bg-purple-500/10 border-purple-500/30 text-purple-300 rounded-lg hover:bg-purple-500/15 transition-all duration-200 animate-in fade-in zoom-in-95 duration-150"
               >
                 <span className="truncate">{industry}</span>
                 {!isMandatory && (
@@ -253,7 +253,7 @@ export function IndustriesMultiSelect({
                     onMouseDown={(e) => {
                       e.stopPropagation();
                     }}
-                    className="ml-1 shrink-0 hover:bg-red-500/20 text-indigo-300/60 hover:text-red-400 rounded-full p-0.5 transition-colors focus:outline-none cursor-pointer"
+                    className="ml-1 shrink-0 hover:bg-red-500/20 text-purple-300/60 hover:text-red-400 rounded-full p-0.5 transition-colors focus:outline-none cursor-pointer"
                     aria-label={`Remove ${industry}`}
                   >
                     <X className="h-3 w-3 pointer-events-none" />
