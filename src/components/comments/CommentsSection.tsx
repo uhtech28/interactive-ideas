@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Trash2, Send, MessageSquare } from "lucide-react";
+import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 
 type Comment = {
@@ -225,20 +226,28 @@ const CommentItem: React.FC<{
   return (
     <div className={`group ${level > 0 ? "ml-9" : ""}`}>
       <div className="flex gap-3">
-        <Avatar className="h-9 w-9 shrink-0 ring-1 ring-white/10">
-          <AvatarImage src={comment.author?.avatar} alt={comment.author?.name} />
-          <AvatarFallback className="bg-[#1B2440] text-[11px] text-white">
-            {initialsOf(comment.author?.name || comment.author?.username)}
-          </AvatarFallback>
-        </Avatar>
+        <Link
+          href={comment.author?.username ? `/profile/${comment.author.username}` : "#"}
+          className="shrink-0"
+        >
+          <Avatar className="h-9 w-9 ring-1 ring-white/10 transition-opacity hover:opacity-80">
+            <AvatarImage src={comment.author?.avatar} alt={comment.author?.name} />
+            <AvatarFallback className="bg-[#1B2440] text-[11px] text-white">
+              {initialsOf(comment.author?.name || comment.author?.username)}
+            </AvatarFallback>
+          </Avatar>
+        </Link>
 
         <div className="min-w-0 flex-1">
           <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-3.5 py-2.5 transition-colors hover:border-white/12">
             <div className="mb-1 flex items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-sm font-semibold text-white">
+                <Link
+                  href={comment.author?.username ? `/profile/${comment.author.username}` : "#"}
+                  className="truncate text-sm font-semibold text-white hover:text-[#A5B4FC] transition-colors"
+                >
                   {comment.author?.name || comment.author?.username || "Unknown"}
-                </span>
+                </Link>
                 <span className="shrink-0 text-[11px] text-[#6B7280]">
                   {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
                 </span>
