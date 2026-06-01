@@ -61,23 +61,34 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ ideaId }) => {
   const [error, setError] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const maxCommentLength = 1200;
+  const isOverCommentLimit = content.length > maxCommentLength;
 
   useEffect(() => {
     if (!scrollRef.current || !comments) return;
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [comments?.length]);
 
-  // Auto-resize the textarea so it grows with the message but never overruns the dialog.
+  // Match chat composer behavior: grow up to three lines, then scroll inside.
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
+
+    const styles = window.getComputedStyle(ta);
+    const lineHeight = parseFloat(styles.lineHeight) || 20;
+    const paddingY = parseFloat(styles.paddingTop) + parseFloat(styles.paddingBottom);
+    const minHeight = lineHeight + paddingY;
+    const maxHeight = lineHeight * 3 + paddingY;
+
     ta.style.height = "auto";
-    ta.style.height = Math.min(ta.scrollHeight, 140) + "px";
+    const nextHeight = Math.min(Math.max(ta.scrollHeight, minHeight), maxHeight);
+    ta.style.height = `${nextHeight}px`;
+    ta.style.overflowY = ta.scrollHeight > maxHeight ? "auto" : "hidden";
   }, [content]);
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!content.trim() || !userId || isSubmitting) return;
+    if (!content.trim() || !userId || isSubmitting || isOverCommentLimit) return;
     setIsSubmitting(true);
     try {
       await addCommentMutation({ ideaId, content: content.trim() });
@@ -146,16 +157,21 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ ideaId }) => {
       <div className="pt-3 border-t border-white/8">
         {userId ? (
           <form onSubmit={handleSubmit}>
-            <div className="relative rounded-xl border border-white/10 bg-[#0A0D12] transition-colors focus-within:border-[#6366F1]/45 focus-within:bg-[#111827]">
+            <div
+              className={`relative rounded-[22px] border bg-[#0A0D12] transition-colors focus-within:bg-[#111827] ${
+                isOverCommentLimit
+                  ? "border-rose-500/80 focus-within:border-rose-400"
+                  : "border-white/10 focus-within:border-[#6366F1]/45"
+              }`}
+            >
               <textarea
                 ref={textareaRef}
                 placeholder="Share your thoughts…"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="block w-full resize-none rounded-xl bg-transparent px-4 pt-3 pb-9 text-sm leading-relaxed text-white placeholder:text-[#6B7280] outline-none focus:ring-0"
+                className="block max-h-[84px] min-h-[44px] w-full resize-none rounded-[22px] bg-transparent py-3 pl-4 pr-14 text-sm leading-5 text-white placeholder:text-[#6B7280] outline-none focus:ring-0 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-track]:bg-transparent"
                 disabled={isSubmitting}
-                maxLength={1200}
-                rows={2}
+                rows={1}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey && (e.metaKey || e.ctrlKey)) {
                     e.preventDefault();
@@ -163,19 +179,21 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ ideaId }) => {
                   }
                 }}
               />
-              <div className="pointer-events-none absolute bottom-2.5 left-4 text-[10px] tabular-nums text-[#6B7280]">
-                {content.length}/1200
-              </div>
               <Button
                 type="submit"
                 size="icon"
-                disabled={!content.trim() || isSubmitting}
-                className="absolute bottom-2 right-2 h-8 w-8 rounded-lg bg-[#6366F1] text-white hover:bg-[#8B5CF6] disabled:opacity-40 disabled:hover:bg-[#6366F1]"
+                disabled={!content.trim() || isSubmitting || isOverCommentLimit}
+                className="absolute bottom-1.5 right-1.5 h-8 w-8 rounded-full bg-[#6366F1] text-white hover:bg-[#8B5CF6] disabled:opacity-40 disabled:hover:bg-[#6366F1]"
                 title="Post comment (⌘ + Enter)"
               >
                 {isSubmitting ? <Spinner size={14} /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
+            {isOverCommentLimit && (
+              <p className="mt-1.5 pl-3 text-[11px] font-medium text-rose-400">
+                Max character count reached
+              </p>
+            )}
             {error && <p className="mt-2 text-[11px] text-rose-400">{error}</p>}
           </form>
         ) : (
