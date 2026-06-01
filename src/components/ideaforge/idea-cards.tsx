@@ -2,7 +2,8 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { Lightbulb, MessageCircle, PencilLine, Send, Sparkles, Trash2, Users, Repeat2, Bookmark } from "lucide-react";
+import { Lightbulb, MessageCircle, PencilLine, Send, Sparkles, Trash2, Users, Repeat2, Bookmark, Swords } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -249,6 +250,7 @@ export function IdeaStoryCard({
   /** When true, hide the author profile header on mobile (still visible on lg+). */
   hideAuthor?: boolean;
 }) {
+  const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [industriesExpanded, setIndustriesExpanded] = useState(false);
@@ -319,9 +321,25 @@ export function IdeaStoryCard({
       </div>
 
       <div className="mt-5">
-        <button type="button" onClick={() => onOpenIdea(idea._id)} className="text-left">
-          <h2 className={cn(displayFontClass, "text-[18px] font-semibold leading-tight text-[#F9FAFB] hover:text-[#C7D2FE]")}>{idea.title}</h2>
-        </button>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => onOpenIdea(idea._id)} className="text-left">
+            <h2 className={cn(displayFontClass, "text-[18px] font-semibold leading-tight text-[#F9FAFB] hover:text-[#C7D2FE]")}>{idea.title}</h2>
+          </button>
+          {ownerAction && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/map?ideaId=${idea._id}`);
+              }}
+              aria-label="View Map"
+              title="View Map"
+              className="inline-flex items-center justify-center p-2 rounded-xl border border-[#6366F1]/30 bg-[#6366F1]/10 text-[#C7D2FE] hover:bg-[#6366F1]/20 hover:text-white hover:border-[#6366F1]/50 transition-all duration-200 shrink-0 group/mapbtn"
+            >
+              <Swords className="h-5 w-5 transition-transform duration-200 group-hover/mapbtn:scale-110" />
+            </button>
+          )}
+        </div>
         <div className="mt-3 text-[15px] leading-7 text-[#D1D5DB]">
           <p className={cn(!expanded && shouldClamp && "line-clamp-3")}>{description}</p>
           {shouldClamp && (

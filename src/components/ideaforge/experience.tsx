@@ -11,6 +11,8 @@ import {
   LayoutList,
   Lightbulb,
   Lock,
+  Map,
+  Compass,
   MessageSquare,
   Pencil,
   Sparkles,
@@ -18,6 +20,7 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { api } from "@convex/_generated/api";
@@ -106,6 +109,7 @@ export function IdeaForgeExperience({
   isProfileComplete: boolean;
   onCompleteProfile: () => void;
 }) {
+  const router = useRouter();
   const userIdeas = useQuery(api.ideas.getUserIdeas) || [];
   const publicIdeas = useQuery(api.ideas.getPublicIdeas, { limit: 60 }) || [];
   

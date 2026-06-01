@@ -29,7 +29,10 @@ import { api } from "@convex/_generated/api";
 import { LEVEL_DEFINITIONS } from "@convex/ventureConstants";
 import type { Id } from "@convex/_generated/dataModel";
 import { eventBridge } from "@/lib/phaser/utils/event-bridge";
-import type { CheckpointState } from "@/lib/phaser/utils/event-bridge";
+import {
+  buildCheckpointSyncSignature,
+  mapCheckpointsToPhaserState,
+} from "@/lib/phaser/checkpoint-sync";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { MessageSquare, X, Users, Send, Share2, ExternalLink, Check, Copy, Lock, ChevronLeft, ChevronRight, Swords } from "lucide-react";
 import { QuestList, BossHPBar, StageInfo, XPBar } from "@/components/hud";
@@ -281,13 +284,14 @@ function useMapGame() {
 
     eventBridge.onReact("PHASER_READY", handleReady);
 
-    import("phaser").then((Phaser) =>
-      import("@/lib/phaser/game-config").then(({ createGameConfig }) => {
-        if (!containerRef.current) return;
-        const game = new Phaser.Game(createGameConfig(containerRef.current));
-        gameRef.current = game;
-      }),
-    );
+    Promise.all([
+      import("phaser"),
+      import("@/lib/phaser/game-config"),
+    ]).then(([Phaser, { createGameConfig }]) => {
+      if (!containerRef.current || gameRef.current) return;
+      const game = new Phaser.Game(createGameConfig(containerRef.current));
+      gameRef.current = game;
+    });
 
     return () => {
       eventBridge.off("PHASER_READY", handleReady);
@@ -1435,21 +1439,21 @@ function MapPageInner() {
 
   const kanbanData = useQuery(
     api.worldMap.getToolData,
-    activeVenture?._id
+    isKanbanOpen && activeVenture?._id
       ? { ventureId: activeVenture._id, toolType: "kanban" }
       : "skip",
   );
 
   const calendarData = useQuery(
     api.worldMap.getToolData,
-    activeVenture?._id
+    isCalendarOpen && activeVenture?._id
       ? { ventureId: activeVenture._id, toolType: "calendar" }
       : "skip",
   );
 
   const journalData = useQuery(
     api.worldMap.getToolData,
-    activeVenture?._id
+    isJournalOpen && activeVenture?._id
       ? { ventureId: activeVenture._id, toolType: "journal" }
       : "skip",
   );
@@ -1612,15 +1616,9 @@ function MapPageInner() {
   const prevLevelRef = useRef<number | null>(null);
   const prevStageRef = useRef<number>(1);
   const structureEnsuredForRef = useRef<string | null>(null);
-
-  // ── Debug: Track badge queue state ────────────────────────────────────────
-  useEffect(() => {
-    console.log(`[MapPage] 🎖️ Badge queue updated:`, {
-      queueLength: badgeQueue.length,
-      activeBadge: activeBadge ? activeBadge.name : null,
-      queue: badgeQueue.map((b) => b.name),
-    });
-  }, [badgeQueue, activeBadge]);
+  const lastVenturePhaserSyncRef = useRef<string | null>(null);
+  const lastCheckpointPhaserSyncRef = useRef<string>("");
+  const lastBrightnessPhaserSyncRef = useRef<number | null>(null);
 
   // ── Derived values from Convex ─────────────────────────────────────────────
   const venture = worldMapData?.venture ?? null;
@@ -2404,27 +2402,25 @@ function MapPageInner() {
     return () => eventBridge.off("BADGE_AWARDED", handleBadge);
   }, []);
 
-  // ── Sync Convex checkpoint data → Phaser ───────────────────────────────────
+  // ── Sync venture identity → Phaser (not on every task/checkpoint tick) ───────
   useEffect(() => {
-    if (!phaserReady || !venture || checkpoints.length === 0) return;
+    if (!phaserReady || !venture) return;
 
-    const phaserCheckpoints: CheckpointState[] = checkpoints.map((cp) => {
-      const localStatus = deriveCheckpointStatus(cp, activeStage, activeCP);
-      const phaserStatus =
-        localStatus === "partial" ? "in_progress" : localStatus;
-      return {
-        id: cp._id,
-        stage: cp.stage,
-        checkpoint: cp.checkpoint,
-        status: phaserStatus as CheckpointState["status"],
-        t1: cp.t1Completed,
-        t2: cp.t2Completed,
-        t3: cp.t3Completed,
-        goldBonusEarned:
-          !!cp.goldBonusEarned ||
-          (cp.t1Completed && cp.t2Completed && cp.t3Completed),
-      };
-    });
+    const corruptionBucket = Math.floor(corruptionLevel / 5);
+    const superBossKey = superBoss
+      ? `${superBoss.bossSlug}:${superBoss.visualStatus}:${superBoss.status}`
+      : "none";
+    const ventureSyncKey = [
+      venture._id,
+      venture.templateId ?? "venture",
+      selectedGender,
+      corruptionBucket,
+      superBossKey,
+      worldMapData?.projectState ?? "",
+    ].join("|");
+
+    if (lastVenturePhaserSyncRef.current === ventureSyncKey) return;
+    lastVenturePhaserSyncRef.current = ventureSyncKey;
 
     eventBridge.dispatchToPhaser({
       type: "SET_ACTIVE_VENTURE",
@@ -2458,28 +2454,60 @@ function MapPageInner() {
         }
         : undefined,
     } as Parameters<typeof eventBridge.dispatchToPhaser>[0]);
+  }, [
+    phaserReady,
+    venture?._id,
+    venture?.templateId,
+    venture?.assignedBosses,
+    selectedGender,
+    corruptionLevel,
+    superBoss?.bossSlug,
+    superBoss?.visualStatus,
+    superBoss?.status,
+    superBoss?.definition?.name,
+    superBoss?.bossName,
+    worldMapData?.projectState,
+    activeStage,
+    currentUser?.displayName,
+    currentUser?.username,
+  ]);
+
+  // ── Sync checkpoint progress → Phaser (deduped by signature) ───────────────
+  useEffect(() => {
+    if (!phaserReady || !venture || checkpoints.length === 0) return;
+
+    const signature = buildCheckpointSyncSignature(
+      checkpoints,
+      activeStage,
+      activeCP,
+      deriveCheckpointStatus,
+    );
+    if (lastCheckpointPhaserSyncRef.current === signature) return;
+    lastCheckpointPhaserSyncRef.current = signature;
 
     eventBridge.dispatchToPhaser({
       type: "UPDATE_CHECKPOINTS",
-      checkpoints: phaserCheckpoints,
+      checkpoints: mapCheckpointsToPhaserState(
+        checkpoints,
+        activeStage,
+        activeCP,
+        deriveCheckpointStatus,
+      ),
     });
+  }, [phaserReady, venture?._id, checkpoints, activeStage, activeCP]);
+
+  // ── Sync world brightness → Phaser ─────────────────────────────────────────
+  useEffect(() => {
+    if (!phaserReady) return;
+    const nextBrightness = brightness?.worldBrightness ?? 0;
+    if (lastBrightnessPhaserSyncRef.current === nextBrightness) return;
+    lastBrightnessPhaserSyncRef.current = nextBrightness;
 
     eventBridge.dispatchToPhaser({
       type: "UPDATE_BRIGHTNESS",
-      brightness: brightness?.worldBrightness ?? 0,
+      brightness: nextBrightness,
     });
-  }, [
-    phaserReady,
-    venture,
-    checkpoints,
-    activeStage,
-    activeCP,
-    brightness,
-    corruptionLevel,
-    selectedGender,
-    superBoss,
-    worldMapData?.projectState,
-  ]);
+  }, [phaserReady, brightness?.worldBrightness]);
 
   // ── Checkpoint click from Phaser ───────────────────────────────────────────
   useEffect(() => {
@@ -3529,18 +3557,20 @@ function MapPageInner() {
             onSkip={() => setShowLevelUp(false)}
           />
 
-          <BadgeAwardSequence
-            isVisible={!!activeBadge}
-            badge={activeBadge}
-            onComplete={() => {
-              if (activeBadge) shownBadgesRef.current.add(activeBadge.name);
-              setActiveBadge(null);
-            }}
-            onSkip={() => {
-              if (activeBadge) shownBadgesRef.current.add(activeBadge.name);
-              setActiveBadge(null);
-            }}
-          />
+          {activeBadge && (
+            <BadgeAwardSequence
+              isVisible
+              badge={activeBadge}
+              onComplete={() => {
+                shownBadgesRef.current.add(activeBadge.name);
+                setActiveBadge(null);
+              }}
+              onSkip={() => {
+                shownBadgesRef.current.add(activeBadge.name);
+                setActiveBadge(null);
+              }}
+            />
+          )}
 
           {/* Gold checkpoint notification popup */}
           <GoldCheckpointPopup

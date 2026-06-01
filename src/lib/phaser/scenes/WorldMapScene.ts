@@ -502,7 +502,10 @@ export class WorldMapScene extends Phaser.Scene {
 
   preload(): void {
     AssetLoader.preloadAssets(this);
-    AssetLoader.createAllTextures(this);
+    // Generate procedural textures after file loads so preload stays non-blocking.
+    this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+      AssetLoader.createAllTextures(this);
+    });
   }
 
   create(): void {
@@ -541,20 +544,21 @@ export class WorldMapScene extends Phaser.Scene {
     };
     this.scale.on("resize", this.resizeHandler);
 
-    // Device capabilities
-    // NOTE: navigator.maxTouchPoints > 0 is unreliable — Chrome/Edge on Windows
-    // reports 5 even on non-touch desktops. Use only "ontouchstart" in window for
-    // real touch detection (pinch-to-zoom). Drag and wheel work on ALL devices.
+    // Defer pointer/wheel handlers so first paint and React overlay mount stay smooth.
+    this.time.delayedCall(0, () => this.setupMapPointerInput());
+  }
+
+  private setupMapPointerInput(): void {
+    if (!this.sys.isActive()) return;
+
     const hasTouchScreen = "ontouchstart" in window;
     const isMobile = this.scale.width < 768;
     const isTablet = this.scale.width >= 768 && this.scale.width < 1024;
 
-    // ── 1. Audio unlock on first pointer interaction ──────────────────────────
     this.input.on("pointerdown", () => {
       audioManager.unlock();
     });
 
-    // ── 2. Click-and-drag scroll (mouse OR touch — all devices) ──────────────
     let isDragging = false;
     let dragVelocityX = 0;
     let dragVelocityY = 0;
@@ -620,7 +624,6 @@ export class WorldMapScene extends Phaser.Scene {
       }
     });
 
-    // ── 3. Mouse-wheel / trackpad — pan within the current stage map ─────────
     this.wheelHandler = (e: WheelEvent) => {
       e.preventDefault();
       const zoom = this.cameras.main.zoom;
@@ -641,7 +644,6 @@ export class WorldMapScene extends Phaser.Scene {
       passive: false,
     });
 
-    // ── 4. Pinch-to-zoom (real touchscreens only) ─────────────────────────────
     if (hasTouchScreen) {
       let initialDistance = 0;
       let initialZoom = 1;
@@ -668,18 +670,6 @@ export class WorldMapScene extends Phaser.Scene {
         }
       });
     }
-
-    // FPS monitoring
-    this.time.addEvent({
-      delay: 1000,
-      loop: true,
-      callback: () => {
-        eventBridge.dispatchToReact({
-          type: "FPS_UPDATE",
-          fps: Math.round(this.game.loop.actualFps),
-        });
-      },
-    });
   }
 
   private applyResponsiveCamera(initial: boolean): void {
@@ -7253,7 +7243,7 @@ export class WorldMapScene extends Phaser.Scene {
 
       // Fog overlays removed - all stages visible
       // this.updateStageVisibility(this.currentStage, stageChanged);
-      if (this.getMainCamera()) {
+      if (stageChanged && this.getMainCamera()) {
         this.navigateToViewingStage(this.currentStage, false);
       }
 
@@ -7278,8 +7268,10 @@ export class WorldMapScene extends Phaser.Scene {
       this.handleUpdateBrightness();
     }
 
-    // Position persona on active checkpoint
-    this.positionPersonaOnActiveCheckpoint();
+    const frontierCheckpointId = this.resolveFrontierCheckpointId();
+    if (frontierCheckpointId !== this.lastPersonaCheckpointId) {
+      this.positionPersonaOnActiveCheckpoint();
+    }
 
     // Update mini-boss progress
     this.updateMiniBossProgress(checkpoints);
@@ -7537,18 +7529,19 @@ export class WorldMapScene extends Phaser.Scene {
         this.gameLayer.add(this.persona);
       }
 
-      // Update current stage if provided
       if (event.currentStage) {
+        const stageChanged = this.currentStage !== event.currentStage;
         this.currentStage = event.currentStage;
-        // Fog overlays removed - all stages visible
-        // this.updateStageVisibility(event.currentStage, !ventureChanged);
-        this.navigateToViewingStage(event.currentStage, false);
 
-        // Play ambience for the current stage + template
-        audioManager.playAmbienceForTemplate(
-          this.currentTemplateId,
-          event.currentStage,
-        );
+        if (ventureChanged || stageChanged) {
+          if (this.getMainCamera()) {
+            this.navigateToViewingStage(event.currentStage, false);
+          }
+          audioManager.playAmbienceForTemplate(
+            this.currentTemplateId,
+            event.currentStage,
+          );
+        }
       }
 
       const nextBossStatus = event.superBoss?.visualStatus ?? "silhouette";
@@ -7577,13 +7570,12 @@ export class WorldMapScene extends Phaser.Scene {
         }
       }
 
-      // Position persona on active checkpoint
-      this.positionPersonaOnActiveCheckpoint();
-
-      // Auto-scroll to active checkpoint quickly after venture loads
-      this.time.delayedCall(100, () => {
-        this.autoScrollToActive();
-      });
+      if (ventureChanged) {
+        this.positionPersonaOnActiveCheckpoint();
+        this.time.delayedCall(100, () => {
+          this.autoScrollToActive();
+        });
+      }
     } catch (error) {
       // Silently handle venture setup errors
     }
@@ -7651,6 +7643,21 @@ export class WorldMapScene extends Phaser.Scene {
     }
 
     return true;
+  }
+
+  /** Checkpoint id for the current frontier (highest unlocked node). */
+  private resolveFrontierCheckpointId(): string | null {
+    const allNodes = Array.from(this.checkpointNodes.values());
+    if (allNodes.length === 0) return this.lastPersonaCheckpointId;
+
+    const targetNode =
+      allNodes
+        .filter((n) => n.status !== "locked")
+        .sort((a, b) => b.globalIndex - a.globalIndex)[0] ??
+      allNodes.sort((a, b) => a.globalIndex - b.globalIndex)[0] ??
+      null;
+
+    return targetNode?.checkpointId ?? null;
   }
 
   /**
