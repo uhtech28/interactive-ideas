@@ -480,11 +480,12 @@ export class WorldMapScene extends Phaser.Scene {
       }
     });
 
-    // 5. Force load the current stage (active stage) immediately
-    this.loadStage(this.currentStage);
+    // 5. Force load all stage biomes immediately during startup for zero scroll stutter
+    for (let s = 1; s <= this.activeBiomeConfigs.length; s++) {
+      this.loadStage(s);
+    }
 
     // 6. Run checkBiomeLoading to check camera proximity immediately
-    this.checkBiomeLoading();
 
     // 7. Corruption overlays on every stage (not tied to lazy tile loading)
     this.time.delayedCall(0, () => {

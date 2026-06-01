@@ -3867,10 +3867,10 @@ function MapPageInner() {
                   className="absolute inset-0 bg-black/60 backdrop-blur-md"
                 />
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  initial={{ opacity: 0, scale: 0.97, y: 8 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                  transition={{ type: "spring", duration: 0.5 }}
+                  exit={{ opacity: 0, scale: 0.97, y: 8 }}
+                  transition={{ duration: 0.12, ease: "easeOut" }}
                   className="relative w-full max-w-[600px] h-[680px] max-h-[88vh] rounded-3xl border border-white/10 overflow-hidden shadow-2xl z-10 flex flex-col"
                   style={{
                     background: "linear-gradient(180deg, rgba(16, 20, 35, 0.95), rgba(10, 12, 22, 0.98))",
@@ -3944,10 +3944,10 @@ function MapPageInner() {
                   className="absolute inset-0 bg-black/60 backdrop-blur-md"
                 />
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  initial={{ opacity: 0, scale: 0.97, y: 8 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                  transition={{ type: "spring", duration: 0.5 }}
+                  exit={{ opacity: 0, scale: 0.97, y: 8 }}
+                  transition={{ duration: 0.12, ease: "easeOut" }}
                   className="relative w-full max-w-[700px] h-[600px] max-h-[85vh] rounded-3xl border border-white/10 overflow-hidden shadow-2xl z-10 flex flex-col"
                   style={{
                     background: "linear-gradient(180deg, rgba(16, 20, 35, 0.95), rgba(10, 12, 22, 0.98))",
@@ -3997,10 +3997,10 @@ function MapPageInner() {
                   className="absolute inset-0 bg-black/60 backdrop-blur-md"
                 />
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  initial={{ opacity: 0, scale: 0.97, y: 8 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                  transition={{ type: "spring", duration: 0.5 }}
+                  exit={{ opacity: 0, scale: 0.97, y: 8 }}
+                  transition={{ duration: 0.12, ease: "easeOut" }}
                   className="relative w-full max-w-[800px] h-[650px] max-h-[85vh] rounded-3xl border border-white/10 overflow-hidden shadow-2xl z-10 flex flex-col"
                   style={{
                     background: "linear-gradient(180deg, rgba(16, 20, 35, 0.95), rgba(10, 12, 22, 0.98))",
@@ -4047,10 +4047,10 @@ function MapPageInner() {
                   className="absolute inset-0 bg-black/60 backdrop-blur-md"
                 />
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  initial={{ opacity: 0, scale: 0.97, y: 8 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                  transition={{ type: "spring", duration: 0.5 }}
+                  exit={{ opacity: 0, scale: 0.97, y: 8 }}
+                  transition={{ duration: 0.12, ease: "easeOut" }}
                   className="relative w-full max-w-[1000px] h-[700px] max-h-[88vh] rounded-3xl border border-white/10 overflow-hidden shadow-2xl z-10 flex flex-col"
                   style={{
                     background: "linear-gradient(180deg, rgba(16, 20, 35, 0.95), rgba(10, 12, 22, 0.98))",
@@ -4095,10 +4095,10 @@ function MapPageInner() {
                   className="absolute inset-0 bg-black/60 backdrop-blur-md"
                 />
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  initial={{ opacity: 0, scale: 0.97, y: 8 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                  transition={{ type: "spring", duration: 0.5 }}
+                  exit={{ opacity: 0, scale: 0.97, y: 8 }}
+                  transition={{ duration: 0.12, ease: "easeOut" }}
                   className="relative w-full max-w-[650px] h-[650px] max-h-[85vh] rounded-3xl border border-white/10 overflow-hidden shadow-2xl z-10 flex flex-col"
                   style={{
                     background: "linear-gradient(180deg, rgba(16, 20, 35, 0.95), rgba(10, 12, 22, 0.98))",
@@ -4143,10 +4143,10 @@ function MapPageInner() {
                   className="absolute inset-0 bg-black/60 backdrop-blur-md"
                 />
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  initial={{ opacity: 0, scale: 0.97, y: 8 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                  transition={{ type: "spring", duration: 0.5 }}
+                  exit={{ opacity: 0, scale: 0.97, y: 8 }}
+                  transition={{ duration: 0.12, ease: "easeOut" }}
                   className="relative w-full max-w-[600px] h-[650px] max-h-[85vh] rounded-3xl border border-white/10 overflow-hidden shadow-2xl z-10 flex flex-col"
                   style={{
                     background: "linear-gradient(180deg, rgba(16, 20, 35, 0.95), rgba(10, 12, 22, 0.98))",
@@ -4233,10 +4233,10 @@ function MapPageInner() {
 
                 {/* Floating Chat Container */}
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  initial={{ opacity: 0, scale: 0.97, y: 8 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                  transition={{ type: "spring", duration: 0.5 }}
+                  exit={{ opacity: 0, scale: 0.97, y: 8 }}
+                  transition={{ duration: 0.12, ease: "easeOut" }}
                   className="relative w-full max-w-[550px] h-[650px] max-h-[85vh] rounded-3xl border border-white/10 overflow-hidden shadow-2xl z-10 flex flex-col"
                   style={{
                     background: "linear-gradient(180deg, rgba(16, 20, 35, 0.95), rgba(10, 12, 22, 0.98))",
