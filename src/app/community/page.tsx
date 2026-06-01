@@ -354,11 +354,11 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUserId, onTagClick }) 
   const hiddenSkillCount = Math.max(0, user.skills.length - visibleSkills.length);
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300 flex flex-col min-h-[204px] h-full overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm">
-      <div className="px-4 pb-2 pt-3 flex flex-col">
+    <Card className="group hover:shadow-lg transition-all duration-300 flex flex-col min-h-[192px] h-full overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm">
+      <div className="px-4 pb-0.5 pt-2 flex flex-col">
         <Link href={profileHref} className="block">
           {/* Header: Avatar & Name */}
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-1.5">
             <Avatar className="w-8 h-8 border-2 border-background shadow-sm shrink-0">
               <AvatarImage src={user.avatar} alt={user.displayName} className="object-cover" />
               <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
@@ -377,14 +377,14 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUserId, onTagClick }) 
 
           {/* Bio - Hidden if empty to save space, else truncated more aggressively */}
           {user.bio && (
-            <p className="text-[10px] text-muted-foreground mb-2 line-clamp-1 leading-relaxed">
+            <p className="text-[10px] text-muted-foreground mb-1.5 line-clamp-1 leading-relaxed">
               {user.bio}
             </p>
           )}
         </Link>
 
           {/* Tags Section */}
-          <div className="flex flex-col gap-1.5 mb-2.5">
+          <div className="flex flex-col gap-1.5 mb-2">
             {visibleIndustries.length > 0 && (
               <div className="flex flex-wrap gap-1 items-center">
                 {visibleIndustries.map((ind, i) => (
@@ -425,7 +425,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUserId, onTagClick }) 
           </div>
 
           {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-1 py-1.5 border-t border-b border-border/40">
+          <div className="grid grid-cols-3 gap-1 py-1 border-t border-b border-border/40">
             <button
               type="button"
               onClick={() => openStatsDialog("created")}
@@ -458,7 +458,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUserId, onTagClick }) 
 
       {/* Footer Actions */}
       {!isCurrentUser && currentUserId && (
-        <div className="px-3 pb-2 pt-1 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="px-3 pb-1 pt-0 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <div className="flex-1">
             <InvitationButton
               targetUser={{
