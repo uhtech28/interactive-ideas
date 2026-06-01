@@ -123,7 +123,8 @@ export default function LandingIntroSandbox({
     if (!AC) return;
 
     let ctx: AudioContext | null = null;
-    let done = false;
+    let started = false;
+    let stopped = false;
 
     const play = (audioCtx: AudioContext) => {
       const masterGain = audioCtx.createGain();
@@ -154,10 +155,10 @@ export default function LandingIntroSandbox({
       }
     };
 
-    // Gesture fallback: create fresh ctx synchronously inside the handler (required for iOS)
-    const unlock = () => {
-      if (done) return;
-      done = true;
+    // Gesture fallback: create fresh ctx inside gesture handler (required for iOS)
+    const startAudio = () => {
+      if (started || stopped) return;
+      started = true;
       try {
         ctx = new AC();
         const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
@@ -170,34 +171,31 @@ export default function LandingIntroSandbox({
       } catch { /* not available */ }
     };
 
-    // Register gesture listeners immediately (synchronous — no race window)
-    window.addEventListener("touchstart", unlock, { once: true, passive: true });
-    window.addEventListener("pointerdown", unlock, { once: true });
-    window.addEventListener("keydown",     unlock, { once: true });
-
-    // Also attempt autoplay in parallel; cancel listeners if it succeeds
-    (async () => {
-      try {
-        const probe = new AC();
-        await probe.resume();
-        if (!done && probe.state === "running") {
-          done = true;
-          window.removeEventListener("touchstart", unlock);
-          window.removeEventListener("pointerdown", unlock);
-          window.removeEventListener("keydown",     unlock);
-          ctx = probe;
-          play(ctx);
-          return;
-        }
+    // Synchronous autoplay probe — on browsers/sessions where autoplay is
+    // permitted, new AudioContext() starts in "running" state immediately.
+    // No await needed; checking state right after creation is the reliable signal.
+    try {
+      const probe = new AC();
+      if (probe.state === "running") {
+        ctx = probe;
+        started = true;
+        play(ctx);
+      } else {
         probe.close().catch(() => undefined);
-      } catch { /* autoplay blocked — gesture listeners will handle it */ }
-    })();
+      }
+    } catch { /* ignore */ }
+
+    if (!started) {
+      window.addEventListener("touchstart", startAudio, { once: true, passive: true });
+      window.addEventListener("pointerdown", startAudio, { once: true });
+      window.addEventListener("keydown",     startAudio, { once: true });
+    }
 
     return () => {
-      done = true;
-      window.removeEventListener("touchstart", unlock);
-      window.removeEventListener("pointerdown", unlock);
-      window.removeEventListener("keydown",     unlock);
+      stopped = true;
+      window.removeEventListener("touchstart", startAudio);
+      window.removeEventListener("pointerdown", startAudio);
+      window.removeEventListener("keydown",     startAudio);
       ctx?.close().catch(() => undefined);
     };
   }, []);
