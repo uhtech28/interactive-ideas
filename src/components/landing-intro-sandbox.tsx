@@ -122,24 +122,27 @@ export default function LandingIntroSandbox({
       (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AC) return;
 
-    let ctx: AudioContext | null = null;
+    // Create context once on mount — reused for both the autoplay check and gesture fallback
+    let ctx: AudioContext;
+    try { ctx = new AC(); } catch { return; }
+
     let started = false;
     let stopped = false;
 
-    const play = (audioCtx: AudioContext) => {
-      const masterGain = audioCtx.createGain();
-      const t0 = audioCtx.currentTime + 0.05;
+    const scheduleNotes = () => {
+      const masterGain = ctx.createGain();
+      const t0 = ctx.currentTime + 0.1;
       const tEnd = t0 + TOTAL_RUNTIME_MS / 1000;
       masterGain.gain.setValueAtTime(0.022, t0);
       masterGain.gain.setValueAtTime(0.022, tEnd - 1.5);
       masterGain.gain.linearRampToValueAtTime(0.001, tEnd - 0.1);
-      masterGain.connect(audioCtx.destination);
+      masterGain.connect(ctx.destination);
 
       let t = t0;
       for (const { f, d } of notes) {
         if (f > 0 && t < tEnd) {
-          const osc = audioCtx.createOscillator();
-          const g = audioCtx.createGain();
+          const osc = ctx.createOscillator();
+          const g = ctx.createGain();
           osc.type = "square";
           osc.frequency.setValueAtTime(f, t);
           const atk = Math.min(0.025, d * 0.12);
@@ -155,37 +158,17 @@ export default function LandingIntroSandbox({
       }
     };
 
-    // Gesture fallback: create fresh ctx inside gesture handler (required for iOS)
     const startAudio = () => {
       if (started || stopped) return;
       started = true;
-      try {
-        ctx = new AC();
-        const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
-        const src = ctx.createBufferSource();
-        src.buffer = buf;
-        src.connect(ctx.destination);
-        src.start(0);
-        ctx.resume().catch(() => undefined);
-        setTimeout(() => { if (ctx && ctx.state !== "closed") play(ctx); }, 50);
-      } catch { /* not available */ }
+      ctx.resume().then(scheduleNotes).catch(() => undefined);
     };
 
-    // Synchronous autoplay probe — on browsers/sessions where autoplay is
-    // permitted, new AudioContext() starts in "running" state immediately.
-    // No await needed; checking state right after creation is the reliable signal.
-    try {
-      const probe = new AC();
-      if (probe.state === "running") {
-        ctx = probe;
-        started = true;
-        play(ctx);
-      } else {
-        probe.close().catch(() => undefined);
-      }
-    } catch { /* ignore */ }
-
-    if (!started) {
+    // If context is already running (page loaded via navigation gesture or
+    // browser has prior media engagement), play immediately with the animation.
+    if (ctx.state === "running") {
+      startAudio();
+    } else {
       window.addEventListener("touchstart", startAudio, { once: true, passive: true });
       window.addEventListener("pointerdown", startAudio, { once: true });
       window.addEventListener("keydown",     startAudio, { once: true });
