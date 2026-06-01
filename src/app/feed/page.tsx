@@ -97,17 +97,9 @@ export default function FeedPage() {
               <MessageCircle className="h-4.5 w-4.5 text-[#C7D2FE]" />
             </div>
             <div className="min-w-0 flex-1">
-              <DialogTitle className="flex items-center gap-2 text-base font-semibold leading-tight text-white">
-                <span>Comments</span>
-                {activeCommentIdea && (
-                  <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-[#9CA3AF]">
-                    {activeCommentIdea.commentCount ?? 0}
-                  </span>
-                )}
+              <DialogTitle className="truncate text-base font-semibold leading-tight text-white">
+                {activeCommentIdea?.title}
               </DialogTitle>
-              <p className="mt-0.5 truncate text-xs text-[#9CA3AF]">
-                on <span className="text-[#E5E7EB]">{activeCommentIdea?.title}</span>
-              </p>
             </div>
           </header>
 

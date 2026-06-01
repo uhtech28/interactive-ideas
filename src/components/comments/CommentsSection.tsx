@@ -10,7 +10,19 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Trash2, Send, MessageSquare } from "lucide-react";
 import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
+function compactAge(ts: number): string {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return 'Just now';
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d`;
+  const w = Math.floor(d / 7);
+  if (w < 52) return `${w}w`;
+  return `${Math.floor(w / 52)}y`;
+}
 
 type Comment = {
   _id: string;
@@ -249,7 +261,7 @@ const CommentItem: React.FC<{
                   {comment.author?.name || comment.author?.username || "Unknown"}
                 </Link>
                 <span className="shrink-0 text-[11px] text-[#6B7280]">
-                  {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
+                  {compactAge(comment.createdAt)}
                 </span>
               </div>
               {isMine && (
