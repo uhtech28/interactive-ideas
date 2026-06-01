@@ -117,32 +117,30 @@ export default function LandingIntroSandbox({
       { f: 311, d: 0.40 }, { f: 294, d: 0.40 }, { f: 262, d: 1.50 },
     ];
 
-    const AudioCtor =
+    type AudioCtor = typeof AudioContext;
+    const AudioCtor: AudioCtor | undefined =
       window.AudioContext ||
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      (window as typeof window & { webkitAudioContext?: AudioCtor }).webkitAudioContext;
     if (!AudioCtor) return;
 
     let ctx: AudioContext | null = null;
     let started = false;
     let stopped = false;
 
-    try { ctx = new AudioCtor(); } catch { return; }
-
-    const scheduleNotes = () => {
-      if (!ctx) return;
-      const masterGain = ctx.createGain();
-      const t0 = ctx.currentTime + 0.1;
+    const scheduleNotes = (audioCtx: AudioContext) => {
+      const masterGain = audioCtx.createGain();
+      const t0 = audioCtx.currentTime + 0.1;
       const tEnd = t0 + TOTAL_RUNTIME_MS / 1000;
       masterGain.gain.setValueAtTime(0.022, t0);
       masterGain.gain.setValueAtTime(0.022, tEnd - 1.5);
       masterGain.gain.linearRampToValueAtTime(0.001, tEnd - 0.1);
-      masterGain.connect(ctx.destination);
+      masterGain.connect(audioCtx.destination);
 
       let t = t0;
       for (const { f, d } of notes) {
         if (f > 0 && t < tEnd) {
-          const osc = ctx.createOscillator();
-          const g = ctx.createGain();
+          const osc = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
           osc.type = "square";
           osc.frequency.setValueAtTime(f, t);
           const atk = Math.min(0.025, d * 0.12);
@@ -158,25 +156,48 @@ export default function LandingIntroSandbox({
       }
     };
 
+    // Key iOS fix: create AudioContext INSIDE the gesture handler.
+    // iOS Safari starts a context in 'running' state when created within a
+    // touch/click event — no resume() needed. Pre-creating on mount leaves it
+    // permanently suspended and resume() calls from later gestures are ignored.
     const startAudio = () => {
-      if (started || stopped || !ctx) return;
+      if (started || stopped) return;
       started = true;
-      // resume() called synchronously within the gesture — required on iOS Safari
-      ctx.resume().then(scheduleNotes).catch(() => undefined);
+      try {
+        ctx = new AudioCtor();
+        if (ctx.state === "running") {
+          scheduleNotes(ctx);
+        } else {
+          // Fallback for browsers that still start suspended (rare on modern Chrome/Firefox)
+          ctx.resume().then(() => { if (ctx && !stopped) scheduleNotes(ctx); }).catch(() => undefined);
+        }
+      } catch {
+        // AudioContext creation failed — silent fail
+      }
     };
 
-    if (ctx.state === "running") {
-      startAudio();
-    } else {
+    // Attempt immediate autoplay (works on Firefox and ungated Chromium builds)
+    try {
+      const probe = new AudioCtor();
+      if (probe.state === "running") {
+        ctx = probe;
+        started = true;
+        scheduleNotes(ctx);
+      } else {
+        probe.close().catch(() => undefined);
+      }
+    } catch { /* ignore */ }
+
+    if (!started) {
+      window.addEventListener("touchstart", startAudio, { once: true, passive: true });
       window.addEventListener("pointerdown", startAudio, { once: true });
-      window.addEventListener("touchstart", startAudio, { once: true, passive: true } as AddEventListenerOptions);
       window.addEventListener("keydown", startAudio, { once: true });
     }
 
     return () => {
       stopped = true;
-      window.removeEventListener("pointerdown", startAudio);
       window.removeEventListener("touchstart", startAudio);
+      window.removeEventListener("pointerdown", startAudio);
       window.removeEventListener("keydown", startAudio);
       ctx?.close().catch(() => undefined);
     };
