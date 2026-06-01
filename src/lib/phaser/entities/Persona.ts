@@ -17,6 +17,9 @@ import * as Phaser from "phaser";
  */
 export type PersonaGender = "male" | "female";
 
+/** Locomotion style — map CP travel uses jog; other callers may use walk. */
+export type PersonaMovementPace = "walk" | "jog";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Persona
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,11 +39,16 @@ export type PersonaGender = "male" | "female";
  * persona.moveToPosition(600, 400, 1000);
  */
 export class Persona extends Phaser.GameObjects.Container {
-  private static readonly ARRIVAL_EPSILON = 3;
-  /** World pixels covered by one full 8-frame walk cycle at timeScale 1 (16 fps → 0.5s/cycle at ~80px). */
+  static readonly ARRIVAL_EPSILON = 3;
+  /** World pixels per walk cycle at timeScale 1 (16 fps, ~80px stride). */
   private static readonly WALK_STRIDE_PX = 80;
+  /** Shorter stride for jog — faster leg cadence vs. ground speed. */
+  private static readonly JOG_STRIDE_PX = 52;
   private static readonly WALK_ANIM_FRAMES = 8;
   private static readonly WALK_ANIM_FPS = 16;
+  private static readonly JOG_ANIM_FPS = 22;
+  private static readonly WALK_MAX_TIME_SCALE = 3.5;
+  private static readonly JOG_MAX_TIME_SCALE = 5.2;
 
   // ── Public readonly ───────────────────────────────────────────────────────
 
@@ -56,6 +64,7 @@ export class Persona extends Phaser.GameObjects.Container {
   private currentAnimation: "idle" | "walk" | null = null;
   private isWalking = false;
   private idleFacingRight = true;
+  private movementPace: PersonaMovementPace = "walk";
 
   // User avatar and speech bubble
   private userAvatar: Phaser.GameObjects.Image | null = null;
@@ -190,7 +199,11 @@ export class Persona extends Phaser.GameObjects.Container {
     }
   }
 
-  moveAlongPath(points: { x: number; y: number }[], duration = 1200): void {
+  moveAlongPath(
+    points: { x: number; y: number }[],
+    duration = 1200,
+    pace: PersonaMovementPace = "walk",
+  ): void {
     if (!this.scene) return;
 
     const route = points.filter((point) => {
@@ -212,7 +225,7 @@ export class Persona extends Phaser.GameObjects.Container {
     }
 
     const totalPathDistance = segments.reduce((sum, segment) => sum + segment.length, 0);
-    this.beginWalk(totalPathDistance, duration);
+    this.beginWalk(totalPathDistance, duration, pace);
     this.followPathSegments(segments, totalPathDistance, duration, () => {
       const last = segments[segments.length - 1]?.end;
       if (last) {
@@ -475,7 +488,7 @@ export class Persona extends Phaser.GameObjects.Container {
     const end = new Phaser.Math.Vector2(targetX, targetY);
     const distance = start.distance(end);
 
-    this.beginWalk(distance, duration);
+    this.beginWalk(distance, duration, "walk");
     this.followPathSegments(
       [{ start, end, length: distance }],
       distance,
@@ -512,12 +525,17 @@ export class Persona extends Phaser.GameObjects.Container {
     return segments;
   }
 
-  private beginWalk(totalDistance: number, duration: number): void {
+  private beginWalk(
+    totalDistance: number,
+    duration: number,
+    pace: PersonaMovementPace = "walk",
+  ): void {
     if (!this.scene) return;
 
     this.hideSpeechBubble();
     this.stopWalkTweens();
 
+    this.movementPace = pace;
     this.currentAnimation = "walk";
     this.isWalking = true;
 
@@ -546,11 +564,12 @@ export class Persona extends Phaser.GameObjects.Container {
       }
       this.avatarContainer.y = -100;
       const bobDuration = this.getWalkCycleDurationMs(duration, totalDistance) * 0.5;
+      const isJog = pace === "jog";
       this.avatarWalkTween = this.scene.tweens.add({
         targets: this.avatarContainer,
-        y: { from: -100, to: -112 },
-        angle: { from: -6, to: 6 },
-        duration: bobDuration,
+        y: { from: -100, to: isJog ? -120 : -112 },
+        angle: { from: isJog ? -9 : -6, to: isJog ? 9 : 6 },
+        duration: isJog ? bobDuration * 0.42 : bobDuration,
         ease: "Sine.easeInOut",
         yoyo: true,
         repeat: -1,
@@ -618,6 +637,7 @@ export class Persona extends Phaser.GameObjects.Container {
 
   private finishWalk(): void {
     this.isWalking = false;
+    this.movementPace = "walk";
     this.currentAnimation = "idle";
     this.stopWalkTweens();
     this.playIdle();
@@ -634,21 +654,42 @@ export class Persona extends Phaser.GameObjects.Container {
     }
   }
 
+  private getPaceMotionConfig(): {
+    stridePx: number;
+    animFps: number;
+    maxTimeScale: number;
+  } {
+    if (this.movementPace === "jog") {
+      return {
+        stridePx: Persona.JOG_STRIDE_PX,
+        animFps: Persona.JOG_ANIM_FPS,
+        maxTimeScale: Persona.JOG_MAX_TIME_SCALE,
+      };
+    }
+    return {
+      stridePx: Persona.WALK_STRIDE_PX,
+      animFps: Persona.WALK_ANIM_FPS,
+      maxTimeScale: Persona.WALK_MAX_TIME_SCALE,
+    };
+  }
+
   private getWalkCycleDurationMs(duration: number, distance: number): number {
+    const { stridePx, animFps, maxTimeScale } = this.getPaceMotionConfig();
     const speedPxPerSec = distance / (duration / 1000);
     const baseCycleSpeed =
-      Persona.WALK_STRIDE_PX / (Persona.WALK_ANIM_FRAMES / Persona.WALK_ANIM_FPS);
-    const timeScale = Phaser.Math.Clamp(speedPxPerSec / baseCycleSpeed, 1.0, 3.5);
-    return (Persona.WALK_ANIM_FRAMES / Persona.WALK_ANIM_FPS) * 1000 / timeScale;
+      stridePx / (Persona.WALK_ANIM_FRAMES / animFps);
+    const timeScale = Phaser.Math.Clamp(speedPxPerSec / baseCycleSpeed, 1.0, maxTimeScale);
+    return (Persona.WALK_ANIM_FRAMES / animFps) * 1000 / timeScale;
   }
 
   private syncWalkAnimationSpeed(distancePx: number, durationMs: number): void {
     if (!this.sprite?.anims) return;
 
+    const { stridePx, animFps, maxTimeScale } = this.getPaceMotionConfig();
     const speedPxPerSec = distancePx / (durationMs / 1000);
     const baseCycleSpeed =
-      Persona.WALK_STRIDE_PX / (Persona.WALK_ANIM_FRAMES / Persona.WALK_ANIM_FPS);
-    const timeScale = Phaser.Math.Clamp(speedPxPerSec / baseCycleSpeed, 1.0, 3.5);
+      stridePx / (Persona.WALK_ANIM_FRAMES / animFps);
+    const timeScale = Phaser.Math.Clamp(speedPxPerSec / baseCycleSpeed, 1.0, maxTimeScale);
 
     if (this.sprite.anims.isPlaying) {
       this.sprite.anims.timeScale = timeScale;
@@ -656,20 +697,23 @@ export class Persona extends Phaser.GameObjects.Container {
   }
 
   private updateWalkVisuals(distanceTraveled: number): void {
-    const phase = (distanceTraveled / Persona.WALK_STRIDE_PX) * Math.PI * 2;
+    const { stridePx } = this.getPaceMotionConfig();
+    const isJog = this.movementPace === "jog";
+    const phase = (distanceTraveled / stridePx) * Math.PI * 2;
 
     if (this.sprite) {
-      // Stronger vertical bob for a confident, weighty stride
-      this.sprite.y = Math.abs(Math.sin(phase)) * -5.0;
-      // Slight lateral lean into each step
-      this.sprite.setAngle(Math.sin(phase) * 2.5);
+      const bobY = isJog ? 8.5 : 5.0;
+      const lean = isJog ? 4.2 : 2.5;
+      this.sprite.y = Math.abs(Math.sin(phase)) * -bobY;
+      this.sprite.setAngle(Math.sin(phase) * lean);
     }
 
-    // Shadow pulses tighter when foot is lifted, wider when planted
     const liftPhase = Math.abs(Math.sin(phase));
+    const shadowWide = isJog ? 1.12 : 1.05;
+    const shadowNarrow = isJog ? 0.62 : 0.7;
     this.shadowEllipse.setScale(
-      Phaser.Math.Linear(1.05, 0.7, liftPhase),
-      Phaser.Math.Linear(1.0, 0.6, liftPhase),
+      Phaser.Math.Linear(shadowWide, shadowNarrow, liftPhase),
+      Phaser.Math.Linear(isJog ? 1.05 : 1.0, isJog ? 0.52 : 0.6, liftPhase),
     );
   }
 

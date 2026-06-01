@@ -1542,9 +1542,9 @@ export class AssetLoader {
   static createPersonaAnimations(scene: Phaser.Scene): void {
     const anims = [
       { key: 'persona_male_idle', sheet: 'persona_male_idle_sheet', frames: 4, fps: 6 },
-      { key: 'persona_male_walk', sheet: 'persona_male_walk_sheet', frames: 8, fps: 16 },
+      { key: 'persona_male_walk', sheet: 'persona_male_walk_sheet', frames: 8, fps: 22 },
       { key: 'persona_female_idle', sheet: 'persona_female_idle_sheet', frames: 4, fps: 6 },
-      { key: 'persona_female_walk', sheet: 'persona_female_walk_sheet', frames: 8, fps: 16 },
+      { key: 'persona_female_walk', sheet: 'persona_female_walk_sheet', frames: 8, fps: 22 },
     ];
     for (const anim of anims) {
       if (scene.anims.exists(anim.key) || !scene.textures.exists(anim.sheet)) continue;

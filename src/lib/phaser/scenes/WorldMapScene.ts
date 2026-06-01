@@ -7739,10 +7739,11 @@ export class WorldMapScene extends Phaser.Scene {
       nextCheckpointId,
     );
 
-    const destination = route[route.length - 1] ?? pos;
+    const pathDistance = this.getPersonaPathDistance(route);
     this.persona.moveAlongPath(
       route,
-      this.getPersonaMoveDuration(destination.x, destination.y),
+      this.getPersonaJogDuration(pathDistance),
+      "jog",
     );
 
     // Stage-transition weather burst
@@ -7968,18 +7969,31 @@ export class WorldMapScene extends Phaser.Scene {
     return { x, y };
   }
 
-  private getPersonaMoveDuration(targetX: number, targetY: number): number {
-    if (!this.persona || !this.persona.scene) return 2000;
+  /** Total path length for multi-checkpoint jog routes. */
+  private getPersonaPathDistance(route: { x: number; y: number }[]): number {
+    if (!this.persona || route.length === 0) return 0;
 
-    const distance = Phaser.Math.Distance.Between(
-      this.persona.x,
-      this.persona.y,
-      targetX,
-      targetY,
-    );
+    let total = 0;
+    let x = this.persona.x;
+    let y = this.persona.y;
 
-    // Brisk walking pace synced to the 16-frame walk cycle (~250 px/sec).
-    return Phaser.Math.Clamp(distance * 4.0, 800, 3500);
+    for (const point of route) {
+      const segment = Phaser.Math.Distance.Between(x, y, point.x, point.y);
+      if (segment > Persona.ARRIVAL_EPSILON) total += segment;
+      x = point.x;
+      y = point.y;
+    }
+
+    return total;
+  }
+
+  /** Jog pace between checkpoints (~400 px/s), synced to walk-cycle animation. */
+  private getPersonaJogDuration(pathDistancePx: number): number {
+    if (pathDistancePx <= 3) return 400;
+
+    const JOG_SPEED_PX_PER_SEC = 400;
+    const ms = (pathDistancePx / JOG_SPEED_PX_PER_SEC) * 1000;
+    return Phaser.Math.Clamp(ms, 450, 3200);
   }
 
   /**
