@@ -222,11 +222,6 @@ const PodiumCard: React.FC<{ user: LeaderboardUser; rank: 1 | 2 | 3 }> = ({ user
         #{rank}
       </div>
 
-      {/* Crown for 1st place */}
-      {isFirst && (
-        <Trophy className="absolute top-3 right-3 w-5 h-5 text-yellow-500" aria-hidden="true" />
-      )}
-
       <Link
         href={`/profile/${encodeURIComponent(user.username)}`}
         className="w-full flex flex-col items-center"
@@ -266,7 +261,7 @@ const PodiumCard: React.FC<{ user: LeaderboardUser; rank: 1 | 2 | 3 }> = ({ user
             {user.points}
           </span>
           <span className={`text-muted-foreground font-medium uppercase tracking-wider ${isFirst ? "text-xs" : "text-[10px]"}`}>
-            Points
+            XP
           </span>
         </div>
       </Link>
