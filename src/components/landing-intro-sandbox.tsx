@@ -129,29 +129,22 @@ export default function LandingIntroSandbox({
     let done = false;
 
     const play = (audioCtx: AudioContext) => {
+      // Master gain — simple fixed value, no automation (iOS Safari has
+      // known bugs with exponentialRampToValueAtTime on future-scheduled nodes)
       const masterGain = audioCtx.createGain();
-      const t0 = audioCtx.currentTime + 0.05;
-      const tEnd = t0 + TOTAL_RUNTIME_MS / 1000;
-      masterGain.gain.setValueAtTime(0.022, t0);
-      masterGain.gain.setValueAtTime(0.022, tEnd - 1.5);
-      masterGain.gain.linearRampToValueAtTime(0.001, tEnd - 0.1);
+      masterGain.gain.value = 0.07;
       masterGain.connect(audioCtx.destination);
 
-      let t = t0;
+      // Start notes 0.5s from now so the clock is definitely ticking by then
+      let t = audioCtx.currentTime + 0.5;
       for (const { f, d } of notes) {
-        if (f > 0 && t < tEnd) {
+        if (f > 0) {
           const osc = audioCtx.createOscillator();
-          const g = audioCtx.createGain();
           osc.type = "square";
-          osc.frequency.setValueAtTime(f, t);
-          const atk = Math.min(0.025, d * 0.12);
-          g.gain.setValueAtTime(0, t);
-          g.gain.linearRampToValueAtTime(0.75, t + atk);
-          g.gain.exponentialRampToValueAtTime(0.001, t + Math.max(d - 0.03, d * 0.88));
-          osc.connect(g);
-          g.connect(masterGain);
+          osc.frequency.value = f;
+          osc.connect(masterGain);
           osc.start(t);
-          osc.stop(t + d);
+          osc.stop(t + d * 0.88); // small gap between notes
         }
         t += d;
       }
@@ -160,26 +153,17 @@ export default function LandingIntroSandbox({
     const unlock = () => {
       if (done) return;
       done = true;
-
       try {
         ctx = new AC();
-
-        // iOS requires a silent buffer played synchronously inside the gesture
-        // to unfreeze currentTime. We then wait 50ms (via setTimeout) before
-        // scheduling real notes — by then the clock is reliably ticking.
-        const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+        // Play a silent buffer synchronously — this is the iOS clock-start trick
+        const buf = ctx.createBuffer(1, 1, 22050);
         const src = ctx.createBufferSource();
         src.buffer = buf;
         src.connect(ctx.destination);
         src.start(0);
-
-        // resume() in case context started suspended (Chrome autoplay policy)
-        ctx.resume().catch(() => undefined);
-
-        setTimeout(() => {
-          if (ctx && ctx.state !== "closed") play(ctx);
-        }, 50);
-      } catch { /* not available */ }
+        // Schedule music immediately; 0.5s head-start in play() covers any lag
+        play(ctx);
+      } catch { /* AudioContext unavailable */ }
     };
 
     // Attach native listeners directly to the overlay DOM element.
