@@ -122,24 +122,27 @@ export default function LandingIntroSandbox({
       (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtor) return;
 
-    let context: AudioContext | null = null;
+    // Pre-create context on mount. On desktop, navigating to the page counts
+    // as a user gesture so the context starts in "running" state immediately.
+    let ctx: AudioContext;
+    try { ctx = new AudioCtor(); } catch { return; }
+
     let started = false;
     let stopped = false;
 
     const scheduleNotes = () => {
-      if (!context) return;
-      const masterGain = context.createGain();
-      const t0 = context.currentTime + 0.1;
+      const masterGain = ctx.createGain();
+      const t0 = ctx.currentTime + 0.1;
       const tEnd = t0 + TOTAL_RUNTIME_MS / 1000;
       masterGain.gain.setValueAtTime(0.035, t0);
       masterGain.gain.setValueAtTime(0.035, tEnd - 1.5);
       masterGain.gain.linearRampToValueAtTime(0.001, tEnd - 0.1);
-      masterGain.connect(context.destination);
+      masterGain.connect(ctx.destination);
       let t = t0;
       for (const { f, d } of notes) {
         if (f > 0 && t < tEnd) {
-          const osc = context.createOscillator();
-          const g = context.createGain();
+          const osc = ctx.createOscillator();
+          const g = ctx.createGain();
           osc.type = "square";
           osc.frequency.setValueAtTime(f, t);
           g.gain.setValueAtTime(0, t);
@@ -154,24 +157,27 @@ export default function LandingIntroSandbox({
       }
     };
 
-    const startAudio = async () => {
+    // Synchronous start — no async/await so the gesture context is preserved.
+    const startAudio = () => {
       if (started || stopped) return;
-      context ??= new AudioCtor();
-      await context.resume().catch(() => undefined);
-      if (context.state !== "running") return;
       started = true;
-      scheduleNotes();
+      ctx.resume().then(scheduleNotes).catch(() => undefined);
     };
 
-    startAudio();
-    window.addEventListener("pointerdown", startAudio, { once: true });
-    window.addEventListener("keydown", startAudio, { once: true });
+    // If already running (desktop after page navigation) play immediately.
+    // Otherwise wait for the first user interaction.
+    if (ctx.state === "running") {
+      startAudio();
+    } else {
+      window.addEventListener("pointerdown", startAudio, { once: true });
+      window.addEventListener("keydown", startAudio, { once: true });
+    }
 
     return () => {
       stopped = true;
       window.removeEventListener("pointerdown", startAudio);
       window.removeEventListener("keydown", startAudio);
-      context?.close().catch(() => undefined);
+      ctx.close().catch(() => undefined);
     };
   }, []);
 
