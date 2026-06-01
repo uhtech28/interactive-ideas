@@ -125,6 +125,23 @@ export default function LandingIntroSandbox({
     let ctx: AudioContext | null = null;
     let done = false;
 
+    const tryAutoplay = async () => {
+      if (done) return;
+      try {
+        ctx = new AC();
+        await ctx.resume();
+        if (ctx.state === "running") {
+          done = true;
+          play(ctx);
+          return;
+        }
+      } catch { /* autoplay blocked */ }
+      // Autoplay blocked — register gesture listeners as fallback
+      window.addEventListener("touchstart", unlock, { once: true, passive: true });
+      window.addEventListener("pointerdown", unlock, { once: true });
+      window.addEventListener("keydown",     unlock, { once: true });
+    };
+
     const play = (audioCtx: AudioContext) => {
       const masterGain = audioCtx.createGain();
       const t0 = audioCtx.currentTime + 0.05;
@@ -159,29 +176,23 @@ export default function LandingIntroSandbox({
       done = true;
 
       try {
-        ctx = new AC();
-
-        // iOS requires a silent buffer played synchronously inside the gesture
-        // to unfreeze currentTime. We then wait 50ms (via setTimeout) before
-        // scheduling real notes — by then the clock is reliably ticking.
-        const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
-        const src = ctx.createBufferSource();
-        src.buffer = buf;
-        src.connect(ctx.destination);
-        src.start(0);
-
-        // resume() in case context started suspended (Chrome autoplay policy)
-        ctx.resume().catch(() => undefined);
-
-        setTimeout(() => {
-          if (ctx && ctx.state !== "closed") play(ctx);
-        }, 50);
+        // Reuse suspended ctx from autoplay attempt, or create fresh one
+        const resume = ctx ? ctx.resume() : Promise.resolve().then(() => { ctx = new AC(); return ctx.resume(); });
+        resume.then(() => {
+          if (ctx && ctx.state !== "closed") {
+            // Play silent buffer synchronously to unfreeze iOS currentTime
+            const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+            const src = ctx.createBufferSource();
+            src.buffer = buf;
+            src.connect(ctx.destination);
+            src.start(0);
+            setTimeout(() => { if (ctx && ctx.state !== "closed") play(ctx); }, 50);
+          }
+        }).catch(() => undefined);
       } catch { /* not available */ }
     };
 
-    window.addEventListener("touchstart", unlock, { once: true, passive: true });
-    window.addEventListener("pointerdown", unlock, { once: true });
-    window.addEventListener("keydown",     unlock, { once: true });
+    tryAutoplay();
 
     return () => {
       done = true;
