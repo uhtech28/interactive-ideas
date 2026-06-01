@@ -1221,7 +1221,12 @@ export class WorldMapScene extends Phaser.Scene {
     const minX = (stageId - 1) * this.BIOME_WIDTH;
     const maxX = stageId * this.BIOME_WIDTH;
     const scan = (obj: Phaser.GameObjects.GameObject) => {
-      if (obj.x < minX || obj.x > maxX) return;
+      const x =
+        obj instanceof Phaser.GameObjects.Sprite ||
+        obj instanceof Phaser.GameObjects.Image
+          ? obj.x
+          : null;
+      if (x === null || x < minX || x > maxX) return;
       if (this.isTreeGameObject(obj)) {
         this.registerTreeForCorruptionBlur(stageId, obj);
       }

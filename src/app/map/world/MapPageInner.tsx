@@ -42,10 +42,9 @@ import { getTemplate, type TemplateId } from "@/config/templates";
 import { getVentureBadgeEmoji } from "@/components/badges/BadgeCard";
 import {
   checkpointBossKey,
-  hydrateBossDefeatedFromCheckpoints,
+  isActiveVentureCheckpoint,
   isLastCheckpointInStage,
-  loadCheckpointBossDefeatedFromStorage,
-  mergeBossDefeatedSets,
+  mergeBossDefeatedState,
   needsCheckpointBossCombat,
   persistCheckpointBossDefeated,
 } from "@/lib/venture/stageBossGate";
@@ -1560,21 +1559,6 @@ function MapPageInner() {
     [worldMapData?.checkpoints],
   );
 
-  useEffect(() => {
-    if (!checkpoints.length) return;
-    const fromCheckpoints = hydrateBossDefeatedFromCheckpoints(checkpoints);
-    setBossDefeatedAtCheckpoint((prev) =>
-      mergeBossDefeatedSets(prev, fromCheckpoints),
-    );
-  }, [checkpoints]);
-
-  useEffect(() => {
-    if (!venture?._id) return;
-    const fromStorage = loadCheckpointBossDefeatedFromStorage(venture._id);
-    if (fromStorage.size === 0) return;
-    setBossDefeatedAtCheckpoint((prev) => mergeBossDefeatedSets(prev, fromStorage));
-  }, [venture?._id]);
-
   const brightness = worldMapData?.brightness;
   const ideaTitle = worldMapData?.ideaTitle ?? "Your Venture";
   const superBoss = worldMapData?.superBoss ?? null;
@@ -1589,6 +1573,20 @@ function MapPageInner() {
 
   const activeStage = venture?.currentStage ?? 1;
   const activeCP = venture?.currentCheckpoint ?? 1;
+
+  useEffect(() => {
+    if (!checkpoints.length) return;
+    setBossDefeatedAtCheckpoint((prev) =>
+      mergeBossDefeatedState(
+        checkpoints,
+        activeStage,
+        activeCP,
+        venture?._id,
+        prev,
+      ),
+    );
+  }, [venture?._id, activeStage, activeCP, checkpoints]);
+
   const corruptionLevel = venture?.corruptionLevel ?? 0;
   const corruptionPhase = useMemo(() => {
     if (corruptionLevel >= 90) return "critical" as const;
@@ -2733,9 +2731,22 @@ function MapPageInner() {
       ).length;
       if (doneTasks < 2 && !skipDoneTasksCheck) return;
 
+      const mapStage = venture.currentStage ?? 1;
+      const mapCheckpoint = venture.currentCheckpoint ?? 1;
+
+      if (!isActiveVentureCheckpoint(cp, mapStage, mapCheckpoint)) {
+        return;
+      }
+
       if (
         !forceBypass &&
-        needsCheckpointBossCombat(cp, doneTasks, bossDefeatedAtCheckpoint)
+        needsCheckpointBossCombat(
+          cp,
+          doneTasks,
+          bossDefeatedAtCheckpoint,
+          mapStage,
+          mapCheckpoint,
+        )
       ) {
         const isLastCp = isLastCheckpointInStage(
           checkpoints,

@@ -55,6 +55,18 @@ export function getTreeBlurStrength(
 
 type BlurFx = Phaser.FX.Blur;
 
+type TransformObject = Phaser.GameObjects.GameObject & {
+  x: number;
+  y: number;
+};
+
+function getTransform(obj: Phaser.GameObjects.GameObject): TransformObject | null {
+  if ("x" in obj && "y" in obj && typeof obj.x === "number") {
+    return obj as TransformObject;
+  }
+  return null;
+}
+
 export class StageEnvironmentBlur {
   private readonly targets = new Map<
     number,
@@ -93,11 +105,13 @@ export class StageEnvironmentBlur {
 
     for (const obj of set) {
       if (!obj.active) continue;
+      const pos = getTransform(obj);
+      if (!pos) continue;
 
       const strength = getTreeBlurStrength(
         corruptionLevel,
-        obj.x,
-        obj.y,
+        pos.x,
+        pos.y,
         stageCps,
       );
       this.applyBlur(obj, strength);
