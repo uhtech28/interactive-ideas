@@ -546,9 +546,9 @@ function CheckpointPanel({
             <X className="w-4 h-4" />
           </button>
 
-          <div className="flex flex-col gap-3.5 p-4 sm:p-5 pt-14 sm:pt-16 flex-1 overflow-y-auto no-scrollbar">
+          <div className="flex flex-col gap-3.5 p-4 sm:p-5 pt-5 sm:pt-6 flex-1 overflow-y-auto no-scrollbar">
             {/* Checkpoint Title at the top */}
-            <div>
+            <div className="pr-10">
               <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight leading-tight text-white mb-1.5 sm:mb-2 md:mb-3">
                 {detail.title}
               </h2>
@@ -816,17 +816,10 @@ function TaskCard({
           </p>
         )}
         {evaluationSummary?.evaluation && (
-          <div className="mt-1.5 sm:mt-2 space-y-0.5 sm:space-y-1">
-            <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-300">
-              {evaluationSummary.evaluation.qualityTier} ·{" "}
-              {evaluationSummary.evaluation.totalScore}/12
-            </p>
-            {evaluationSummary.evaluation.feedback && (
-              <p className="text-[10px] sm:text-[11px] leading-relaxed text-slate-400">
-                {evaluationSummary.evaluation.feedback}
-              </p>
-            )}
-          </div>
+          <p className="mt-1.5 sm:mt-2 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-300">
+            {evaluationSummary.evaluation.qualityTier} ·{" "}
+            {evaluationSummary.evaluation.totalScore}/12
+          </p>
         )}
       </div>
     </motion.div>
