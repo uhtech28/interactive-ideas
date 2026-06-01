@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Check, Crown, Flame, Gem, Hammer, Pickaxe, Ship, Swords, Trees } from "lucide-react";
 
 const TOTAL_RUNTIME_MS = 24950;
@@ -84,6 +84,13 @@ export default function LandingIntroSandbox({
     const id = window.setTimeout(() => onComplete?.(), 900);
     return () => window.clearTimeout(id);
   }, [onComplete, stage]);
+
+  // Stable ref so the overlay's onTouchStart can call unlock without stale closures
+  const unlockRef = useRef<(() => void) | null>(null);
+
+  const handleOverlayTouch = useCallback(() => {
+    unlockRef.current?.();
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -179,12 +186,19 @@ export default function LandingIntroSandbox({
       } catch { /* not available */ }
     };
 
+    // Primary trigger: the overlay's onTouchStart calls this directly via ref.
+    // This fires synchronously inside the iOS gesture — the most reliable path.
+    unlockRef.current = unlock;
+
+    // Backup: window listeners for desktop (pointerdown/keydown) and
+    // any iOS edge-cases where the overlay touch doesn't reach the ref.
     window.addEventListener("touchstart", unlock, { once: true, passive: true });
     window.addEventListener("pointerdown", unlock, { once: true });
     window.addEventListener("keydown",     unlock, { once: true });
 
     return () => {
       done = true;
+      unlockRef.current = null;
       window.removeEventListener("touchstart", unlock);
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown",     unlock);
@@ -202,10 +216,8 @@ export default function LandingIntroSandbox({
       role="dialog"
       aria-label={ariaLabel}
       className="fixed inset-0 z-[9999] overflow-hidden bg-[#070A0F] text-white"
-      style={{
-        opacity: closing ? 0 : 1,
-        transition: "opacity 700ms ease",
-      }}
+      style={{ opacity: closing ? 0 : 1, transition: "opacity 700ms ease" }}
+      onTouchStart={handleOverlayTouch}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(247,214,109,0.12),transparent_26%),radial-gradient(circle_at_74%_78%,rgba(124,58,237,0.15),transparent_34%),linear-gradient(180deg,#070A0F_0%,#0A0D12_58%,#05070B_100%)]" />
       <PixelField />
