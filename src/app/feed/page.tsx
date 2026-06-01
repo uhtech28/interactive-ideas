@@ -94,13 +94,11 @@ export default function FeedPage() {
           {/* Header */}
           <header className="flex items-center gap-3 border-b border-white/8 bg-gradient-to-b from-[#141B2D] to-[#0F1524] px-5 py-4">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#6366F1]/25 to-[#8B5CF6]/15 ring-1 ring-[#6366F1]/30">
-              <MessageCircle className="h-4.5 w-4.5 text-[#C7D2FE]" />
+              <MessageCircle className="h-5 w-5 text-[#C7D2FE]" />
             </div>
-            <div className="min-w-0 flex-1">
-              <DialogTitle className="truncate text-base font-semibold leading-tight text-white">
-                {activeCommentIdea?.title}
-              </DialogTitle>
-            </div>
+            <DialogTitle className="min-w-0 flex-1 truncate text-base font-semibold leading-tight text-white">
+              {activeCommentIdea?.title}
+            </DialogTitle>
           </header>
 
           {/* Body — min-h-0 lets it shrink when keyboard appears */}
