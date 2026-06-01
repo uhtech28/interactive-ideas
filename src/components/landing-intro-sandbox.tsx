@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Check, Crown, Flame, Gem, Hammer, Pickaxe, Ship, Swords, Trees } from "lucide-react";
 
 const TOTAL_RUNTIME_MS = 24950;
@@ -85,12 +85,8 @@ export default function LandingIntroSandbox({
     return () => window.clearTimeout(id);
   }, [onComplete, stage]);
 
-  // Stable ref so the overlay's onTouchStart can call unlock without stale closures
-  const unlockRef = useRef<(() => void) | null>(null);
-
-  const handleOverlayTouch = useCallback(() => {
-    unlockRef.current?.();
-  }, []);
+  // Ref attached to the overlay div so we can add native listeners directly
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -186,20 +182,27 @@ export default function LandingIntroSandbox({
       } catch { /* not available */ }
     };
 
-    // Primary trigger: the overlay's onTouchStart calls this directly via ref.
-    // This fires synchronously inside the iOS gesture — the most reliable path.
-    unlockRef.current = unlock;
-
-    // Backup: window listeners for desktop (pointerdown/keydown) and
-    // any iOS edge-cases where the overlay touch doesn't reach the ref.
-    window.addEventListener("touchstart", unlock, { once: true, passive: true });
+    // Attach native listeners directly to the overlay DOM element.
+    // React synthetic events go through a delegated root listener which iOS
+    // may not treat as a valid AudioContext gesture. Native listeners on the
+    // actual target element are unambiguously within the gesture context.
+    // We listen for both touchend (finger-up) and touchstart (finger-down)
+    // so whichever fires first wins; the `done` flag prevents double-running.
+    const el = overlayRef.current;
+    if (el) {
+      el.addEventListener("touchend",   unlock, { once: true });
+      el.addEventListener("touchstart", unlock, { once: true, passive: true });
+    }
+    // Desktop fallback
     window.addEventListener("pointerdown", unlock, { once: true });
     window.addEventListener("keydown",     unlock, { once: true });
 
     return () => {
       done = true;
-      unlockRef.current = null;
-      window.removeEventListener("touchstart", unlock);
+      if (el) {
+        el.removeEventListener("touchend",   unlock);
+        el.removeEventListener("touchstart", unlock);
+      }
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown",     unlock);
       ctx?.close().catch(() => undefined);
@@ -213,11 +216,11 @@ export default function LandingIntroSandbox({
 
   return (
     <div
+      ref={overlayRef}
       role="dialog"
       aria-label={ariaLabel}
       className="fixed inset-0 z-[9999] overflow-hidden bg-[#070A0F] text-white"
       style={{ opacity: closing ? 0 : 1, transition: "opacity 700ms ease" }}
-      onTouchStart={handleOverlayTouch}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(247,214,109,0.12),transparent_26%),radial-gradient(circle_at_74%_78%,rgba(124,58,237,0.15),transparent_34%),linear-gradient(180deg,#070A0F_0%,#0A0D12_58%,#05070B_100%)]" />
       <PixelField />
