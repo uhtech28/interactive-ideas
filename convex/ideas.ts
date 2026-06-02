@@ -263,59 +263,73 @@ export const getPublicIdeas = query({
   handler: async (ctx, args) => {
     const limit = args.limit || 20;
 
-    // 1. Get Top 5 Leaderboard Users
+    // 1. Identify agent user IDs so we can separate pools
+    const agentUsers = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "agent"))
+      .collect();
+    const agentIdSet = new Set(agentUsers.map((u) => u._id));
+
+    // 2. Get Top 5 Leaderboard Users (non-agents only)
     const topWallets = await ctx.db
       .query("wallets")
       .withIndex("by_balance")
       .order("desc")
       .take(5);
 
-    const topUserIds = new Set(topWallets.map(w => w.userId));
+    const topUserIds = new Set(
+      topWallets.map((w) => w.userId).filter((id) => !agentIdSet.has(id))
+    );
 
-    // 2. Get recent public ideas (General Feed)
-    const generalIdeas = await ctx.db
+    // 3. Fetch a broad pool of recent public root ideas
+    const recentIdeas = await ctx.db
       .query("ideas")
       .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
       .filter((q) => q.neq(q.field("isDeleted"), true))
       .filter((q) => q.or(q.eq(q.field("parentId"), undefined), q.eq(q.field("parentId"), null)))
       .order("desc")
-      .take(limit);
+      .take(limit * 3); // fetch 3× to ensure a mix of human + agent posts
 
-    // 3. Get recent ideas from Top Users (Leader Boost)
-    // We explicitly fetch their recent posts to ensure they appear
-    const leaderIdeasPromises = Array.from(topUserIds).map(userId =>
-      ctx.db.query("ideas")
-        .withIndex("by_author_visibility", (q) => q.eq("authorId", userId).eq("visibility", "public"))
+    // 4. Also explicitly pull recent ideas from top leaderboard users so they aren't buried
+    const leaderIdeasPromises = Array.from(topUserIds).map((userId) =>
+      ctx.db
+        .query("ideas")
+        .withIndex("by_author_visibility", (q) =>
+          q.eq("authorId", userId).eq("visibility", "public")
+        )
         .filter((q) => q.neq(q.field("isDeleted"), true))
-        .filter((q) => q.or(q.eq(q.field("parentId"), undefined), q.eq(q.field("parentId"), null)))
+        .filter((q) =>
+          q.or(q.eq(q.field("parentId"), undefined), q.eq(q.field("parentId"), null))
+        )
         .order("desc")
-        .take(3) // Take top 3 from each leader
+        .take(3)
     );
+    const leaderIdeas = (await Promise.all(leaderIdeasPromises)).flat();
 
-    const leaderIdeasArrays = await Promise.all(leaderIdeasPromises);
-    const leaderIdeas = leaderIdeasArrays.flat();
-
-    // 4. Merge and Deduplicate
-    const allIdeas = [...leaderIdeas, ...generalIdeas];
-    const uniqueIdeasMap = new Map();
-    allIdeas.forEach(idea => {
-      uniqueIdeasMap.set(idea._id, idea);
-    });
-
-    const uniqueIdeas = Array.from(uniqueIdeasMap.values());
-
-    // 5. Sort with Boost
-    // Boost score: +1 day equivalent (86400000 ms) if author is top leader, effectively pinning them higher vs same-day posts
+    // 5. Merge, deduplicate, apply leader boost, sort
     const BOOST_AMOUNT = 86400000;
-
-    uniqueIdeas.sort((a, b) => {
+    const uniqueMap = new Map<string, (typeof recentIdeas)[number]>();
+    [...leaderIdeas, ...recentIdeas].forEach((i) => uniqueMap.set(String(i._id), i));
+    const uniqueIdeas = Array.from(uniqueMap.values()).sort((a, b) => {
       const scoreA = topUserIds.has(a.authorId) ? a.createdAt + BOOST_AMOUNT : a.createdAt;
       const scoreB = topUserIds.has(b.authorId) ? b.createdAt + BOOST_AMOUNT : b.createdAt;
       return scoreB - scoreA;
     });
 
-    // 6. Limit
-    const finalIdeas = uniqueIdeas.slice(0, limit);
+    // 6. Split into human vs agent pools, each sorted by score, then interleave:
+    //    first 3 human → (2 agent, 2 human) groups → remaining agents
+    const humanIdeas = uniqueIdeas.filter((i) => !agentIdSet.has(i.authorId));
+    const agentIdeas = uniqueIdeas.filter((i) => agentIdSet.has(i.authorId));
+
+    const interleaved: typeof uniqueIdeas = [];
+    let hi = 0, ai = 0;
+    while (hi < 3 && hi < humanIdeas.length) interleaved.push(humanIdeas[hi++]);
+    while (hi < humanIdeas.length || ai < agentIdeas.length) {
+      for (let n = 0; n < 2 && ai < agentIdeas.length; n++) interleaved.push(agentIdeas[ai++]);
+      for (let n = 0; n < 2 && hi < humanIdeas.length; n++) interleaved.push(humanIdeas[hi++]);
+    }
+
+    const finalIdeas = interleaved.slice(0, limit);
 
     // Get author information and contribution count for each idea
     const ideasWithAuthors = await Promise.all(
@@ -354,27 +368,7 @@ export const getPublicIdeas = query({
       })
     );
 
-    // Interleave: first 3 human posts, then groups of (2 agent + 2 human) until
-    // human posts run out, then all remaining agent posts.
-    const agentIdSet = new Set(
-      (await ctx.db.query("users").withIndex("by_role", (q) => q.eq("role", "agent")).collect())
-        .map((u) => String(u._id))
-    );
-
-    const humanPosts = ideasWithAuthors.filter((i) => !agentIdSet.has(String(i.authorId)));
-    const agentPosts = ideasWithAuthors.filter((i) => agentIdSet.has(String(i.authorId)));
-
-    const interleaved: typeof ideasWithAuthors = [];
-    let hi = 0, ai = 0;
-
-    while (hi < 3 && hi < humanPosts.length) interleaved.push(humanPosts[hi++]);
-
-    while (hi < humanPosts.length || ai < agentPosts.length) {
-      for (let n = 0; n < 2 && ai < agentPosts.length; n++) interleaved.push(agentPosts[ai++]);
-      for (let n = 0; n < 2 && hi < humanPosts.length; n++) interleaved.push(humanPosts[hi++]);
-    }
-
-    return interleaved;
+    return ideasWithAuthors;
   },
 });
 
