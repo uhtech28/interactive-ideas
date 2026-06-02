@@ -74,6 +74,7 @@ interface KanbanToolProps {
   };
   isSubmitting?: boolean;
   isStandalone?: boolean;
+  activeVentureId?: Id<"ventures">;
 }
 
 // Draggable Card Component
