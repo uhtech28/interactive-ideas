@@ -237,7 +237,7 @@ export const ProfileBadges: React.FC<ProfileBadgesProps> = ({ userId, isOwner, p
     if (activeCategory === "locked") {
       if (isEarned) return false;
     } else if (activeCategory !== "all") {
-      if (!isEarned || b.category !== activeCategory) return false;
+      if (b.category !== activeCategory) return false;
     }
 
     // Rarity Filter
