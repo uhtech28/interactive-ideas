@@ -19,6 +19,15 @@ interface BadgeDetailModalProps {
   onEquipToggle?: () => void;
 }
 
+const normalizeSparkCopy = (text?: string) =>
+  text
+    ?.replace(/\bupvoted\b/g, "Sparked")
+    .replace(/\bUpvoted\b/g, "Sparked")
+    .replace(/\bupvotes\b/g, "Sparks")
+    .replace(/\bUpvotes\b/g, "Sparks")
+    .replace(/\bupvote\b/g, "Spark")
+    .replace(/\bUpvote\b/g, "Spark");
+
 export const BadgeDetailModal: React.FC<BadgeDetailModalProps> = ({
   badge,
   isOpen,
@@ -34,6 +43,8 @@ export const BadgeDetailModal: React.FC<BadgeDetailModalProps> = ({
   const norm = getNormalizedRarity(badge.rarity);
   const emoji = badge.icon || getVentureBadgeEmoji(badge.id, badge.name);
   const accentColor = badge.secondaryColor || norm.accentColor;
+  const displayDescription = normalizeSparkCopy(badge.description) || badge.description;
+  const displayTagline = normalizeSparkCopy(badge.tagline) || badge.tagline;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -115,7 +126,7 @@ export const BadgeDetailModal: React.FC<BadgeDetailModalProps> = ({
 
           {/* Tagline / Lore */}
           <p className="text-slate-300 text-sm max-w-sm italic mb-4 px-2">
-            "{badge.tagline || badge.description}"
+            "{displayTagline || displayDescription}"
           </p>
 
           {/* Unlocked Date / Earned Stats */}

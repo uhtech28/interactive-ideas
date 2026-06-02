@@ -24,6 +24,15 @@ export interface BadgeItem {
   icon?: string;
 }
 
+const normalizeSparkCopy = (text?: string) =>
+  text
+    ?.replace(/\bupvoted\b/g, "Sparked")
+    .replace(/\bUpvoted\b/g, "Sparked")
+    .replace(/\bupvotes\b/g, "Sparks")
+    .replace(/\bUpvotes\b/g, "Sparks")
+    .replace(/\bupvote\b/g, "Spark")
+    .replace(/\bUpvote\b/g, "Spark");
+
 interface BadgeCardProps {
   badge: BadgeItem;
   state: "locked" | "unlocked" | "equipped";
@@ -226,6 +235,9 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({
   const iconEmoji = badge.icon || getVentureBadgeEmoji(badge.id, badge.name);
   const isHiddenAchievement = badge.category === "hidden" || badge.rarity === "hidden";
   const shouldMaskHiddenDetails = isLocked && isHiddenAchievement;
+  const displayDescription = normalizeSparkCopy(badge.description) || badge.description;
+  const displayTagline = normalizeSparkCopy(badge.tagline) || badge.tagline;
+  const displayRequirement = normalizeSparkCopy(badge.requirement) || badge.requirement;
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isLocked) return;
@@ -440,7 +452,7 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({
             {shouldMaskHiddenDetails ? "???" : isLocked ? "Secret Achievement" : badge.name}
           </h4>
           <p className="text-[11px] text-slate-400 line-clamp-2 px-1 mt-1 leading-relaxed italic font-medium">
-            {shouldMaskHiddenDetails ? "???" : isLocked ? (badge.requirement || "Locked achievement") : `"${badge.tagline || badge.description}"`}
+            {shouldMaskHiddenDetails ? "???" : isLocked ? (displayRequirement || "Locked achievement") : `"${displayTagline || displayDescription}"`}
           </p>
         </div>
 
@@ -479,7 +491,7 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({
               Unlock Requirement
             </span>
             <p className="text-xs font-semibold text-slate-300 leading-relaxed">
-              {shouldMaskHiddenDetails ? "???" : badge.requirement || "Achieve specific milestones to unlock this badge."}
+              {shouldMaskHiddenDetails ? "???" : displayRequirement || "Achieve specific milestones to unlock this badge."}
             </p>
           </div>
         </div>
