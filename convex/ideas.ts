@@ -263,73 +263,87 @@ export const getPublicIdeas = query({
   handler: async (ctx, args) => {
     const limit = args.limit || 20;
 
-    // 1. Identify agent user IDs so we can separate pools
+    // 1. Identify agent vs human users
     const agentUsers = await ctx.db
       .query("users")
       .withIndex("by_role", (q) => q.eq("role", "agent"))
       .collect();
-    const agentIdSet = new Set(agentUsers.map((u) => u._id));
+    const agentIdSet = new Set(agentUsers.map((u) => String(u._id)));
 
-    // 2. Get Top 5 Leaderboard Users (non-agents only)
+    // 2. Top 5 leaderboard users (non-agents only) for the boost
     const topWallets = await ctx.db
       .query("wallets")
       .withIndex("by_balance")
       .order("desc")
       .take(5);
-
     const topUserIds = new Set(
-      topWallets.map((w) => w.userId).filter((id) => !agentIdSet.has(id))
+      topWallets.map((w) => String(w.userId)).filter((id) => !agentIdSet.has(id))
     );
 
-    // 3. Fetch a broad pool of recent public root ideas
-    const recentIdeas = await ctx.db
+    // 3. Fetch recent agent posts
+    const recentAgentIdeas = await ctx.db
       .query("ideas")
       .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
       .filter((q) => q.neq(q.field("isDeleted"), true))
       .filter((q) => q.or(q.eq(q.field("parentId"), undefined), q.eq(q.field("parentId"), null)))
       .order("desc")
-      .take(limit * 3); // fetch 3× to ensure a mix of human + agent posts
+      .take(limit * 4);
 
-    // 4. Also explicitly pull recent ideas from top leaderboard users so they aren't buried
-    const leaderIdeasPromises = Array.from(topUserIds).map((userId) =>
-      ctx.db
-        .query("ideas")
-        .withIndex("by_author_visibility", (q) =>
-          q.eq("authorId", userId).eq("visibility", "public")
-        )
-        .filter((q) => q.neq(q.field("isDeleted"), true))
-        .filter((q) =>
-          q.or(q.eq(q.field("parentId"), undefined), q.eq(q.field("parentId"), null))
-        )
-        .order("desc")
-        .take(3)
+    // 4. Fetch recent ideas from every human user explicitly (guarantees they appear)
+    const humanUsers = await ctx.db.query("users").collect();
+    const humanUserIds = humanUsers
+      .filter((u) => !agentIdSet.has(String(u._id)))
+      .map((u) => u._id);
+
+    const humanIdeasArrays = await Promise.all(
+      humanUserIds.map((userId) =>
+        ctx.db
+          .query("ideas")
+          .withIndex("by_author_visibility", (q) =>
+            q.eq("authorId", userId).eq("visibility", "public")
+          )
+          .filter((q) => q.neq(q.field("isDeleted"), true))
+          .filter((q) =>
+            q.or(q.eq(q.field("parentId"), undefined), q.eq(q.field("parentId"), null))
+          )
+          .order("desc")
+          .take(5)
+      )
     );
-    const leaderIdeas = (await Promise.all(leaderIdeasPromises)).flat();
+    const humanIdeasRaw = humanIdeasArrays.flat();
 
-    // 5. Merge, deduplicate, apply leader boost, sort
+    // 5. Build separate sorted pools
     const BOOST_AMOUNT = 86400000;
-    const uniqueMap = new Map<string, (typeof recentIdeas)[number]>();
-    [...leaderIdeas, ...recentIdeas].forEach((i) => uniqueMap.set(String(i._id), i));
-    const uniqueIdeas = Array.from(uniqueMap.values()).sort((a, b) => {
-      const scoreA = topUserIds.has(a.authorId) ? a.createdAt + BOOST_AMOUNT : a.createdAt;
-      const scoreB = topUserIds.has(b.authorId) ? b.createdAt + BOOST_AMOUNT : b.createdAt;
-      return scoreB - scoreA;
-    });
 
-    // 6. Split into human vs agent pools, each sorted by score, then interleave:
-    //    first 3 human → (2 agent, 2 human) groups → remaining agents
-    const humanIdeas = uniqueIdeas.filter((i) => !agentIdSet.has(i.authorId));
-    const agentIdeas = uniqueIdeas.filter((i) => agentIdSet.has(i.authorId));
+    const score = (idea: { authorId: any; createdAt: number }) =>
+      topUserIds.has(String(idea.authorId))
+        ? idea.createdAt + BOOST_AMOUNT
+        : idea.createdAt;
 
-    const interleaved: typeof uniqueIdeas = [];
+    const humanPool = humanIdeasRaw.sort((a, b) => score(b) - score(a));
+    const agentPool = recentAgentIdeas
+      .filter((i) => agentIdSet.has(String(i.authorId)))
+      .sort((a, b) => score(b) - score(a));
+
+    // 6. Interleave: first 3 human → (2 agent, 2 human) groups → remaining agents
+    const interleaved: typeof humanPool = [];
     let hi = 0, ai = 0;
-    while (hi < 3 && hi < humanIdeas.length) interleaved.push(humanIdeas[hi++]);
-    while (hi < humanIdeas.length || ai < agentIdeas.length) {
-      for (let n = 0; n < 2 && ai < agentIdeas.length; n++) interleaved.push(agentIdeas[ai++]);
-      for (let n = 0; n < 2 && hi < humanIdeas.length; n++) interleaved.push(humanIdeas[hi++]);
+    while (hi < 3 && hi < humanPool.length) interleaved.push(humanPool[hi++]);
+    while (hi < humanPool.length || ai < agentPool.length) {
+      for (let n = 0; n < 2 && ai < agentPool.length; n++) interleaved.push(agentPool[ai++]);
+      for (let n = 0; n < 2 && hi < humanPool.length; n++) interleaved.push(humanPool[hi++]);
     }
 
-    const finalIdeas = interleaved.slice(0, limit);
+    // Deduplicate (human and agent pools are disjoint, but leader ideas could overlap)
+    const seen = new Set<string>();
+    const finalIdeas = interleaved
+      .filter((i) => {
+        const key = String(i._id);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, limit);
 
     // Get author information and contribution count for each idea
     const ideasWithAuthors = await Promise.all(
