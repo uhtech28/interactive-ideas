@@ -60,7 +60,8 @@ jobs:
             # Load bun and npm globals — non-interactive SSH skips .bashrc/.profile
             export PATH="$HOME/.bun/bin:$HOME/.local/share/pnpm:$HOME/.npm-global/bin:/usr/local/bin:$PATH"
             cd /var/www/interactiveideas
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             bun install --frozen-lockfile
             rm -rf .next
             bun run build
