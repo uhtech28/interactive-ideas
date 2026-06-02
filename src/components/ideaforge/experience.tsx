@@ -158,6 +158,12 @@ export function IdeaForgeExperience({
   const filteredFeedIdeas = useMemo(() => {
     const searchable = ideas.filter((idea) => matchesSearch(idea, searchQuery));
 
+    // "For You" — backend already returns ideas in the correct interleaved order
+    // (human posts first, then mixed). Preserve that order; only filter by search.
+    if (feedTab === "for-you") {
+      return searchable;
+    }
+
     if (feedTab === "latest") {
       return [...searchable].sort((a, b) => b.createdAt - a.createdAt);
     }
