@@ -531,7 +531,7 @@ function CheckpointPanel({
 
   const totalTasks = detail.tasks.length;
   const doneTasks = detail.tasks.filter((t) => t.done).length;
-  const canAdvance = doneTasks >= 2 && isCurrentMapCheckpoint;
+  const canAdvance = doneTasks >= 2;
   const isGold = doneTasks >= totalTasks && totalTasks > 0;
   const isLocked = detail.status === "locked";
   const bossEncounterNumber = detail.checkpointIndex;
@@ -645,29 +645,11 @@ function CheckpointPanel({
                         />
                       ))}
                     </div>
-                    <div
-                      className="flex items-center justify-between gap-2 pt-1 border-t"
-                      style={{ borderColor: "rgba(234, 179, 8, 0.2)" }}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <Swords className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-red-300/90">
-                          Boss encounter
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-black text-amber-200 tabular-nums">
-                        CP {bossEncounterNumber}/{totalCheckpointsInStage}
-                      </span>
-                    </div>
                   </div>
                 )}
                 {!isGold && canAdvance && (
                   <div className="flex items-center justify-between px-1 text-[9px] font-bold uppercase tracking-wider text-indigo-300/70">
                     <span>Tasks {doneTasks}/{totalTasks}</span>
-                    <span className="flex items-center gap-1">
-                      <Swords className="w-3 h-3" />
-                      Boss on advance
-                    </span>
                   </div>
                 )}
                 <motion.button
@@ -684,7 +666,7 @@ function CheckpointPanel({
                     canAdvance && !isAdvancing ? { scale: 1.02, y: -1 } : {}
                   }
                   whileTap={canAdvance && !isAdvancing ? { scale: 0.98 } : {}}
-                  className="w-full py-2 sm:py-2.5 rounded-lg text-[10px] sm:text-[11px] tracking-[0.08em] uppercase font-black transition-all duration-300 relative overflow-hidden"
+                  className="w-full py-1.5 sm:py-2 rounded-md text-[9px] sm:text-[10px] tracking-[0.06em] uppercase font-black transition-all duration-300 relative overflow-hidden"
                   style={{
                     background: isGold
                       ? "linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(202, 138, 4, 0.1))"
@@ -704,9 +686,9 @@ function CheckpointPanel({
                     cursor:
                       canAdvance && !isAdvancing ? "pointer" : "not-allowed",
                     boxShadow: isGold
-                      ? "0 4px 20px rgba(234, 179, 8, 0.15)"
+                      ? "0 2px 12px rgba(234, 179, 8, 0.14)"
                       : canAdvance
-                        ? "0 4px 20px rgba(99, 102, 241, 0.15)"
+                        ? "0 2px 12px rgba(99, 102, 241, 0.14)"
                         : "none",
                   }}
                 >
@@ -718,28 +700,28 @@ function CheckpointPanel({
                       transition={{ duration: 0.5, ease: "easeInOut" }}
                     />
                   )}
-                  <span className="relative z-10 flex flex-col items-center gap-0.5">
+                  <span className="relative z-10 flex flex-col items-center gap-0.5 leading-tight">
                     <span>
                       {isAdvancing
-                        ? "Processing checkpoint..."
+                        ? "Processing..."
                         : isGold
-                          ? "Proceed to Next Step →"
+                          ? "Proceed →"
                           : canAdvance
-                            ? "Advance Checkpoint →"
+                            ? "Advance →"
                             : `Complete ${2 - doneTasks} more task${2 - doneTasks !== 1 ? "s" : ""} to advance`}
                     </span>
                     {!isCurrentMapCheckpoint && doneTasks >= 2 && !isAdvancing && (
-                      <span className="text-[9px] font-semibold normal-case tracking-normal opacity-70 text-amber-400/90">
-                        Move to this checkpoint on the map to advance
+                      <span className="text-[8px] font-semibold normal-case tracking-normal opacity-70 text-amber-400/90">
+                        You can advance from here
                       </span>
                     )}
                     {isGold && canAdvance && !isAdvancing && showBossGateHint && (
-                      <span className="text-[9px] font-semibold normal-case tracking-normal opacity-80 text-amber-200/90">
-                        Face the stage boss, then advance to the next checkpoint
+                      <span className="text-[8px] font-semibold normal-case tracking-normal opacity-80 text-amber-200/90">
+                        Beat boss, then move ahead
                       </span>
                     )}
                     {canAdvance && !isGold && !isAdvancing && showBossGateHint && (
-                      <span className="text-[9px] font-semibold normal-case tracking-normal opacity-70">
+                      <span className="text-[8px] font-semibold normal-case tracking-normal opacity-70">
                         Boss encounter opens when you advance
                       </span>
                     )}
@@ -2937,13 +2919,6 @@ function MapPageInner() {
 
     const mapStage = venture.currentStage ?? 1;
     const mapCheckpoint = venture.currentCheckpoint ?? 1;
-
-    if (
-      !fromBossVictory &&
-      !isActiveVentureCheckpoint(cp, mapStage, mapCheckpoint)
-    ) {
-      return;
-    }
 
     // ── Boss combat: required once per checkpoint before advance ────────────
     if (

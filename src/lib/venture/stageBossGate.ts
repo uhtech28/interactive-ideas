@@ -120,11 +120,6 @@ export function needsCheckpointBossCombat(
 ): boolean {
   if (doneTasks < 2) return false;
 
-  // Only the venture's current map node can trigger boss + advance
-  if (!isActiveVentureCheckpoint(cp, currentStage, currentCheckpoint)) {
-    return false;
-  }
-
   const key = checkpointBossKey(cp.stage, cp.checkpoint);
   return !bossDefeatedAtCheckpoint.has(key);
 }

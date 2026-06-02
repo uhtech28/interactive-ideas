@@ -222,7 +222,7 @@ export function SurveyTool({
       <CardHeader className="hidden">
         <CardTitle>Build Your Survey</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-5 p-0">
+      <CardContent className="space-y-4 p-0">
         <Tabs defaultValue="builder">
           <TabsList className="grid w-full grid-cols-3 bg-white/5 border border-white/10 rounded-xl p-1 mb-5">
             <TabsTrigger value="builder" className="data-[state=active]:bg-white/10 rounded-lg text-xs font-semibold text-zinc-300 data-[state=active]:text-white transition-all">Builder</TabsTrigger>
@@ -230,8 +230,8 @@ export function SurveyTool({
             <TabsTrigger value="summary" className="data-[state=active]:bg-white/10 rounded-lg text-xs font-semibold text-zinc-300 data-[state=active]:text-white transition-all">Summary</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="builder" className="space-y-4 mt-2">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 space-y-6">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:p-5">
+          <TabsContent value="builder" className="space-y-4 mt-0">
               {/* 1. Distribution */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -379,11 +379,9 @@ export function SurveyTool({
                   ))}
                 </div>
               </div>
-            </div>
           </TabsContent>
 
-          <TabsContent value="responses" className="space-y-4 mt-2">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 space-y-5">
+          <TabsContent value="responses" className="space-y-4 mt-0">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-indigo-400" />
                 <Label className="text-sm font-bold text-zinc-200">Capture Survey Response</Label>
@@ -456,12 +454,11 @@ export function SurveyTool({
                   Add Captured Response
                 </Button>
               </div>
-            </div>
-
-            {/* Saved Responses list */}
             {responses.length > 0 && (
-              <div className="space-y-3.5">
-                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Captured Responses ({responses.length})</h4>
+              <div className="space-y-3.5 border-t border-white/10 pt-4">
+                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">
+                  Captured Responses ({responses.length})
+                </h4>
                 <div className="space-y-2.5">
                   {responses.map((response) => (
                     <div key={response.id} className="rounded-2xl border border-white/5 bg-white/[0.01] p-4 transition-all hover:bg-white/[0.02] hover:border-white/10">
@@ -498,7 +495,7 @@ export function SurveyTool({
             )}
           </TabsContent>
 
-          <TabsContent value="summary" className="space-y-4 mt-2">
+          <TabsContent value="summary" className="space-y-4 mt-0">
             <div className="flex gap-2 px-1">
               <span className="inline-flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-bold rounded-lg px-2.5 py-1">
                 {responses.length} responses
@@ -508,7 +505,7 @@ export function SurveyTool({
               </span>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 space-y-5">
+            <div className="space-y-5">
               {questions.map((question, index) => {
                 const entry = summary.find((item) => item.questionId === question.id);
                 if (!entry) return null;
@@ -569,6 +566,7 @@ export function SurveyTool({
               })}
             </div>
           </TabsContent>
+          </div>
         </Tabs>
 
         <Button
