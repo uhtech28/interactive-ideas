@@ -196,11 +196,11 @@ export const ProfileProgress: React.FC<ProfileProgressProps> = ({ userId }) => {
       </div>
 
       {/* Streak — flame icon and streak text on right */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-end gap-2">
         <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-orange-500/15 ring-1 ring-orange-500/30 shrink-0">
           <Flame className="w-3.5 h-3.5 text-orange-300" />
         </span>
-        <span className="text-sm font-semibold text-orange-200 tabular-nums shrink-0 ml-auto">
+        <span className="text-sm font-semibold text-orange-200 tabular-nums shrink-0">
           {streakDetail}
         </span>
       </div>

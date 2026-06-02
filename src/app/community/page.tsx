@@ -354,11 +354,11 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUserId, onTagClick }) 
   const hiddenSkillCount = Math.max(0, user.skills.length - visibleSkills.length);
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300 flex flex-col min-h-[192px] h-full overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm">
-      <div className="px-4 pb-0.5 pt-2 flex flex-col">
+    <Card className="group hover:shadow-lg transition-all duration-300 flex h-[218px] flex-col overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm">
+      <div className="grid flex-1 grid-rows-[42px_22px_24px_24px_50px] px-4 pb-0.5 pt-2">
         <Link href={profileHref} className="block">
           {/* Header: Avatar & Name */}
-          <div className="flex items-center gap-3 mb-1.5">
+          <div className="flex items-center gap-3">
             <Avatar className="w-8 h-8 border-2 border-background shadow-sm shrink-0">
               <AvatarImage src={user.avatar} alt={user.displayName} className="object-cover" />
               <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
@@ -375,61 +375,54 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUserId, onTagClick }) 
             </div>
           </div>
 
-          {/* Bio - Hidden if empty to save space, else truncated more aggressively */}
-          {user.bio && (
-            <p className="text-[10px] text-muted-foreground mb-1.5 line-clamp-1 leading-relaxed">
-              {user.bio}
-            </p>
-          )}
         </Link>
 
-          {/* Tags Section */}
-          <div className="flex flex-col gap-1.5 mb-2">
-            {visibleIndustries.length > 0 && (
-              <div className="flex flex-wrap gap-1 items-center">
-                {visibleIndustries.map((ind, i) => (
-                  <span key={`ind-${i}`} onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTagClick?.(ind); }} className="cursor-pointer text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-600 border border-purple-500/20 truncate max-w-[96px]">
-                  {ind}
-                </span>
-                ))}
-                {hiddenIndustryCount > 0 && (
-                  <Link
-                    href={profileHref}
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-600 border border-purple-500/20 hover:bg-purple-500/20 hover:border-purple-500/40 transition-colors"
-                  >
-                    +{hiddenIndustryCount} more
-                  </Link>
-                )}
-              </div>
-            )}
+        <Link href={profileHref} className="block min-w-0">
+          <p className="line-clamp-1 text-[10px] leading-5 text-muted-foreground">
+            {user.bio || "\u00A0"}
+          </p>
+        </Link>
 
-            {visibleSkills.length > 0 && (
-              <div className="flex flex-wrap gap-1 items-center">
-                {visibleSkills.map((skill, i) => (
-                  <span key={`skill-${i}`} onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTagClick?.(skill); }} className="cursor-pointer text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-600 border border-blue-500/20 truncate max-w-[96px]">
-                  {skill}
-                </span>
-                ))}
-                {hiddenSkillCount > 0 && (
-                  <Link
-                    href={profileHref}
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 hover:border-blue-500/40 transition-colors"
-                  >
-                    +{hiddenSkillCount} more
-                  </Link>
-                )}
-              </div>
-            )}
-          </div>
+        <div className="flex min-w-0 flex-wrap items-start gap-1 overflow-hidden py-0.5">
+          {visibleIndustries.map((ind, i) => (
+            <span key={`ind-${i}`} onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTagClick?.(ind); }} className="cursor-pointer truncate max-w-[112px] rounded-md border border-purple-500/20 bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-medium text-purple-600">
+              {ind}
+            </span>
+          ))}
+          {hiddenIndustryCount > 0 && (
+            <Link
+              href={profileHref}
+              onClick={(e) => e.stopPropagation()}
+              className="rounded-md border border-purple-500/20 bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-medium text-purple-600 transition-colors hover:border-purple-500/40 hover:bg-purple-500/20"
+            >
+              +{hiddenIndustryCount} more
+            </Link>
+          )}
+        </div>
+
+        <div className="flex min-w-0 flex-wrap items-start gap-1 overflow-hidden py-0.5">
+          {visibleSkills.map((skill, i) => (
+            <span key={`skill-${i}`} onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTagClick?.(skill); }} className="cursor-pointer truncate max-w-[112px] rounded-md border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
+              {skill}
+            </span>
+          ))}
+          {hiddenSkillCount > 0 && (
+            <Link
+              href={profileHref}
+              onClick={(e) => e.stopPropagation()}
+              className="rounded-md border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 transition-colors hover:border-blue-500/40 hover:bg-blue-500/20"
+            >
+              +{hiddenSkillCount} more
+            </Link>
+          )}
+        </div>
 
           {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-1 py-1 border-t border-b border-border/40">
+          <div className="grid grid-cols-3 gap-1 border-b border-t border-border/40 py-1">
             <button
               type="button"
               onClick={() => openStatsDialog("created")}
-              className="flex flex-col items-center justify-center text-center rounded-md py-1 transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="flex flex-col items-center justify-center rounded-md py-1 text-center transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               aria-label={`${user.displayName} created ideas`}
             >
               <Lightbulb className="w-3 h-3 text-primary mb-0.5" />
@@ -438,7 +431,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUserId, onTagClick }) 
             <button
               type="button"
               onClick={() => openStatsDialog("sparked")}
-              className="flex flex-col items-center justify-center text-center border-l border-border/40 rounded-md py-1 transition-colors hover:bg-orange-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40"
+              className="flex flex-col items-center justify-center rounded-md border-l border-border/40 py-1 text-center transition-colors hover:bg-orange-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40"
               aria-label={`${user.displayName} sparked ideas`}
             >
               <Sparkles className="w-3 h-3 text-orange-500 mb-0.5" />
@@ -447,7 +440,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUserId, onTagClick }) 
             <button
               type="button"
               onClick={() => openStatsDialog("contributed")}
-              className="flex flex-col items-center justify-center text-center border-l border-border/40 rounded-md py-1 transition-colors hover:bg-green-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/40"
+              className="flex flex-col items-center justify-center rounded-md border-l border-border/40 py-1 text-center transition-colors hover:bg-green-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/40"
               aria-label={`${user.displayName} contributed ideas`}
             >
               <Users className="w-3 h-3 text-green-500 mb-0.5" />
@@ -458,7 +451,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUserId, onTagClick }) 
 
       {/* Footer Actions */}
       {!isCurrentUser && currentUserId && (
-        <div className="px-3 pb-1 pt-0 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex h-[42px] items-start gap-2 px-3 pt-1" onClick={(e) => e.stopPropagation()}>
           <div className="flex-1">
             <InvitationButton
               targetUser={{
