@@ -34,7 +34,6 @@ import {
   buildCheckpointSyncSignature,
   mapCheckpointsToPhaserState,
 } from "@/lib/phaser/checkpoint-sync";
-import { CommentsSection } from "@/components/comments/CommentsSection";
 import { MessageSquare, X, Users, Send, Share2, ExternalLink, Check, Copy, Lock, ChevronLeft, ChevronRight, Swords } from "lucide-react";
 import { QuestList, BossHPBar, StageInfo, XPBar } from "@/components/hud";
 import { InterCheckpointOverlay } from "@/components/map/InterCheckpointOverlay";
@@ -56,15 +55,9 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { LeftSidebar } from "@/components/map/LeftSidebar";
 import { ToolsPanel } from "@/components/map/ToolsPanel";
 import { IdeaForgeNavbar } from "@/components/ideaforge/navbar";
-import { ContributionDashboard } from "@/components/requests/ContributionDashboard";
-import { InvitationSection } from "@/components/requests/invitation-section";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { IdeaHierarchyFlowchart } from "@/components/idea/IdeaHierarchyNav";
 import { GitBranch, Rss, Calendar as CalendarIcon, LayoutDashboard as KanbanIcon, Scroll as JournalIcon, ListTodo } from "lucide-react";
-import { CalendarTool } from "@/components/tools/calendar-tool";
-import { KanbanTool } from "@/components/tools/kanban-tool";
-import { JournalTool } from "@/components/tools/journal-tool";
 
 // Dynamic/lazy loaded overlay components for faster page loading performance
 const LevelUpSequence = dynamic(() => import("@/components/animations/LevelUpSequence").then(mod => mod.LevelUpSequence), { ssr: false });
@@ -75,6 +68,12 @@ const WorldMapTour = dynamic(() => import("@/components/map/WorldMapTour").then(
 const ChatThread = dynamic(() => import("@/components/chat/ChatThread"), { ssr: false });
 const GroupList = dynamic(() => import("@/components/chat/GroupList"), { ssr: false });
 const ChannelList = dynamic(() => import("@/components/chat/ChannelList"), { ssr: false });
+const CalendarTool = dynamic(() => import("@/components/tools/calendar-tool").then(mod => mod.CalendarTool), { ssr: false });
+const KanbanTool = dynamic(() => import("@/components/tools/kanban-tool").then(mod => mod.KanbanTool), { ssr: false });
+const JournalTool = dynamic(() => import("@/components/tools/journal-tool").then(mod => mod.JournalTool), { ssr: false });
+const IdeaHierarchyFlowchart = dynamic(() => import("@/components/idea/IdeaHierarchyNav").then(mod => mod.IdeaHierarchyFlowchart), { ssr: false });
+const ContributionDashboard = dynamic(() => import("@/components/requests/ContributionDashboard").then(mod => mod.ContributionDashboard), { ssr: false });
+const InvitationSection = dynamic(() => import("@/components/requests/invitation-section").then(mod => mod.InvitationSection), { ssr: false });
 import { useChat } from "@/components/chat/ChatContext";
 import {
   activeVentureAtom,
