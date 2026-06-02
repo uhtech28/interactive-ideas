@@ -9,6 +9,7 @@ import {
 } from "./ventureConstants";
 
 const RENAMED_GOLD_STAGE_BADGE_IDS = new Set([11, 71, 72, 73, 74, 75, 76, 77, 78]);
+const DISABLED_BADGE_IDS = new Set([43, 44, 45, 46, 62]);
 
 const INITIAL_BADGES = [
   {
@@ -433,7 +434,7 @@ export const getVentureBadges = query({
     const activeVenture = sortedVentures[0];
     const fallbackCorruption = activeVenture ? (activeVenture.corruptionLevel ?? 0) : 0;
 
-    return badges.map((badge) => {
+    return badges.filter((badge) => !DISABLED_BADGE_IDS.has(badge.badgeId)).map((badge) => {
       const def = BADGE_DEFINITIONS.find((b) => b.id === badge.badgeId);
       if (!def) return { ...badge, definition: undefined };
 
@@ -487,7 +488,7 @@ export const getVentureBadges = query({
 
 export const getAllVentureBadges = query({
   args: {},
-  handler: async () => BADGE_DEFINITIONS,
+  handler: async () => BADGE_DEFINITIONS.filter((def) => !DISABLED_BADGE_IDS.has(def.id)),
 });
 
 export const getVentureBadgeProgress = query({
@@ -508,7 +509,7 @@ export const getVentureBadgeProgress = query({
     const activeVenture = sortedVentures[0];
     const fallbackCorruption = activeVenture ? (activeVenture.corruptionLevel ?? 0) : 0;
 
-    return BADGE_DEFINITIONS.map((def) => {
+    return BADGE_DEFINITIONS.filter((def) => !DISABLED_BADGE_IDS.has(def.id)).map((def) => {
       const isLevelBadge = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 71, 72, 73, 74, 75, 76, 77, 78].includes(def.id);
       const isTaskBadge = def.category === "idea_milestones" && !isLevelBadge;
       const earned = earnedIds.has(def.id);
@@ -1223,6 +1224,7 @@ export const getUserProfileBadges = query({
     const fallbackCorruption = activeVenture ? (activeVenture.corruptionLevel ?? 0) : 0;
 
     const ventureBadgesDetails = ventureBadges
+      .filter((vb) => !DISABLED_BADGE_IDS.has(vb.badgeId))
       .map((vb) => {
         const def = BADGE_DEFINITIONS.find((b) => b.id === vb.badgeId);
         if (!def) return null;

@@ -32,6 +32,24 @@ const GENERAL_BADGES_DEFS = [
   { slug: "legendary-venture-completion", name: "Legendary Completion", description: "Completed a venture with every stage ending in gold", icon: "👑", category: "aspirational", requirement: "Complete a venture with all gold checkpoints" },
 ];
 
+const DISABLED_BADGE_REQUIREMENT_PATTERN = /\b(?:league|leagues|monument|monuments)\b/i;
+const DISABLED_BADGE_IDS = new Set(["venture_43", "venture_44", "venture_45", "venture_46", "venture_62"]);
+
+const normalizeSparkCopy = (text?: string) =>
+  text
+    ?.replace(/\bupvoted\b/g, "Sparked")
+    .replace(/\bUpvoted\b/g, "Sparked")
+    .replace(/\bupvotes\b/g, "Sparks")
+    .replace(/\bUpvotes\b/g, "Sparks")
+    .replace(/\bupvote\b/g, "Spark")
+    .replace(/\bUpvote\b/g, "Spark");
+
+const shouldHideDisabledBadge = (badge: Partial<BadgeItem>) =>
+  (badge.id ? DISABLED_BADGE_IDS.has(badge.id) : false) ||
+  [badge.requirement, badge.description, badge.tagline].some((text) =>
+    DISABLED_BADGE_REQUIREMENT_PATTERN.test(text || "")
+  );
+
 export const ProfileBadges: React.FC<ProfileBadgesProps> = ({ userId, isOwner, profile }) => {
   const [activeCategory, setActiveCategory] = useState<"all" | "onboarding" | "idea_milestones" | "community" | "consistency" | "skill" | "locked">("all");
   const [activeRarity, setActiveRarity] = useState<string>("all");
@@ -167,14 +185,23 @@ export const ProfileBadges: React.FC<ProfileBadgesProps> = ({ userId, isOwner, p
       });
     });
 
+  const displayBadgesList = allBadgesList
+    .filter((badge) => !shouldHideDisabledBadge(badge))
+    .map((badge) => ({
+      ...badge,
+      description: normalizeSparkCopy(badge.description) || badge.description,
+      tagline: normalizeSparkCopy(badge.tagline) || badge.tagline,
+      requirement: normalizeSparkCopy(badge.requirement) || badge.requirement,
+    }));
+
   // 2. Equipped Badges resolution
   const equippedBadgeIds = profile?.equippedBadges || [];
-  const equippedBadges = allBadgesList.filter(
+  const equippedBadges = displayBadgesList.filter(
     (b) => b.awardedAt && equippedBadgeIds.includes(b.id)
   );
 
   // 3. Filtering logic
-  const filteredBadges = allBadgesList.filter((b) => {
+  const filteredBadges = displayBadgesList.filter((b) => {
     const isEarned = !!b.awardedAt;
 
     // Category Filter
@@ -256,8 +283,8 @@ export const ProfileBadges: React.FC<ProfileBadgesProps> = ({ userId, isOwner, p
     }
   };
 
-  const totalEarnedCount = allBadgesList.filter((b) => b.awardedAt).length;
-  const totalPossibleCount = allBadgesList.length;
+  const totalEarnedCount = displayBadgesList.filter((b) => b.awardedAt).length;
+  const totalPossibleCount = displayBadgesList.length;
   const activeAwardBadge = badgeQueue[0] || null;
 
   return (
@@ -296,12 +323,12 @@ export const ProfileBadges: React.FC<ProfileBadgesProps> = ({ userId, isOwner, p
               Select one of your earned achievements to showcase on your profile.
             </DialogDescription>
             <div className="max-h-[300px] overflow-y-auto pr-1 space-y-2.5 custom-scrollbar">
-              {allBadgesList.filter(b => b.awardedAt && !equippedBadgeIds.includes(b.id)).length === 0 ? (
+              {displayBadgesList.filter(b => b.awardedAt && !equippedBadgeIds.includes(b.id)).length === 0 ? (
                 <div className="text-center py-8 text-sm text-slate-500 font-semibold border border-dashed border-slate-800 rounded-2xl">
                   No unequipped achievements available.
                 </div>
               ) : (
-                allBadgesList
+                displayBadgesList
                   .filter(b => b.awardedAt && !equippedBadgeIds.includes(b.id))
                   .map((badge) => {
                     const norm = getNormalizedRarity(badge.rarity);

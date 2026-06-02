@@ -279,6 +279,12 @@ const CommentItem: React.FC<{
 
   const handleSpark = async () => {
     if (!userId || isSparking) return;
+    const optimisticState = {
+      count: hasSparked ? Math.max(0, sparkCount - 1) : sparkCount + 1,
+      hasSparked: !hasSparked,
+    };
+    const previousLocalState = localSparkState;
+    setLocalSparkState(optimisticState);
     setIsSparking(true);
     try {
       const result = await toggleCommentSparkMutation({ commentId: comment._id as Id<"comments"> });
@@ -287,6 +293,7 @@ const CommentItem: React.FC<{
         hasSparked: result.action === "added",
       });
     } catch (err) {
+      setLocalSparkState(previousLocalState);
       console.error(err);
     } finally {
       setIsSparking(false);
