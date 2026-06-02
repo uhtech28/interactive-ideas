@@ -402,6 +402,8 @@ export class WorldMapScene extends Phaser.Scene {
     new Map();
   private stageFogOverlays: Map<number, Phaser.GameObjects.Container> =
     new Map();
+  private stageVisualObjects: Map<number, Phaser.GameObjects.GameObject[]> = new Map();
+  private currentlyLoadingStageId: number | null = null;
   private revealedStages: Set<number> = new Set([1]);
   private stageEntryInProgress: Set<number> = new Set();
   private loadedStages: Set<number> = new Set();
@@ -553,6 +555,31 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Intercept displayList additions to track stage visual objects
+    const originalAdd = this.sys.displayList.add;
+    this.sys.displayList.add = (child: Phaser.GameObjects.GameObject) => {
+      if (this.currentlyLoadingStageId !== null) {
+        if (!this.stageVisualObjects.has(this.currentlyLoadingStageId)) {
+          this.stageVisualObjects.set(this.currentlyLoadingStageId, []);
+        }
+        this.stageVisualObjects.get(this.currentlyLoadingStageId)!.push(child);
+      }
+      return originalAdd.call(this.sys.displayList, child);
+    };
+
+    const originalAddAt = (this.sys.displayList as any).addAt;
+    if (originalAddAt) {
+      (this.sys.displayList as any).addAt = (child: Phaser.GameObjects.GameObject, index?: number) => {
+        if (this.currentlyLoadingStageId !== null) {
+          if (!this.stageVisualObjects.has(this.currentlyLoadingStageId)) {
+            this.stageVisualObjects.set(this.currentlyLoadingStageId, []);
+          }
+          this.stageVisualObjects.get(this.currentlyLoadingStageId)!.push(child);
+        }
+        return originalAddAt.call(this.sys.displayList, child, index);
+      };
+    }
+
     this.tweens.timeScale = MAP_PERF.SCENE_TWEEN_TIME_SCALE;
 
     // Create scene layers
@@ -1199,27 +1226,36 @@ export class WorldMapScene extends Phaser.Scene {
     const i = stageId - 1;
     if (i < 0 || i >= this.activeBiomeConfigs.length) return;
 
-    this.loadedStages.add(stageId);
-
-    // 1. Draw biome background and label
-    this.loadStageBiomeBackgroundAndLabel(i);
-
-    // 2. Load stage tile panel
-    this.loadStageTilePanel(i);
-
-    // 3. Load stage landmarks
-    this.loadStageLandmarks(stageId);
-    this.registerStageTreesFromLayer(stageId);
-
-    // 4. Create stage mini-boss
-    this.createMiniBossForStage(stageId);
-
-    // 5. Update the new mini-boss state if checkpoints have been loaded
-    if (this.latestCheckpointsState) {
-      this.updateMiniBossProgress(this.latestCheckpointsState);
+    this.currentlyLoadingStageId = stageId;
+    if (!this.stageVisualObjects.has(stageId)) {
+      this.stageVisualObjects.set(stageId, []);
     }
 
-    this.syncCorruptionVisuals();
+    try {
+      this.loadedStages.add(stageId);
+
+      // 1. Draw biome background and label
+      this.loadStageBiomeBackgroundAndLabel(i);
+
+      // 2. Load stage tile panel
+      this.loadStageTilePanel(i);
+
+      // 3. Load stage landmarks
+      this.loadStageLandmarks(stageId);
+      this.registerStageTreesFromLayer(stageId);
+
+      // 4. Create stage mini-boss
+      this.createMiniBossForStage(stageId);
+
+      // 5. Update the new mini-boss state if checkpoints have been loaded
+      if (this.latestCheckpointsState) {
+        this.updateMiniBossProgress(this.latestCheckpointsState);
+      }
+
+      this.syncCorruptionVisuals();
+    } finally {
+      this.currentlyLoadingStageId = null;
+    }
   }
 
   /** All stage IDs on the map (each stage has its own CP corruption layer). */
@@ -1376,6 +1412,17 @@ export class WorldMapScene extends Phaser.Scene {
   /** Drop distant stage visuals to free GPU memory (path/checkpoints stay global). */
   private unloadStage(stageId: number): void {
     if (!this.loadedStages.has(stageId)) return;
+
+    // Destroy all dynamically captured visual elements for this stage to prevent memory leaks/glitchy duplicates
+    const objects = this.stageVisualObjects.get(stageId);
+    if (objects) {
+      objects.forEach((obj) => {
+        if (obj && obj.active) {
+          obj.destroy();
+        }
+      });
+      this.stageVisualObjects.delete(stageId);
+    }
 
     const container = this.biomeContainers.get(stageId);
     container?.destroy(true);
@@ -8137,6 +8184,16 @@ export class WorldMapScene extends Phaser.Scene {
   shutdown(): void {
     // Stop any playing animation
     this.stopCurrentAnimation();
+
+    // Clean up stage visual objects
+    this.stageVisualObjects.forEach((objects) => {
+      objects.forEach((obj) => {
+        if (obj && obj.active) {
+          obj.destroy();
+        }
+      });
+    });
+    this.stageVisualObjects.clear();
 
     // Clean up mini-bosses
     this.miniBosses.forEach((boss) => boss.destroy());
