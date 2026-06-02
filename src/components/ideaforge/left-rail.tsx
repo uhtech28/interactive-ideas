@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "convex/react";
-import { Tag } from "lucide-react";
+import { BriefcaseBusiness, Sparkles, Tag } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
@@ -14,6 +14,7 @@ import {
   displayFontClass,
   getInitials,
   IdeaForgeIdea,
+  isAgentRole,
   parseTags,
   transitionBase,
 } from "@/components/ideaforge/shared";
@@ -115,12 +116,15 @@ export function IdeaForgeLeftRail({
     return Math.round(totalPercentage / ventureSummaries.length);
   })();
 
+  const nonAgentUserIdeas = isAgentRole(currentUser?.role) ? [] : userIdeas;
   const activeTags = Array.from(
     new Set(
-      [
-        ...(currentUser?.skills || []),
-        ...userIdeas.flatMap((idea) => parseTags(idea.category)),
-      ].filter(Boolean)
+      nonAgentUserIdeas
+        .flatMap((idea) => [
+          ...parseTags(idea.category),
+          ...parseTags(idea.industries),
+        ])
+        .filter(Boolean)
     )
   ).slice(0, 8);
 
@@ -139,44 +143,47 @@ export function IdeaForgeLeftRail({
         "
       >
         {/* Profile card */}
-        <section className={cn(cardSurface, "relative overflow-hidden p-5")}>
-          <div className="absolute inset-x-0 top-0 h-14 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.45),transparent_45%),linear-gradient(135deg,rgba(17,24,39,0.98),rgba(31,41,55,0.92))]" />
-          <div className="relative">
+        <section className={cn(cardSurface, "relative overflow-hidden p-4")}>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.35),transparent_42%),linear-gradient(135deg,rgba(17,24,39,0.98),rgba(17,24,39,0.9))]" />
+          <div className="relative flex items-center gap-3">
             <Link
               href={currentUser?.username ? `/profile/${currentUser.username}` : "/profile-setup"}
-              className="block group focus:outline-none"
+              className="shrink-0 group focus:outline-none"
               aria-label="Open my profile"
             >
-              <Avatar className="h-10 w-10 ring-2 ring-[#6366F1] ring-offset-2 ring-offset-[#111827] transition-transform duration-200 group-hover:scale-[1.03]">
+              <Avatar className="h-12 w-12 ring-2 ring-[#6366F1] ring-offset-2 ring-offset-[#111827] transition-transform duration-200 group-hover:scale-[1.03]">
                 <AvatarImage src={currentUser?.avatar} alt={currentUser?.displayName} />
-                <AvatarFallback className="bg-[#1B2440] text-white text-sm">
+                <AvatarFallback className="bg-[#1B2440] text-white text-base">
                   {getInitials(currentUser?.displayName)}
                 </AvatarFallback>
               </Avatar>
-              <div className="mt-3">
+            </Link>
+            <Link
+              href={currentUser?.username ? `/profile/${currentUser.username}` : "/profile-setup"}
+              className="min-w-0 flex-1 group focus:outline-none"
+              aria-label="Open my profile"
+            >
+              <div>
                 <h2 className={cn(displayFontClass, "text-base font-semibold text-[#F9FAFB] truncate group-hover:text-white")}>
                   {currentUser?.displayName || "Ibhaveda Member"}
                 </h2>
+                <div className="mt-1.5 flex items-end justify-between gap-3">
+                  <span className="flex flex-col text-[#F9FAFB]">
+                    <span className="font-semibold">Level {level}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-[#7C86A2]">
+                      {title}
+                    </span>
+                  </span>
+                  <span className="text-[#9CA3AF] tabular-nums text-xs font-medium">
+                    {averageProgress}% Avg Progress
+                  </span>
+                </div>
+                <Progress
+                  value={averageProgress}
+                  className="mt-2 h-1.5 bg-[#20293B] [&>div]:bg-[linear-gradient(90deg,#6366F1,#8B5CF6)]"
+                />
               </div>
             </Link>
-
-            <div className="mt-4">
-              <div className="flex items-center justify-between text-sm text-[#F9FAFB]">
-                <span className="flex flex-col">
-                  <span className="font-semibold">Level {level}</span>
-                  <span className="text-[10px] uppercase tracking-wider text-[#7C86A2]">
-                    {title}
-                  </span>
-                </span>
-                <span className="text-[#9CA3AF] tabular-nums text-xs font-medium">
-                  {averageProgress}% Avg Progress
-                </span>
-              </div>
-              <Progress
-                value={averageProgress}
-                className="mt-3 h-2 bg-[#20293B] [&>div]:bg-[linear-gradient(90deg,#6366F1,#8B5CF6)]"
-              />
-            </div>
           </div>
         </section>
 
@@ -190,19 +197,26 @@ export function IdeaForgeLeftRail({
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {activeTags.length > 0 ? (
-              activeTags.map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => onTagSelect(tag)}
-                  className={cn(
-                    transitionBase,
-                    "rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5 text-[11px] text-[#C7D2FE] hover:border-[#6366F1]/40 hover:bg-[#6366F1]/10"
-                  )}
-                >
-                  #{tag}
-                </button>
-              ))
+              activeTags.map((tag, index) => {
+                const accent = index === 0 ? "purple" : "blue";
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => onTagSelect(tag)}
+                    className={cn(
+                      transitionBase,
+                      "inline-flex items-center gap-1.5 rounded-[8px] border px-3 py-1.5 text-[11px] font-medium",
+                      accent === "purple"
+                        ? "border-fuchsia-500/35 bg-fuchsia-500/12 text-fuchsia-300 hover:bg-fuchsia-500/18"
+                        : "border-sky-500/35 bg-sky-500/10 text-sky-300 hover:bg-sky-500/16"
+                    )}
+                  >
+                    {index === 0 ? <Sparkles className="h-3 w-3" /> : <BriefcaseBusiness className="h-3 w-3" />}
+                    {tag}
+                  </button>
+                );
+              })
             ) : (
               <p className="text-sm text-[#9CA3AF]">
                 Post a few ideas and your strongest topics will show up here.

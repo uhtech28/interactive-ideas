@@ -727,7 +727,7 @@ export const getSuggestedCollaborators = query({
     for (const userId of allMatches) {
       try {
         const user = await db.get(userId)
-        if (user && user.isActive !== false) {
+        if (user && user.isActive !== false && user.role !== "agent") {
           // Fetch skills for this user
           const userSkills = await db
             .query("userSkills")

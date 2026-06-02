@@ -206,6 +206,7 @@ export type BuilderSuggestion = {
   displayName?: string;
   avatar?: string;
   skills?: string[];
+  role?: string;
 };
 
 export interface ComposerDraft {
@@ -259,6 +260,10 @@ export function parseTags(tagStr?: string) {
 
 export function getDisplayName(author?: IdeaAuthor | null) {
   return author?.displayName || author?.name || author?.username || "Ibhaveda Builder";
+}
+
+export function isAgentRole(role?: string | null) {
+  return (role || "").toLowerCase() === "agent";
 }
 
 export function getRoleBadge(author?: IdeaAuthor | null) {
