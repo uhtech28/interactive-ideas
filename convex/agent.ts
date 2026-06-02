@@ -457,6 +457,26 @@ export const getRealUserIdeasSince = internalQuery({
 
 // ── Internal mutations ─────────────────────────────────────────────────────────
 
+// Ensures every AGENT_POOL member has role: "agent" in the DB.
+// Safe to run multiple times — getOrCreateAgent is idempotent.
+export const ensureAgentRoles = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let updated = 0;
+    for (const agent of AGENT_POOL) {
+      const existing = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", agent.clerkId))
+        .first();
+      if (existing && existing.role !== "agent") {
+        await ctx.db.patch(existing._id, { role: "agent", updatedAt: Date.now() });
+        updated++;
+      }
+    }
+    console.log(`✅ ensureAgentRoles: patched ${updated} account(s)`);
+  },
+});
+
 export const postIdea = internalMutation({
   args: {
     agentIndex: v.number(),

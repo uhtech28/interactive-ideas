@@ -379,6 +379,9 @@ export const backfillAgentEngagement = internalAction({
   handler: async (ctx) => {
     const api = internal as any;
 
+    // ── Ensure all agent pool accounts have role: "agent" ───────────────────
+    await ctx.runMutation(api.agent.ensureAgentRoles, {});
+
     // ── Seed sparks on agent posts with too few ──────────────────────────────
     const agentIdeas: Array<{ _id: any; sparkCount?: number; title: string; description: string }> =
       await ctx.runQuery(api.agent.getPublicAgentIdeas, {});
