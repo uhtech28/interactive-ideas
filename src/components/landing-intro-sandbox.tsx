@@ -157,10 +157,12 @@ export default function LandingIntroSandbox({
       }
     };
 
-    // resume() works both when context is already running (Firefox, link-nav)
-    // and when called inside a user gesture (Chrome fallback).
-    // The .then() ensures currentTime is ticking before notes are scheduled.
-    const startAudio = () => ctx.resume().then(scheduleNotes).catch(() => undefined);
+    // resume() always resolves, but the context stays suspended if there is no
+    // user gesture. Guard on ctx.state so we only schedule when actually running.
+    const startAudio = () =>
+      ctx.resume()
+        .then(() => { if (ctx.state === "running") scheduleNotes(); })
+        .catch(() => undefined);
 
     startAudio();
     window.addEventListener("pointerdown", startAudio, { once: true });
