@@ -64,10 +64,14 @@ export const SearchableUserDropdown: React.FC<SearchableUserDropdownProps> = ({
 
   const hasError = searchResults === null;
 
-  // Filter out current user from search results
-  const filteredResults = searchResults?.filter(
+  // Filter out current user, then sort agents to the bottom
+  const filteredResults = (searchResults?.filter(
     (user) => user.username !== currentUser?.username
-  ) || [];
+  ) || []).sort((a, b) => {
+    const aIsAgent = a.role === "agent" ? 1 : 0;
+    const bIsAgent = b.role === "agent" ? 1 : 0;
+    return aIsAgent - bIsAgent;
+  });
 
   // Resolve the currently selected user profile to show in the trigger button (case-insensitive)
   const selectedUser = filteredResults?.find((user) => user.username.toLowerCase() === value?.toLowerCase()) || 
@@ -221,7 +225,7 @@ export const SearchableUserDropdown: React.FC<SearchableUserDropdownProps> = ({
                         {user.displayName}
                         
                         {/* Premium Discord/Slack style role indicators */}
-                        {user.role && user.role !== "user" && (
+                        {user.role && user.role !== "user" && user.role !== "agent" && (
                           <span className={cn(
                             "text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wider uppercase shrink-0 scale-90 origin-left",
                             user.role === "admin" 

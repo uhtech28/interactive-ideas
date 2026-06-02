@@ -265,13 +265,22 @@ export const postFromAgent = internalAction({
       return;
     }
 
-    await ctx.runMutation(api.agent.postIdea, {
+    const newIdeaId = await ctx.runMutation(api.agent.postIdea, {
       agentIndex: args.agentIndex,
       title: ideaData.title,
       description: ideaData.description,
       category: ideaData.category,
     });
     console.log(`✅ Agent[${args.agentIndex}] posted: "${ideaData.title}"`);
+
+    // Seed initial sparks so the new post doesn't appear empty
+    if (newIdeaId) {
+      await ctx.scheduler.runAfter(
+        30_000,
+        api.agent_actions.seedSparksForAgentPost,
+        { ideaId: newIdeaId },
+      );
+    }
 
     // Engagement sweep — skip on first ever post (no prior window to cover)
     if (lastPostTime !== null) {
@@ -348,5 +357,68 @@ export const generateEngagement = internalAction({
   args: {},
   handler: async () => {
     console.log("🤖 generateEngagement: superseded by per-post engagement in postFromAgent");
+  },
+});
+
+// Seeds 5–25 real-user sparks on a single agent-authored idea immediately after posting.
+export const seedSparksForAgentPost = internalAction({
+  args: { ideaId: v.id("ideas") },
+  handler: async (ctx, { ideaId }) => {
+    const api = internal as any;
+    const count = 5 + Math.floor(Math.random() * 21); // 5–25
+    const added = await ctx.runMutation(api.agent.seedRealUserSparksForIdea, { ideaId, count });
+    console.log(`🌱 Seeded ${added} spark(s) on agent post ${ideaId}`);
+  },
+});
+
+// Daily backfill (run by cron):
+// 1. Adds sparks to agent posts that have fewer than 5 sparks.
+// 2. Has a random agent leave a comment on every post currently at 0 comments.
+export const backfillAgentEngagement = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const api = internal as any;
+
+    // ── Seed sparks on agent posts with too few ──────────────────────────────
+    const agentIdeas: Array<{ _id: any; sparkCount?: number; title: string; description: string }> =
+      await ctx.runQuery(api.agent.getPublicAgentIdeas, {});
+
+    let sparksSeeded = 0;
+    for (const idea of agentIdeas) {
+      const current = idea.sparkCount || 0;
+      if (current < 5) {
+        const target = 5 + Math.floor(Math.random() * 21); // 5–25 total desired
+        const needed = target - current;
+        const added: number = await ctx.runMutation(api.agent.seedRealUserSparksForIdea, {
+          ideaId: idea._id,
+          count: needed,
+        });
+        sparksSeeded += added;
+      }
+    }
+
+    // ── Leave agent comments on posts with 0 comments ───────────────────────
+    const uncommented: Array<{ _id: any; title: string; description: string }> =
+      await ctx.runQuery(api.agent.getPublicIdeasWithNoComments, {});
+
+    let commentsAdded = 0;
+    for (const idea of uncommented) {
+      const agentIndex = Math.floor(Math.random() * POOL_SIZE);
+      const text = await generateComment({ title: idea.title, description: idea.description });
+      if (text) {
+        await ctx.runMutation(api.agent.comment, {
+          agentIndex,
+          ideaId: idea._id,
+          content: text,
+        });
+        commentsAdded++;
+      }
+      // Small pause to avoid hammering the LLM
+      await sleep(300);
+    }
+
+    console.log(
+      `✅ Backfill complete — ${sparksSeeded} spark(s) seeded, ${commentsAdded} comment(s) added`,
+    );
   },
 });

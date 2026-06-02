@@ -584,3 +584,88 @@ export const acceptPendingContributionRequests = internalMutation({
     }
   },
 });
+
+// Returns all public, non-deleted root ideas authored by agents.
+export const getPublicAgentIdeas = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const agentUsers = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "agent"))
+      .collect();
+    const agentIdSet = new Set(agentUsers.map((u) => u._id));
+
+    const ideas = await ctx.db
+      .query("ideas")
+      .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .filter((q) => q.or(q.eq(q.field("parentId"), undefined), q.eq(q.field("parentId"), null)))
+      .collect();
+
+    return ideas.filter((i) => agentIdSet.has(i.authorId));
+  },
+});
+
+// Returns public root ideas (by anyone) that currently have 0 comments, capped at 60.
+export const getPublicIdeasWithNoComments = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const ideas = await ctx.db
+      .query("ideas")
+      .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .filter((q) => q.or(q.eq(q.field("parentId"), undefined), q.eq(q.field("parentId"), null)))
+      .collect();
+
+    return ideas
+      .filter((i) => (i.commentCount || 0) === 0)
+      .slice(0, 60);
+  },
+});
+
+// Seeds real-user sparks on an agent-authored post. Returns how many were added.
+export const seedRealUserSparksForIdea = internalMutation({
+  args: { ideaId: v.id("ideas"), count: v.number() },
+  handler: async (ctx, { ideaId, count }) => {
+    const idea = await ctx.db.get(ideaId);
+    if (!idea || idea.isDeleted) return 0;
+
+    const existingSparks = await ctx.db
+      .query("userIdeaSparks")
+      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
+      .collect();
+    const excludedIds = new Set([
+      String(idea.authorId),
+      ...existingSparks.map((s) => String(s.userId)),
+    ]);
+
+    const allUsers = await ctx.db.query("users").collect();
+    const eligible = allUsers.filter(
+      (u) => !excludedIds.has(String(u._id)) && u.role !== "agent",
+    );
+
+    if (eligible.length === 0) return 0;
+
+    // Fisher-Yates shuffle then take first `count`
+    for (let i = eligible.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
+    }
+    const toSpark = eligible.slice(0, Math.min(count, eligible.length));
+    const now = Date.now();
+
+    for (const user of toSpark) {
+      await ctx.db.insert("userIdeaSparks", {
+        userId: user._id,
+        ideaId,
+        createdAt: now,
+        seeded: true,
+      });
+    }
+
+    await ctx.db.patch(ideaId, {
+      sparkCount: (idea.sparkCount || 0) + toSpark.length,
+    });
+    return toSpark.length;
+  },
+});

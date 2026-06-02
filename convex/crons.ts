@@ -67,6 +67,13 @@ crons.daily(
   api.socialProof.runDailyEvaluator,
 );
 
+// Schedule: Backfill sparks on agent posts + comments on uncommented posts (daily 10:15 UTC)
+crons.daily(
+  "Backfill Agent Engagement",
+  { hourUTC: 10, minuteUTC: 15 },
+  api.agent_actions.backfillAgentEngagement,
+);
+
 export default crons;
 
 // ─────────────────────────────────────────────────────────────────────────────
