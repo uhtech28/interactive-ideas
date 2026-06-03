@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, MutationCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
 // ── Pool of 36 synthetic personas ─────────────────────────────────────────────
@@ -499,6 +500,15 @@ export const postIdea = internalMutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    // Randomized XP mimics real user variance (base 50 ± ~12)
+    const xpAmount = 38 + Math.floor(Math.random() * 26); // 38–63
+    await ctx.scheduler.runAfter(0, internal.gamification.internalAwardXP, {
+      userId: agentId,
+      amount: xpAmount,
+      action: "create_idea",
+    });
+
     console.log(`🤖 [${agent.displayName}] posted idea: ${ideaId}`);
     return ideaId;
   },
@@ -585,6 +595,11 @@ export const acceptPendingContributionRequests = internalMutation({
       if (!agentIdSet.has(String(req.authorId))) continue;
 
       await ctx.db.patch(req._id, { status: "accepted", updatedAt: now });
+
+      await ctx.runMutation(internal.ventures.ensureAgentContributorVenture, {
+        ideaId: req.ideaId,
+        contributorId: req.contributorId,
+      });
 
       await ctx.db.insert("notifications", {
         recipientId: req.contributorId,

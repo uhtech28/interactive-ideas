@@ -271,6 +271,7 @@ export const postFromAgent = internalAction({
       description: ideaData.description,
       category: ideaData.category,
     });
+    await ctx.runMutation(api.ventures.ensureAgentShowcaseVenture, {});
     console.log(`✅ Agent[${args.agentIndex}] posted: "${ideaData.title}"`);
 
     // Seed initial sparks so the new post doesn't appear empty
