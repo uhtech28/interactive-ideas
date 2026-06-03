@@ -81,6 +81,16 @@ function usePersistentIds(key: string) {
   return [ids, update] as const;
 }
 
+function useDelayedLoading(isLoading: boolean, delayMs = 400) {
+  const [showSkeleton, setShowSkeleton] = useState(false);
+  useEffect(() => {
+    if (!isLoading) { setShowSkeleton(false); return; }
+    const timer = setTimeout(() => setShowSkeleton(true), delayMs);
+    return () => clearTimeout(timer);
+  }, [isLoading, delayMs]);
+  return showSkeleton;
+}
+
 export function IdeaForgeExperience({
   mode,
   currentUser,
@@ -117,6 +127,7 @@ export function IdeaForgeExperience({
   const router = useRouter();
   const userIdeas = useQuery(api.ideas.getUserIdeas) || [];
   const publicIdeas = useQuery(api.ideas.getPublicIdeas, { limit: 60 }) || [];
+  const showSkeleton = useDelayedLoading(isLoading);
 
   // Infinite scroll sentinel
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -271,7 +282,7 @@ export function IdeaForgeExperience({
                 </>
               )}
 
-              {isLoading ? (
+              {showSkeleton ? (
                 <div className="space-y-5">
                   {Array.from({ length: 3 }).map((_, index) => (
                     <IdeaCardSkeleton key={index} />
