@@ -334,28 +334,15 @@ export const getPublicIdeas = query({
       if (doc) authorMap.set(uniqueAuthorIds[i], doc);
     }
 
-    // Batch-fetch contribution counts for all ideas in parallel
-    const contributionCounts = await Promise.all(
-      finalIdeas.map((idea) =>
-        ctx.db
-          .query("contributionRequests")
-          .withIndex("by_idea_status_created", (q) =>
-            q.eq("ideaId", idea._id).eq("status", "accepted")
-          )
-          .collect()
-          .then((rows) => 1 + rows.length)
-          .catch(() => 1)
-      )
-    );
-
-    const ideasWithAuthors = finalIdeas.map((idea, idx) => {
+    // Use denormalized contributionRequestCount — no extra queries needed
+    const ideasWithAuthors = finalIdeas.map((idea) => {
       const author = authorMap.get(String(idea.authorId)) ?? null;
       return {
         ...idea,
         author: author
           ? { ...author, name: author.displayName, username: author.username }
           : null,
-        contributionCount: contributionCounts[idx],
+        contributionCount: 1 + (idea.contributionRequestCount ?? 0),
       };
     });
 

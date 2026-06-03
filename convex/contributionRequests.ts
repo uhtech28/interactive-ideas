@@ -308,6 +308,17 @@ export const updateRequestStatus = mutation({
 
       await ctx.db.patch(args.requestId, { status: args.status, updatedAt: Date.now() });
 
+      // Keep denormalized contributionRequestCount in sync
+      const ideaForCount = await ctx.db.get(request.ideaId);
+      if (ideaForCount) {
+        const current = ideaForCount.contributionRequestCount ?? 0;
+        if (args.status === "accepted") {
+          await ctx.db.patch(request.ideaId, { contributionRequestCount: current + 1 });
+        } else if (args.status === "rejected" && current > 0) {
+          await ctx.db.patch(request.ideaId, { contributionRequestCount: current - 1 });
+        }
+      }
+
       const updatedRequest = await ctx.db.get(args.requestId);
       if (updatedRequest?.status !== args.status) {
         throw new Error("Request status update failed due to concurrent modification");
