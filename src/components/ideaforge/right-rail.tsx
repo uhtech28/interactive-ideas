@@ -29,11 +29,11 @@ function SuggestedBuilderCard({ builder }: { builder: BuilderSuggestion }) {
   const { openChatWithUser } = useChat();
 
   return (
-    <div className="flex items-center gap-3 rounded-[12px] border border-white/7 bg-white/[0.03] px-3 py-2.5">
+    <div className="flex items-center gap-2 py-1">
       <Link href={profileHref} className="shrink-0" aria-label={`View ${displayName}'s profile`}>
-        <Avatar className="h-10 w-10">
+        <Avatar className="h-8 w-8">
           <AvatarImage src={builder.avatar} alt={displayName} />
-          <AvatarFallback className="bg-[#1B2440] text-white">{getInitials(displayName)}</AvatarFallback>
+          <AvatarFallback className="bg-[#1B2440] text-xs text-white">{getInitials(displayName)}</AvatarFallback>
         </Avatar>
       </Link>
       <Link href={profileHref} className="min-w-0 flex-1">
@@ -46,7 +46,7 @@ function SuggestedBuilderCard({ builder }: { builder: BuilderSuggestion }) {
         disabled={!builderId}
         aria-label={`Message ${displayName}`}
         title={`Message ${displayName}`}
-        className="h-9 w-9 rounded-[10px] bg-[#6366F1]/15 p-0 text-[#C7D2FE] hover:bg-[#6366F1] hover:text-white disabled:opacity-50"
+        className="h-8 w-8 rounded-full bg-transparent p-0 text-[#C7D2FE] hover:bg-[#6366F1]/15 hover:text-white disabled:opacity-50"
       >
         <MessageCircle className="h-4 w-4" />
       </Button>
@@ -143,12 +143,12 @@ export function IdeaForgeRightRail({
           </div>
         </section>
 
-        <section className={cn(cardSurface, "p-5")}>
+        <section className={cn(cardSurface, "p-4")}>
           <div className="flex items-center justify-between">
             <h3 className={cn(displayFontClass, "text-base font-semibold text-[#F9FAFB]")}>Suggested Builders</h3>
             <ArrowUpRight className="h-4 w-4 text-[#9CA3AF]" />
           </div>
-          <div className="mt-4 space-y-2.5">
+          <div className="mt-3 space-y-1">
             {builders.length > 0 ? builders.map((builder) => <SuggestedBuilderCard key={builder._id?.toString() || builder.username} builder={builder as BuilderSuggestion} />) : (
               <p className="text-sm text-[#9CA3AF]">We are lining up collaborators based on your profile and recent ideas.</p>
             )}
