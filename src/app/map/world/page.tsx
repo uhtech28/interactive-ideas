@@ -1115,6 +1115,7 @@ function MapPageInner() {
   const paramCheckpointId = searchParams.get("checkpointId");
   const paramPanel = searchParams.get("panel");
   const paramTab = searchParams.get("tab");
+  const sourceIdeaId = searchParams.get("sourceIdeaId") as Id<"ideas"> | null;
 
   const updateUrlParams = useCallback(
     (newParams: Record<string, string | null>, replace = false) => {
@@ -1261,8 +1262,15 @@ function MapPageInner() {
   //    Never silently fall back to another — show "no venture" UI if not found.
   // 2. No URL param         → resume the last cached venture (e.g. nav icon tap).
   const hasUrlVentureParam = !!searchParams.get("ventureId");
+  const ventureById = useQuery(
+    api.worldMap.getVentureById,
+    hasUrlVentureParam && preferredVentureId
+      ? { ventureId: preferredVentureId as Id<"ventures"> }
+      : "skip",
+  );
   const activeVenture =
     ventures?.find((venture) => venture._id === preferredVentureId) ??
+    ventureById ??
     (hasUrlVentureParam ? null : (ventures?.[0] ?? null));
 
   // Subscribe to notifications for gold checkpoint awards
@@ -1576,6 +1584,10 @@ function MapPageInner() {
     api.ideas.getIdeaById,
     venture?.ideaId ? { ideaId: venture.ideaId } : "skip",
   );
+  const sourceIdea = useQuery(
+    api.ideas.getIdeaById,
+    sourceIdeaId ? { ideaId: sourceIdeaId } : "skip",
+  );
   const templateStages = useMemo(
     () => getStageMetadata((venture?.templateId ?? "venture") as TemplateId),
     [venture?.templateId],
@@ -1591,7 +1603,7 @@ function MapPageInner() {
   );
 
   const brightness = worldMapData?.brightness;
-  const ideaTitle = worldMapData?.ideaTitle ?? "Your Venture";
+  const ideaTitle = sourceIdea?.title ?? worldMapData?.ideaTitle ?? "Your Venture";
   const superBoss = worldMapData?.superBoss ?? null;
   type WorldMapCheckpoint = (typeof checkpoints)[number];
   type WorldMapTask = WorldMapCheckpoint["tasks"][number];

@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
+import { internalMutation, mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import {
   CHECKPOINT_DEFINITIONS,
@@ -26,6 +26,231 @@ import { finalizeCompletedStageScores } from "./cumulativeVentureScore";
 // ─────────────────────────────────────────────────────────────────────────────
 // MUTATIONS
 // ─────────────────────────────────────────────────────────────────────────────
+
+const AGENT_SHOWCASE_CATEGORY = "__agent_showcase_map__";
+const AGENT_SHOWCASE_TITLE = "AI Agent Idea Map";
+const AGENT_SHOWCASE_DESCRIPTION =
+  "A shared showcase map used for AI agent ideas so every generated post can reveal the core gamification experience without creating separate task workstreams.";
+const AGENT_SHOWCASE_OWNER_CLERK_ID = "internal_agent_007";
+
+async function createVentureForUser(
+  ctx: MutationCtx,
+  args: {
+    ideaId: Id<"ideas">;
+    userId: Id<"users">;
+    templateId?: TemplateId;
+    skills?: string[];
+    industries?: string[];
+    awardCreationPoints?: boolean;
+  },
+) {
+  const existing = await ctx.db
+    .query("ventures")
+    .withIndex("by_idea", (q) => q.eq("ideaId", args.ideaId))
+    .collect()
+    .then((ventures) => ventures.find((venture) => venture.userId === args.userId));
+
+  if (existing) return existing._id;
+
+  const now = Date.now();
+  const templateId: TemplateId = args.templateId ?? "venture";
+  const checkpointDefs = getCheckpointDefinitions(templateId);
+
+  const ventureId = await ctx.db.insert("ventures", {
+    ideaId: args.ideaId,
+    userId: args.userId,
+    templateId,
+    currentStage: 1,
+    currentCheckpoint: 1,
+    corruptionLevel: 0,
+    lastActivityAt: now,
+    status: "active",
+    assignedBosses: [],
+    skills: args.skills,
+    industries: args.industries,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  for (const cpDef of checkpointDefs) {
+    const checkpointId = await ctx.db.insert("ventureCheckpoints", {
+      ventureId,
+      stage: cpDef.stage,
+      checkpoint: cpDef.checkpoint,
+      status: "not_started",
+      t1Completed: false,
+      t2Completed: false,
+      t3Completed: false,
+      goldBonusEarned: false,
+      partialStartedAt: undefined,
+      partialDecayAppliedAt: undefined,
+    });
+
+    await ctx.db.insert("ventureTasks", {
+      checkpointId,
+      taskLevel: "t1",
+      toolType: cpDef.t1.tool as any,
+      status: "not_started",
+    });
+
+    await ctx.db.insert("ventureTasks", {
+      checkpointId,
+      taskLevel: "t2",
+      toolType: cpDef.t2.tool as any,
+      status: "not_started",
+    });
+
+    await ctx.db.insert("ventureTasks", {
+      checkpointId,
+      taskLevel: "t3",
+      toolType: cpDef.t3.tool as any,
+      status: "not_started",
+    });
+  }
+
+  const bossAffinities: Record<string, number[]> = {
+    venture: [1, 2, 3, 4, 5, 6, 7, 8],
+    academic: [9, 2],
+    lab: [10],
+    creative: [11, 12, 2],
+  };
+  const affinities = bossAffinities[templateId] ?? [1, 2, 3, 4, 5, 6, 7, 8];
+  const availableBosses = BOSS_DEFINITIONS.filter((b) => affinities.includes(b.id));
+  const bossIds = shuffle(availableBosses.map((b) => b.id)).slice(0, 1);
+  const assignedBossId = bossIds[0];
+
+  if (assignedBossId === undefined) {
+    throw new Error("Failed to assign a super boss");
+  }
+
+  await ctx.db.insert("ventureBosses", {
+    ventureId,
+    bossId: assignedBossId,
+    status: "active",
+    corruptionLevel: 0,
+    bossSpecificCounters: {},
+    assignedAt: now,
+  });
+
+  await ctx.db.patch(ventureId, {
+    assignedBosses: bossIds,
+    updatedAt: now,
+  });
+
+  if (args.awardCreationPoints) {
+    await awardPoints(
+      ctx,
+      args.userId,
+      POINT_VALUES.create_idea,
+      "venture_created",
+      ventureId,
+    );
+  }
+
+  return ventureId;
+}
+
+async function getAgentShowcaseVenture(ctx: { db: QueryCtx["db"] | MutationCtx["db"] }) {
+  const owner = await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("clerkId", AGENT_SHOWCASE_OWNER_CLERK_ID))
+    .first();
+
+  if (!owner) return null;
+
+  const showcaseIdea = await ctx.db
+    .query("ideas")
+    .withIndex("by_author", (q) => q.eq("authorId", owner._id))
+    .collect()
+    .then((ideas) => ideas.find((idea) => idea.category === AGENT_SHOWCASE_CATEGORY && !idea.isDeleted));
+
+  if (!showcaseIdea) return null;
+
+  return await ctx.db
+    .query("ventures")
+    .withIndex("by_idea", (q) => q.eq("ideaId", showcaseIdea._id))
+    .first();
+}
+
+export const ensureAgentShowcaseVenture = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const owner = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", AGENT_SHOWCASE_OWNER_CLERK_ID))
+      .first();
+
+    if (!owner) {
+      throw new Error("Agent showcase owner not found");
+    }
+
+    const existingIdea = await ctx.db
+      .query("ideas")
+      .withIndex("by_author", (q) => q.eq("authorId", owner._id))
+      .collect()
+      .then((ideas) => ideas.find((idea) => idea.category === AGENT_SHOWCASE_CATEGORY && !idea.isDeleted));
+
+    const now = Date.now();
+    const ideaId = existingIdea?._id ?? await ctx.db.insert("ideas", {
+      authorId: owner._id,
+      title: AGENT_SHOWCASE_TITLE,
+      description: AGENT_SHOWCASE_DESCRIPTION,
+      category: AGENT_SHOWCASE_CATEGORY,
+      industries: JSON.stringify(["Software and Technology"]),
+      visibility: "public",
+      sparkCount: 0,
+      commentCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return await createVentureForUser(ctx, {
+      ideaId,
+      userId: owner._id,
+      skills: ["Strategy", "Product Management", "Ideation"],
+      industries: ["Software and Technology"],
+      awardCreationPoints: false,
+    });
+  },
+});
+
+export const ensureAgentContributorVenture = internalMutation({
+  args: {
+    ideaId: v.id("ideas"),
+    contributorId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const idea = await ctx.db.get(args.ideaId);
+    if (!idea || idea.isDeleted) return null;
+
+    const author = await ctx.db.get(idea.authorId);
+    if (author?.role !== "agent") return null;
+
+    let skills: string[] = [];
+    try {
+      const parsed = JSON.parse(idea.category);
+      skills = Array.isArray(parsed) ? parsed : [idea.category];
+    } catch {
+      if (idea.category) skills = [idea.category];
+    }
+
+    let industries: string[] = [];
+    try {
+      const parsed = idea.industries ? JSON.parse(idea.industries) : [];
+      industries = Array.isArray(parsed) ? parsed : (idea.industries ? [idea.industries] : []);
+    } catch {
+      if (idea.industries) industries = [idea.industries];
+    }
+
+    return await createVentureForUser(ctx, {
+      ideaId: args.ideaId,
+      userId: args.contributorId,
+      skills,
+      industries,
+      awardCreationPoints: false,
+    });
+  },
+});
 
 /**
  * Generate a URL for uploading files to Convex storage.
@@ -1042,11 +1267,10 @@ export const getVentureSummaryByIdea = query({
       const idea = await ctx.db.get(args.ideaId);
       if (!idea || idea.isDeleted) return null;
 
-      const venture = await ctx.db
+      const ideaVentures = await ctx.db
         .query("ventures")
         .withIndex("by_idea", (q) => q.eq("ideaId", args.ideaId))
-        .first();
-      if (!venture) return null;
+        .collect();
 
       const acceptedContribution = await ctx.db
         .query("contributionRequests")
@@ -1054,6 +1278,20 @@ export const getVentureSummaryByIdea = query({
           q.eq("ideaId", args.ideaId).eq("contributorId", user._id),
         )
         .first();
+      const author = await ctx.db.get(idea.authorId);
+      let venture: (typeof ideaVentures)[number] | null =
+        ideaVentures.find((candidate) => candidate.userId === user._id) ?? null;
+      if (!venture && author?.role !== "agent") {
+        venture =
+          ideaVentures.find((candidate) => candidate.userId === idea.authorId) ??
+          ideaVentures[0] ??
+          null;
+      }
+      if (!venture && author?.role === "agent") {
+        venture = await getAgentShowcaseVenture(ctx);
+      }
+      if (!venture) return null;
+
       const canView =
         idea.visibility === "public" ||
         idea.authorId === user._id ||

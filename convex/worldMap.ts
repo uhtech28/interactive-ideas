@@ -66,6 +66,30 @@ const MAX_ACCUMULATED = 60;
 const MAX_STAGE_LAYER = 40;
 type WorldMapDbCtx = MutationCtx["db"];
 type WorldMapQueryDbCtx = QueryCtx["db"];
+const AGENT_SHOWCASE_CATEGORY = "__agent_showcase_map__";
+const AGENT_SHOWCASE_OWNER_CLERK_ID = "internal_agent_007";
+
+async function getAgentShowcaseVenture(ctx: { db: WorldMapQueryDbCtx | WorldMapDbCtx }) {
+  const owner = await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("clerkId", AGENT_SHOWCASE_OWNER_CLERK_ID))
+    .first();
+
+  if (!owner) return null;
+
+  const showcaseIdea = await ctx.db
+    .query("ideas")
+    .withIndex("by_author", (q) => q.eq("authorId", owner._id))
+    .collect()
+    .then((ideas) => ideas.find((idea) => idea.category === AGENT_SHOWCASE_CATEGORY && !idea.isDeleted));
+
+  if (!showcaseIdea) return null;
+
+  return await ctx.db
+    .query("ventures")
+    .withIndex("by_idea", (q) => q.eq("ideaId", showcaseIdea._id))
+    .first();
+}
 
 /**
  * Derive brightness inputs from raw ventureCheckpoints rows and the venture's
@@ -1312,17 +1336,71 @@ export const getVentureByIdea = query({
     const idea = await ctx.db.get(args.ideaId);
     if (!idea || idea.isDeleted) return null;
 
-    const venture = await ctx.db
+    const ideaVentures = await ctx.db
       .query("ventures")
       .withIndex("by_idea", (q) => q.eq("ideaId", args.ideaId))
-      .first();
-
-    if (!venture) return null;
+      .collect();
 
     const acceptedContribution = await ctx.db
       .query("contributionRequests")
       .withIndex("by_idea_contributor", (q) =>
         q.eq("ideaId", args.ideaId).eq("contributorId", user._id),
+      )
+      .first();
+    const author = await ctx.db.get(idea.authorId);
+    let venture: (typeof ideaVentures)[number] | null =
+      ideaVentures.find((candidate) => candidate.userId === user._id) ?? null;
+    if (!venture && author?.role !== "agent") {
+      venture =
+        ideaVentures.find((candidate) => candidate.userId === idea.authorId) ??
+        ideaVentures[0] ??
+        null;
+    }
+    if (!venture && author?.role === "agent") {
+      venture = await getAgentShowcaseVenture(ctx);
+    }
+
+    if (!venture) return null;
+
+    const canView =
+      idea.visibility === "public" ||
+      venture.userId === user._id ||
+      idea.authorId === user._id ||
+      acceptedContribution?.status === "accepted";
+    if (!canView) return null;
+
+    return {
+      ...venture,
+      corruptionLevel: venture.corruptionLevel ?? 0,
+      lastActivityAt: venture.lastActivityAt ?? venture.updatedAt,
+    };
+  },
+});
+
+export const getVentureById = query({
+  args: {
+    ventureId: v.id("ventures"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+    if (!user) return null;
+
+    const venture = await ctx.db.get(args.ventureId);
+    if (!venture) return null;
+
+    const idea = await ctx.db.get(venture.ideaId);
+    if (!idea || idea.isDeleted) return null;
+
+    const acceptedContribution = await ctx.db
+      .query("contributionRequests")
+      .withIndex("by_idea_contributor", (q) =>
+        q.eq("ideaId", venture.ideaId).eq("contributorId", user._id),
       )
       .first();
     const canView =

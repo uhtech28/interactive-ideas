@@ -51,6 +51,7 @@ function MapIntroInner() {
 
   // Mutation to create a venture if one doesn't exist
   const createVenture = useMutation(api.ventures.createVenture);
+  const ensureAgentShowcaseVenture = useMutation(api.ventures.ensureAgentShowcaseVenture);
 
   // Resolve which venture to open:
   // - If ideaId is in URL → use the venture for that idea (wait for query)
@@ -65,10 +66,16 @@ function MapIntroInner() {
     activeVenture ? { ventureId: activeVenture._id } : "skip",
   );
 
-  const ventureName = ideaQuery?.ideaTitle ?? "Your Venture";
+  const ventureName = ideaIdParam && idea?.title
+    ? idea.title
+    : (ideaQuery?.ideaTitle ?? "Your Venture");
 
   // Helper: build the destination URL, always including ventureId
-  const buildWorldMapUrl = (vId: string) => `/map/world?ventureId=${vId}`;
+  const buildWorldMapUrl = (vId: string) => {
+    const params = new URLSearchParams({ ventureId: vId });
+    if (ideaIdParam) params.set("sourceIdeaId", ideaIdParam);
+    return `/map/world?${params.toString()}`;
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -81,6 +88,28 @@ function MapIntroInner() {
     if (ideaIdParam) {
       if (ventureByIdea === undefined) return;
       if (idea === undefined) return;
+    }
+
+    // Agent ideas use one shared preview map until the viewer is accepted as a contributor.
+    if (
+      ideaIdParam &&
+      idea?.author?.role === "agent" &&
+      ventureByIdea === null &&
+      !isCreatingVenture &&
+      !createdVentureId
+    ) {
+      setIsCreatingVenture(true);
+
+      ensureAgentShowcaseVenture({})
+        .then((vId) => {
+          setCreatedVentureId(vId);
+          setIsCreatingVenture(false);
+        })
+        .catch((err) => {
+          console.error("Creating agent showcase venture failed:", err);
+          setIsCreatingVenture(false);
+        });
+      return;
     }
 
     // Auto-create venture if missing
@@ -172,6 +201,7 @@ function MapIntroInner() {
     isCreatingVenture,
     createdVentureId,
     createVenture,
+    ensureAgentShowcaseVenture,
   ]);
 
   const handleStart = async (gender: "male" | "female") => {

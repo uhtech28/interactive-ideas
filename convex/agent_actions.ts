@@ -1,7 +1,7 @@
 "use node";
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api as publicApi, internal } from "./_generated/api";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import OpenAI from "openai";
 import { AGENT_POOL, POOL_SIZE } from "./agent";
@@ -271,7 +271,7 @@ export const postFromAgent = internalAction({
       description: ideaData.description,
       category: ideaData.category,
     });
-    await ctx.runMutation(api.ventures.ensureAgentShowcaseVenture, {});
+    await ctx.runMutation(publicApi.ventures.ensureAgentShowcaseVenture, {});
     console.log(`✅ Agent[${args.agentIndex}] posted: "${ideaData.title}"`);
 
     // Seed initial sparks so the new post doesn't appear empty
