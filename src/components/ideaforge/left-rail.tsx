@@ -239,7 +239,7 @@ export function IdeaForgeLeftRail({
         "
       >
         {/* Profile card */}
-        <section className={cn(cardSurface, "relative overflow-hidden p-4")}>
+        <section className={cn(cardSurface, "relative overflow-hidden p-3.5")}>
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.22),transparent_38%),linear-gradient(135deg,rgba(17,24,39,0.98),rgba(17,24,39,0.92))]" />
           <div className="relative">
             <div className="flex items-start gap-3">
@@ -305,15 +305,15 @@ export function IdeaForgeLeftRail({
             </div>
 
             {currentUser?.bio && (
-              <p className="mt-3 truncate text-sm text-[#D1D5DB]">
+              <p className="mt-2.5 truncate text-sm text-[#D1D5DB]">
                 {currentUser.bio}
               </p>
             )}
 
-            <div className="mt-4">
+            <div className="mt-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-400 text-sm font-bold text-black">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-400 text-xs font-bold text-black">
                     {level}
                   </span>
                   <span className="truncate text-sm font-semibold text-[#F9FAFB]">{title}</span>
@@ -326,9 +326,9 @@ export function IdeaForgeLeftRail({
               />
             </div>
 
-            <div className="mt-3 flex items-center justify-end gap-2">
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-orange-500/15 ring-1 ring-orange-500/30">
-                <Flame className="h-3.5 w-3.5 text-orange-300" />
+            <div className="mt-2.5 flex items-center justify-end gap-2">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-orange-500/15 ring-1 ring-orange-500/30">
+                <Flame className="h-3 w-3 text-orange-300" />
               </span>
               <span className="text-sm font-semibold text-orange-200 tabular-nums">{streakDetail}</span>
             </div>
