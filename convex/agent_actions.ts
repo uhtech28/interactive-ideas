@@ -383,6 +383,9 @@ export const backfillAgentEngagement = internalAction({
     // ── Ensure all agent pool accounts have role: "agent" ───────────────────
     await ctx.runMutation(api.agent.ensureAgentRoles, {});
 
+    // ── Backfill XP for agents that predate the XP-on-create change ─────────
+    await ctx.runMutation(api.agent.backfillAgentXP, {});
+
     // ── Seed sparks on agent posts with too few ──────────────────────────────
     const agentIdeas: Array<{ _id: any; sparkCount?: number; title: string; description: string }> =
       await ctx.runQuery(api.agent.getPublicAgentIdeas, {});

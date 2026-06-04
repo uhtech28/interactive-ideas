@@ -478,6 +478,58 @@ export const ensureAgentRoles = internalMutation({
   },
 });
 
+// One-time backfill: awards randomized XP to all agents for ideas posted
+// before the XP-on-create logic existed. Safe to re-run — skips agents
+// that already have XP > 0.
+export const backfillAgentXP = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let totalXP = 0;
+    let agentsUpdated = 0;
+
+    for (const agent of AGENT_POOL) {
+      const agentUser = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", agent.clerkId))
+        .first();
+      if (!agentUser) continue;
+
+      // Skip if already has XP (idempotent)
+      if ((agentUser.xp ?? 0) > 0) continue;
+
+      const ideas = await ctx.db
+        .query("ideas")
+        .withIndex("by_author", (q) => q.eq("authorId", agentUser._id))
+        .collect();
+
+      if (ideas.length === 0) continue;
+
+      // Award randomized XP for each historical post
+      let agentXP = 0;
+      for (const _idea of ideas) {
+        agentXP += 38 + Math.floor(Math.random() * 26); // 38–63 per post
+      }
+
+      // Calculate level from XP (mirrors calculateLevelFromXP in gamification.ts)
+      let level = 1;
+      let xpNeeded = 100;
+      let remaining = agentXP;
+      while (remaining >= xpNeeded) {
+        remaining -= xpNeeded;
+        level++;
+        xpNeeded = level <= 10 ? 100 : Math.floor(xpNeeded * 1.5);
+      }
+
+      await ctx.db.patch(agentUser._id, { xp: agentXP, level });
+      totalXP += agentXP;
+      agentsUpdated++;
+      console.log(`🤖 [${agent.displayName}] backfilled ${ideas.length} post(s) → ${agentXP} XP, level ${level}`);
+    }
+
+    console.log(`✅ backfillAgentXP: ${agentsUpdated} agent(s) updated, ${totalXP} XP total`);
+  },
+});
+
 export const postIdea = internalMutation({
   args: {
     agentIndex: v.number(),

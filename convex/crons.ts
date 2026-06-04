@@ -74,6 +74,13 @@ crons.daily(
   api.agent_actions.backfillAgentEngagement,
 );
 
+// One-time XP backfill: runs hourly until all agents have XP, then becomes a no-op
+crons.hourly(
+  "Backfill Agent XP",
+  { minuteUTC: 0 },
+  api.agent.backfillAgentXP,
+);
+
 export default crons;
 
 // ─────────────────────────────────────────────────────────────────────────────
