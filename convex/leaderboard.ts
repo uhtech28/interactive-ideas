@@ -45,54 +45,65 @@ export const getWeeklyLeaderboard = query({
     },
     handler: async (ctx, args) => {
         const limit = args.limit ?? 3;
+        const weekMs = 7 * 24 * 60 * 60 * 1000;
+        const maxLookbackWeeks = 52;
+        const now = Date.now();
 
-        // 1. Calculate start of the week (7 days ago)
-        const startOfWeekTimestamp = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        for (let lookbackWeeks = 1; lookbackWeeks <= maxLookbackWeeks; lookbackWeeks++) {
+            const startTimestamp = now - lookbackWeeks * weekMs;
 
-        // 2. Fetch all transactions since start of week using the index (efficient!)
-        const transactions = await ctx.db
-            .query("transactions")
-            .withIndex("by_created_at", (q) => q.gte("createdAt", startOfWeekTimestamp))
-            .collect();
+            // Fetch all transactions in the current lookback window. If the
+            // podium is not filled, expand the window by another 7 days.
+            const transactions = await ctx.db
+                .query("transactions")
+                .withIndex("by_created_at", (q) => q.gte("createdAt", startTimestamp))
+                .collect();
 
-        if (transactions.length === 0) return [];
+            if (transactions.length === 0) continue;
 
-        // 3. Aggregate points per walletId
-        const walletPoints = new Map<string, number>();
-        for (const tx of transactions) {
-            if (tx.amount > 0) {
-                const current = walletPoints.get(tx.walletId) || 0;
-                walletPoints.set(tx.walletId, current + tx.amount);
+            // Aggregate points per walletId.
+            const walletPoints = new Map<string, number>();
+            for (const tx of transactions) {
+                if (tx.amount > 0) {
+                    const current = walletPoints.get(tx.walletId) || 0;
+                    walletPoints.set(tx.walletId, current + tx.amount);
+                }
+            }
+
+            const candidates = await Promise.all(
+                Array.from(walletPoints.entries()).map(async ([walletId, points]) => {
+                    const wallet = await ctx.db.get(walletId as Id<"wallets">);
+                    if (!wallet) return null;
+
+                    const user = await ctx.db.get(wallet.userId);
+                    if (!user || user.role === "agent") return null;
+
+                    return {
+                        _id: user._id,
+                        displayName: user.displayName,
+                        username: user.username,
+                        avatar: user.avatar ?? null,
+                        points,
+                        level: user.level ?? 1,
+                    };
+                })
+            );
+
+            const results = candidates
+                .filter((u): u is NonNullable<typeof u> => u !== null)
+                .sort((a, b) => b.points - a.points)
+                .slice(0, limit)
+                .map((user, index) => ({
+                    ...user,
+                    rank: index + 1,
+                }));
+
+            if (results.length >= limit || lookbackWeeks === maxLookbackWeeks) {
+                return results;
             }
         }
 
-        // 4. Sort and take top N
-        const sortedEntries = Array.from(walletPoints.entries())
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, limit);
-
-        // 5. Fetch User Details for each matched wallet
-        const results = await Promise.all(
-            sortedEntries.map(async ([walletId, points], index) => {
-                const wallet = await ctx.db.get(walletId as Id<"wallets">);
-                if (!wallet) return null;
-
-                const user = await ctx.db.get(wallet.userId);
-                if (!user || user.role === "agent") return null;
-
-                return {
-                    _id: user._id,
-                    displayName: user.displayName,
-                    username: user.username,
-                    avatar: user.avatar ?? null,
-                    points,
-                    level: user.level ?? 1,
-                    rank: index + 1,
-                };
-            })
-        );
-
-        return results.filter((u): u is NonNullable<typeof u> => u !== null);
+        return [];
     }
 });
 

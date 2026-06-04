@@ -60,10 +60,10 @@ const ChannelList: React.FC<ChannelListProps> = memo(({ ideaId, onBack, onSelect
     };
 
     return (
-        <div className="w-full h-full bg-background flex flex-col">
+        <div className="w-full h-full bg-[#0B101B] flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="px-3 py-2 border-b flex items-center gap-2 shrink-0 bg-card/50 backdrop-blur-sm">
-                <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 -ml-1">
+            <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2 shrink-0 bg-[#0B101B]">
+                <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 -ml-1 hover:bg-white/[0.08]">
                     <ArrowLeft className="w-4 h-4" />
                 </Button>
                 <div className="flex-1 min-w-0">

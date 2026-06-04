@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { CheckCircle2, Clock, XCircle, UserPlus } from "lucide-react";
 import { notifyRequestSent } from "@/components/requests/notification-toast";
+import Link from "next/link";
 
 interface ContributionRequestModalProps {
   ideaId: Id<"ideas">;
@@ -37,13 +38,14 @@ export const ContributionRequestModal: React.FC<ContributionRequestModalProps> =
   const [existingRequest, setExistingRequest] = useState<Doc<"contributionRequests"> | null>(null);
   const isOverMessageLimit = message.length > 1200;
   const displayAuthorName = authorName || "the author";
-  const displayUsername = authorUsername ? `@${authorUsername}` : "";
-  const initials = displayAuthorName
+  const initials = (authorName || authorUsername || "U")
     .split(/\s+/)
     .map((part) => part.charAt(0))
     .join("")
     .slice(0, 2)
     .toUpperCase();
+  const profileHref = authorUsername ? `/profile/${authorUsername}` : undefined;
+  const ideaHref = `/idea/${ideaId}`;
 
   useEffect(() => {
     if (userRequests) {
@@ -59,6 +61,35 @@ export const ContributionRequestModal: React.FC<ContributionRequestModalProps> =
     if (match && match[1]) return match[1];
     return raw.replace(/^\[CONVEX[^\]]*\]\s*\[[^\]]*\]\s*Server Error\s*/i, "").split("\n")[0];
   };
+
+  const projectProfileHeader = (
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 overflow-hidden rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3">
+      <Link
+        href={ideaHref}
+        className="min-w-0 truncate text-sm font-semibold text-white transition-colors hover:text-[#C7D2FE]"
+        title={ideaTitle}
+      >
+        {ideaTitle}
+      </Link>
+      {profileHref ? (
+        <Link
+          href={profileHref}
+          className="shrink-0 rounded-full transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1]/50"
+          aria-label={`Open ${displayAuthorName}'s profile`}
+        >
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={authorAvatar} alt={displayAuthorName} />
+            <AvatarFallback className="bg-[#1B2440] text-xs text-white">{initials || "U"}</AvatarFallback>
+          </Avatar>
+        </Link>
+      ) : (
+        <Avatar className="h-10 w-10 shrink-0">
+          <AvatarImage src={authorAvatar} alt={displayAuthorName} />
+          <AvatarFallback className="bg-[#1B2440] text-xs text-white">{initials || "U"}</AvatarFallback>
+        </Avatar>
+      )}
+    </div>
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,10 +119,26 @@ export const ContributionRequestModal: React.FC<ContributionRequestModalProps> =
   if (existingRequest) {
     const status = existingRequest.status;
     const statusConfig = {
-      pending: { color: "bg-yellow-100 text-yellow-800 border-yellow-300", icon: Clock },
-      accepted: { color: "bg-green-100 text-green-800 border-green-300", icon: CheckCircle2 },
-      rejected: { color: "bg-red-100 text-red-800 border-red-300", icon: XCircle },
-    }[status as "pending" | "accepted" | "rejected"] || { color: "bg-gray-100", icon: Clock };
+      pending: {
+        color: "border-amber-400/30 bg-amber-400/10 text-amber-200",
+        icon: Clock,
+        message: "Waiting for author's response.",
+      },
+      accepted: {
+        color: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
+        icon: CheckCircle2,
+        message: "You are now a contributor!",
+      },
+      rejected: {
+        color: "border-rose-400/30 bg-rose-400/10 text-rose-200",
+        icon: XCircle,
+        message: "Your request was declined.",
+      },
+    }[status as "pending" | "accepted" | "rejected"] || {
+      color: "border-white/10 bg-white/[0.03] text-white",
+      icon: Clock,
+      message: "",
+    };
 
     const StatusIcon = statusConfig.icon;
 
@@ -99,25 +146,22 @@ export const ContributionRequestModal: React.FC<ContributionRequestModalProps> =
       <div className="space-y-6">
         <DialogHeader>
           <DialogTitle>Contribution Status</DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            You have already requested to contribute to "{ideaTitle}".
-          </p>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
-            <div className={`p-4 rounded-xl border ${statusConfig.color} flex items-center gap-3`}>
-                <StatusIcon className="w-5 h-5" />
-                <div className="flex-1">
-                    <p className="font-semibold capitalize">{status}</p>
-                    <p className="text-xs opacity-90">
-                        {status === 'pending' && "Waiting for author's response."}
-                        {status === 'accepted' && "You are now a contributor!"}
-                        {status === 'rejected' && "Your request was declined."}
-                    </p>
-                </div>
+            {projectProfileHeader}
+
+            <div className={`rounded-xl border px-3 py-2 ${statusConfig.color} flex items-center gap-2.5`}>
+                <StatusIcon className="h-4 w-4 shrink-0" />
+                <p className="min-w-0 text-xs leading-5">
+                  <span className="font-semibold capitalize">{status}</span>
+                  {statusConfig.message && (
+                    <span className="ml-2 opacity-85">{statusConfig.message}</span>
+                  )}
+                </p>
             </div>
 
-            <div className="bg-muted/30 p-4 rounded-xl border border-border/50">
+            <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
                 <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Your Message</p>
                 <p className="text-sm italic text-foreground/80">"{existingRequest.message}"</p>
             </div>
@@ -144,23 +188,7 @@ export const ContributionRequestModal: React.FC<ContributionRequestModalProps> =
       </DialogHeader>
 
       <div className="space-y-4">
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 overflow-hidden rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5">
-          <p className="min-w-0 truncate text-sm font-semibold text-white" title={ideaTitle}>
-            {ideaTitle}
-          </p>
-          <div className="flex max-w-[220px] min-w-0 shrink-0 flex-row-reverse items-center gap-3 text-right">
-            <Avatar className="h-10 w-10 shrink-0">
-              <AvatarImage src={authorAvatar} alt={displayAuthorName} />
-              <AvatarFallback className="bg-[#1B2440] text-white text-xs">{initials || "U"}</AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-white">{displayAuthorName}</p>
-              {displayUsername && (
-                <p className="mt-0.5 truncate text-xs text-[#9CA3AF]">{displayUsername}</p>
-              )}
-            </div>
-          </div>
-        </div>
+        {projectProfileHeader}
 
         <div>
           <div

@@ -1012,11 +1012,11 @@ function LoadingScreen() {
   return (
     <div
       className="absolute inset-0 z-[60] flex flex-col items-center justify-center"
-      style={{ background: "#050810", fontFamily: "var(--font-sans)" }}
+      style={{ background: "#050810" }}
     >
       <div
-        className="text-xs tracking-[0.3em] uppercase font-black"
-        style={{ color: "#6366f1" }}
+        className="map-load-glitch"
+        data-text="Entering the World..."
       >
         Entering the World…
       </div>
@@ -1028,16 +1028,64 @@ function LoadingScreen() {
           className="absolute inset-y-0 left-0 w-full rounded-full"
           style={{
             background: "linear-gradient(90deg, #4f46e5, #818cf8)",
-            animation: "smooth-load 2s infinite ease-in-out",
+            animation: "map-load-bar 0.65s ease-in-out infinite",
             transform: "translate3d(-100%, 0, 0)",
           }}
         />
       </div>
       <style>{`
-        @keyframes smooth-load {
-          0% { transform: translate3d(-100%, 0, 0); }
-          50% { transform: translate3d(-30%, 0, 0); }
-          100% { transform: translate3d(100%, 0, 0); }
+        .map-load-glitch {
+          position: relative;
+          color: #6366f1;
+          font-family: "Courier New", "Lucida Console", monospace;
+          font-size: 13px;
+          font-weight: 900;
+          letter-spacing: 0.16em;
+          line-height: 1;
+          text-transform: uppercase;
+          text-shadow: 2px 0 0 rgba(129, 140, 248, 0.38);
+          image-rendering: pixelated;
+          animation: map-text-jitter 1.15s steps(2, end) infinite;
+        }
+        .map-load-glitch::before,
+        .map-load-glitch::after {
+          content: attr(data-text);
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          opacity: 0.65;
+        }
+        .map-load-glitch::before {
+          color: #818cf8;
+          transform: translate3d(-1px, 0, 0);
+          clip-path: inset(0 0 54% 0);
+          animation: map-glitch-top 1.35s steps(2, end) infinite;
+        }
+        .map-load-glitch::after {
+          color: #4f46e5;
+          transform: translate3d(1px, 0, 0);
+          clip-path: inset(48% 0 0 0);
+          animation: map-glitch-bottom 1.05s steps(2, end) infinite;
+        }
+        @keyframes map-text-jitter {
+          0%, 76%, 100% { transform: translate3d(0, 0, 0); }
+          78% { transform: translate3d(1px, -1px, 0); }
+          80% { transform: translate3d(-1px, 1px, 0); }
+          82% { transform: translate3d(0, 0, 0); }
+        }
+        @keyframes map-glitch-top {
+          0%, 72%, 100% { transform: translate3d(-1px, 0, 0); }
+          74% { transform: translate3d(4px, -1px, 0); }
+          77% { transform: translate3d(-3px, 1px, 0); }
+        }
+        @keyframes map-glitch-bottom {
+          0%, 64%, 100% { transform: translate3d(1px, 0, 0); }
+          66% { transform: translate3d(-4px, 1px, 0); }
+          70% { transform: translate3d(3px, 0, 0); }
+        }
+        @keyframes map-load-bar {
+          0% { transform: translate3d(-120%, 0, 0); }
+          100% { transform: translate3d(220%, 0, 0); }
         }
       `}</style>
     </div>

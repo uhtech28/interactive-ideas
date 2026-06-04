@@ -42,8 +42,8 @@ const GroupList: React.FC<GroupListProps> = memo(({ onClose }) => {
   }
 
   return (
-    <div className="w-full h-full bg-background flex flex-col">
-      <div className="px-3 py-2 border-b flex items-center justify-between shrink-0 bg-card/50 backdrop-blur-sm">
+    <div className="w-full h-full bg-[#0B101B] flex flex-col overflow-hidden">
+      <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between shrink-0 bg-[#0B101B]">
         <h3 className="font-semibold text-foreground flex items-center gap-2 text-sm">
           <MessageSquare className="w-3.5 h-3.5" />
           Chats
@@ -59,7 +59,7 @@ const GroupList: React.FC<GroupListProps> = memo(({ onClose }) => {
         className="flex-1 flex flex-col min-h-0"
       >
         <div className="px-3 pt-2 shrink-0 space-y-2">
-          <TabsList className="w-full grid grid-cols-2">
+          <TabsList className="w-full grid grid-cols-2 bg-[#111827]">
             <TabsTrigger value="communities">Communities</TabsTrigger>
             <TabsTrigger value="direct">Direct</TabsTrigger>
           </TabsList>

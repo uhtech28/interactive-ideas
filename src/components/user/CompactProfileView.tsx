@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Lightbulb, UserPlus, Users, Sparkles, MapPin, Link2, ChevronRight, Edit2, MessageCircle, Trophy } from "lucide-react"
+import { Lightbulb, UserPlus, Sparkles, MapPin, Link2, ChevronRight, Edit2, MessageCircle, Trophy } from "lucide-react"
 import { ProfileStatsDialog } from "./ProfileStatsDialog";
 import { ProfileProgress } from "./ProfileProgress";
 import { Id } from "@convex/_generated/dataModel";
@@ -439,8 +439,8 @@ export const CompactProfileView: React.FC<CompactProfileViewProps> = ({
               className="h-14 w-full justify-between gap-3 rounded-xl px-4"
             >
               <span className="flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Users className="h-4 w-4" />
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10 text-green-500">
+                  <UserPlus className="h-4 w-4" />
                 </span>
                 <span className="text-sm font-semibold">Manage Contribution Requests</span>
               </span>

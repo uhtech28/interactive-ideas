@@ -19,22 +19,24 @@ interface Message {
 
 interface MessageBubbleProps {
   message: Message;
+  variant?: "direct" | "group";
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = memo(({ message }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = memo(({ message, variant = "direct" }) => {
   const { text, sender, timestamp, isCurrentUser } = message;
 
   const timestampStr = format(timestamp, "HH:mm");
+  const showSenderName = variant === "group" && !isCurrentUser;
 
   return (
     <div
       className={cn(
-        "flex w-full mb-4 max-w-full min-w-0",
+        "flex w-full max-w-full min-w-0",
         isCurrentUser ? "justify-end" : "justify-start"
       )}
     >
       {!isCurrentUser && (
-        <Avatar className="w-8 h-8 mr-2 flex-shrink-0 ring-2 ring-indigo-500/20">
+        <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-indigo-500/20">
           <AvatarImage src={sender.avatar || undefined} alt={sender.name} />
           <AvatarFallback className="bg-indigo-500/20 text-indigo-200 text-xs">
             {sender.name.charAt(0)}
@@ -44,34 +46,32 @@ const MessageBubble: React.FC<MessageBubbleProps> = memo(({ message }) => {
 
       <div
         className={cn(
-          "max-w-[15rem] px-4 py-2.5 rounded-2xl relative shadow-sm",
+          "max-w-[15rem] rounded-2xl px-3.5 py-2 shadow-sm",
           isCurrentUser
-            ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white mr-2 rounded-br-sm"
-            : "bg-[#1a2030] text-foreground border border-white/[0.06] ml-2 rounded-bl-sm"
+            ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-sm"
+            : "bg-[#1a2030] text-foreground border border-white/[0.06] rounded-bl-sm"
         )}
       >
-        {!isCurrentUser && (
-          <div className="text-xs font-semibold mb-1 text-indigo-300/90">
+        {showSenderName && (
+          <div className="mb-0.5 text-[11px] font-semibold leading-4 text-indigo-300/90">
             {sender.name}
           </div>
         )}
         <div className="text-sm whitespace-pre-wrap break-words overflow-hidden leading-relaxed">
           {text}
-        </div>
-        <div
-          className={cn(
-            "text-[10px] mt-1",
-            isCurrentUser
-              ? "text-white/70 text-right"
-              : "text-muted-foreground text-left"
-          )}
-        >
-          {timestampStr}
+          <span
+            className={cn(
+              "ml-2 inline-block translate-y-[1px] whitespace-nowrap text-[9px] leading-none",
+              isCurrentUser ? "text-white/65" : "text-muted-foreground"
+            )}
+          >
+            {timestampStr}
+          </span>
         </div>
       </div>
 
       {isCurrentUser && (
-        <Avatar className="w-8 h-8 ml-2 flex-shrink-0 ring-2 ring-indigo-500/30">
+        <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-indigo-500/30">
           <AvatarImage src={sender.avatar || undefined} alt={sender.name} />
           <AvatarFallback className="bg-indigo-500/30 text-indigo-100 text-xs">
             {sender.name.charAt(0)}

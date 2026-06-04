@@ -269,6 +269,11 @@ export function IdeaForgeLeftRail({
                       {currentUser?.displayName || "Ibhaveda Member"}
                     </h2>
                   </Link>
+                </div>
+                <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
+                  {currentUser?.username && (
+                    <p className="min-w-0 truncate text-xs text-[#9CA3AF]">@{currentUser.username}</p>
+                  )}
                   {profileBadges.length > 0 && (
                     <div className="flex shrink-0 items-center gap-1">
                       {profileBadges.map((badge) => {
@@ -279,17 +284,17 @@ export function IdeaForgeLeftRail({
                           <span
                             key={badge.id}
                             title={`${badge.name}: ${badge.description}`}
-                            className="inline-flex h-5 w-5 items-center justify-center rounded-[6px]"
+                            className="inline-flex h-4 w-4 items-center justify-center rounded-[5px]"
                             style={{
                               backgroundColor: `${accentColor}20`,
                               border: `1px solid ${accentColor}80`,
                               color: accentColor,
-                              boxShadow: `0 0 8px ${accentColor}45`,
+                              boxShadow: `0 0 6px ${accentColor}35`,
                             }}
                           >
                             <PremiumIcon
                               name={badge.icon || getVentureBadgeEmoji(badge.id, badge.name)}
-                              className="h-3 w-3"
+                              className="h-2.5 w-2.5"
                               strokeWidth={1.7}
                             />
                           </span>
@@ -298,9 +303,6 @@ export function IdeaForgeLeftRail({
                     </div>
                   )}
                 </div>
-                {currentUser?.username && (
-                  <p className="truncate text-xs text-[#9CA3AF]">@{currentUser.username}</p>
-                )}
               </div>
             </div>
 
