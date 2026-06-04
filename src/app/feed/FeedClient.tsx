@@ -3,8 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useMutation, usePreloadedQuery } from "convex/react";
-import { Preloaded } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
@@ -17,13 +16,7 @@ import { CommentsSection } from "@/components/comments/CommentsSection";
 import { ContributionRequestModal } from "@/components/requests/ContributionRequestModal";
 import { useToast } from "@/components/ui/use-toast";
 import { useProfileCompletion } from "@/lib/hooks/use-profile-completion";
-import { useQuery } from "convex/react";
-
-export function FeedClient({
-  preloadedIdeas,
-}: {
-  preloadedIdeas: Preloaded<typeof api.ideas.getPublicIdeas>;
-}) {
+export function FeedClient() {
   const { isLoaded, userId } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -33,8 +26,7 @@ export function FeedClient({
   const PAGE_SIZE = 20;
   const [limit, setLimit] = useState(PAGE_SIZE);
 
-  // usePreloadedQuery gives us the SSR data immediately, then stays live
-  const ideasQuery = usePreloadedQuery(preloadedIdeas);
+  const ideasQuery = useQuery(api.ideas.getPublicIdeas, { limit });
   const toggleSpark = useMutation(api.ideas.toggleSpark);
 
   const hasMore = ideasQuery !== undefined && ideasQuery.length >= limit;
@@ -72,7 +64,7 @@ export function FeedClient({
         mode="feed"
         currentUser={currentUser || null}
         ideas={ideas}
-        isLoading={false}
+        isLoading={ideasQuery === undefined}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onSpark={async (ideaId) => {
