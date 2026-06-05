@@ -208,7 +208,11 @@ export const getMyRequests = query({
               ...request,
               idea: ideaInfo,
               author: author
-                ? { displayName: author.displayName, username: author.username }
+                ? {
+                    avatar: author.avatar,
+                    displayName: author.displayName,
+                    username: author.username,
+                  }
                 : null,
             };
           } catch (error) {

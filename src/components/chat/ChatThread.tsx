@@ -152,14 +152,14 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
 
   return (
     <div className="flex flex-col h-full bg-[#0B101B] max-w-full overflow-hidden">
-      <div className="relative flex h-14 shrink-0 items-center border-b border-white/10 bg-[#0B101B] px-4 py-0">
-        <div className="absolute left-4 top-1/2 flex -translate-y-1/2 items-center">
+      <div className="relative flex h-[52px] shrink-0 items-center border-b border-white/10 bg-[#0B101B] px-4 py-0">
+        <div className="absolute inset-y-0 left-4 flex items-center">
           <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 hover:bg-white/[0.08] shrink-0">
             <ArrowLeft className="w-4 h-4" />
           </Button>
         </div>
 
-        <div className="mx-auto flex min-w-0 max-w-[240px] items-center justify-center gap-2 text-center">
+        <div className="mx-auto flex min-h-full min-w-0 max-w-[240px] items-center justify-center gap-2 text-center">
           {!ideaId && otherUser && (
             <Avatar className="h-8 w-8 shrink-0 ring-1 ring-indigo-500/30">
               <AvatarImage src={otherUser.avatar} alt={headerTitle} />
@@ -176,7 +176,7 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
           </div>
         </div>
 
-        <div className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-1">
+        <div className="absolute inset-y-0 right-4 flex items-center gap-1">
           {ideaId && activeConversationId && (
             <>
               {/* Visible Members pill (Co-dev change) */}
@@ -214,27 +214,27 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
         </div>
       </div>
       <div className="flex-1 max-w-full overflow-y-auto bg-[#0B101B]" ref={scrollAreaRef}>
-        <div className="min-h-full max-w-full overflow-x-auto">
+        <div className="flex min-h-full max-w-full overflow-x-auto">
           {displayedMessages === undefined ? (
             receiverId && !conversationId && directConversationId === undefined ? (
-              <div className="flex min-h-full items-center justify-center text-center text-muted-foreground text-sm">
+              <div className="flex flex-1 items-center justify-center text-center text-muted-foreground text-sm">
                 Loading conversation...
               </div>
             ) : receiverId && !conversationId && directConversationId === null ? (
-              <div className="flex min-h-full items-center justify-center text-center text-muted-foreground text-sm">
+              <div className="flex flex-1 items-center justify-center text-center text-muted-foreground text-sm">
                 No messages yet. Start the conversation!
               </div>
             ) : (
-              <div className="flex min-h-full items-center justify-center text-center text-muted-foreground text-sm">
+              <div className="flex flex-1 items-center justify-center text-center text-muted-foreground text-sm">
                 Loading messages...
               </div>
             )
           ) : displayedMessages.length === 0 ? (
-            <div className="flex min-h-full items-center justify-center text-center text-muted-foreground text-sm">
+            <div className="flex flex-1 items-center justify-center text-center text-muted-foreground text-sm">
               No messages yet. Start the conversation!
             </div>
           ) : (
-            <div className="space-y-3 p-4">
+            <div className="w-full space-y-2.5 px-3.5 py-3">
               {displayedMessages.map((message) => {
                 const senderUser = users?.find(u => u.id === message.senderId);
                 return (

@@ -27,6 +27,7 @@ import {
   ArrowLeft,
   ArrowRight,
   AlertCircle,
+  FileText,
   Globe,
   Lock,
   ChevronRight,
@@ -137,6 +138,7 @@ export function IdeaWizard({
   const [skills, setSkills] = useState<string[]>([]);
   const [visibility, setVisibility] = useState<Visibility>("public");
   const [files, setFiles] = useState<File[]>([]);
+  const [filePreviewUrl, setFilePreviewUrl] = useState("");
   const [fileUploadError, setFileUploadError] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -156,6 +158,7 @@ export function IdeaWizard({
     setSkills([]);
     setVisibility("public");
     setFiles([]);
+    setFilePreviewUrl("");
     setFileUploadError("");
     setIsSubmitting(false);
     setSubmitError("");
@@ -280,6 +283,7 @@ export function IdeaWizard({
 
     if (file.size > 50 * 1024 * 1024) {
       setFiles([]);
+      setFilePreviewUrl("");
       setFileUploadError("Please restrict file uploads to less than 50MB");
       event.target.value = "";
       return;
@@ -287,7 +291,23 @@ export function IdeaWizard({
 
     setFiles([file]);
     setFileUploadError("");
+    event.target.value = "";
   };
+
+  useEffect(() => {
+    const file = files[0];
+    if (!file) {
+      setFilePreviewUrl("");
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    setFilePreviewUrl(url);
+
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [files]);
 
   // Auto-generate tags when AI had an error
   useEffect(() => {
@@ -417,6 +437,8 @@ export function IdeaWizard({
   const activeDef = TEMPLATE_DEFS[selectedTemplate];
   const isOverOutlineLimit = outline.length > 500;
   const isOverDescriptionLimit = description.length > 1200;
+  const selectedFile = files[0];
+  const selectedFileType = selectedFile?.type.toLowerCase() || "";
 
   // ───────────────────────────────────────────────────────────────────────────
   return (
@@ -684,18 +706,61 @@ export function IdeaWizard({
               </div>
 
               <div>
-                <div className="relative">
-                  <Textarea
+                <div
+                  className={cn(
+                    "relative overflow-hidden rounded-[10px] border border-white/5 bg-[#0D1117] transition-shadow focus-within:border-transparent focus-within:ring-2 focus-within:ring-[#6366F1]",
+                    selectedFile ? "h-[272px]" : "h-[136px]",
+                    isOverDescriptionLimit && "border-rose-500/80 focus-within:ring-rose-400",
+                  )}
+                >
+                  <textarea
                     id="wiz-description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="What's the idea? Who is it for?"
                     className={cn(
-                      "h-[136px] resize-none overflow-y-auto rounded-[10px] border-white/5 bg-[#0D1117] p-4 pb-12 pr-14 text-sm leading-6 text-white placeholder:text-[#6B7280] focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-0 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-track]:bg-transparent",
-                      isOverDescriptionLimit && "border-rose-500/80 focus-visible:ring-rose-400",
+                      "w-full resize-none border-0 bg-transparent p-4 pb-12 pr-14 text-sm leading-6 text-white outline-none placeholder:text-[#6B7280] focus:ring-0 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-track]:bg-transparent",
+                      selectedFile ? "h-[136px]" : "h-full overflow-y-auto",
                     )}
                     required
                   />
+                  {selectedFile && (
+                    <div className="absolute inset-x-0 bottom-0 h-[136px] overflow-hidden px-4 pb-4 pr-14">
+                      {selectedFileType.startsWith("image/") && filePreviewUrl ? (
+                        <div
+                          aria-label={selectedFile.name}
+                          className="h-full w-full bg-contain bg-center bg-no-repeat"
+                          style={{ backgroundImage: `url(${filePreviewUrl})` }}
+                        />
+                      ) : selectedFileType.startsWith("video/") && filePreviewUrl ? (
+                        <video
+                          src={filePreviewUrl}
+                          className="h-full w-full object-contain"
+                          muted
+                          playsInline
+                          controls
+                        />
+                      ) : selectedFileType.includes("pdf") && filePreviewUrl ? (
+                        <iframe
+                          src={filePreviewUrl}
+                          title={selectedFile.name}
+                          className="h-full w-full border-0 bg-transparent"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center gap-3 text-[#9CA3AF]">
+                          <FileText className="h-8 w-8 shrink-0 text-[#818CF8]" strokeWidth={1.6} />
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-medium text-[#D1D5DB]">
+                              {selectedFile.name}
+                            </p>
+                            <p className="mt-1 text-[10px] text-[#6B7280]">
+                              Preview will be available after posting
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -716,6 +781,18 @@ export function IdeaWizard({
                     <Upload className="h-4 w-4" />
                   </button>
                 </div>
+                {selectedFile && (
+                  <div className="mt-1.5 flex justify-end pr-3">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="max-w-[220px] truncate text-right text-[10px] leading-none text-[#6B7280] underline underline-offset-2 transition-colors hover:text-[#9CA3AF]"
+                      title={`Change ${selectedFile.name}`}
+                    >
+                      {selectedFile.name}
+                    </button>
+                  </div>
+                )}
                 {isOverDescriptionLimit && (
                   <p className="mt-1.5 pl-3 text-[11px] font-medium text-rose-400">
                     Max character count reached
