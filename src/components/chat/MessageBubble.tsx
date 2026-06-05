@@ -31,12 +31,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = memo(({ message, variant = "
   return (
     <div
       className={cn(
-        "flex w-full max-w-full min-w-0 items-center gap-2",
+        "flex w-full max-w-full min-w-0 items-start gap-2",
         isCurrentUser ? "justify-end" : "justify-start"
       )}
     >
       {!isCurrentUser && (
-        <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-indigo-500/20">
+        <Avatar className="mt-0.5 h-8 w-8 flex-shrink-0 ring-2 ring-indigo-500/20">
           <AvatarImage src={sender.avatar || undefined} alt={sender.name} />
           <AvatarFallback className="bg-indigo-500/20 text-indigo-200 text-xs">
             {sender.name.charAt(0)}
@@ -46,7 +46,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = memo(({ message, variant = "
 
       <div
         className={cn(
-          "max-w-[15rem] rounded-2xl px-3.5 py-2.5 shadow-sm",
+          "max-w-[15rem] rounded-2xl px-3 py-2 shadow-sm",
           isCurrentUser
             ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-br-sm"
             : "bg-[#1a2030] text-foreground border border-white/[0.06] rounded-bl-sm"
@@ -57,7 +57,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = memo(({ message, variant = "
             {sender.name}
           </div>
         )}
-        <div className="text-sm whitespace-pre-wrap break-words overflow-hidden leading-relaxed">
+        <div className="text-sm whitespace-pre-wrap break-words overflow-hidden leading-5">
           {text}
           <span
             className={cn(
@@ -71,7 +71,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = memo(({ message, variant = "
       </div>
 
       {isCurrentUser && (
-        <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-indigo-500/30">
+        <Avatar className="mt-0.5 h-8 w-8 flex-shrink-0 ring-2 ring-indigo-500/30">
           <AvatarImage src={sender.avatar || undefined} alt={sender.name} />
           <AvatarFallback className="bg-indigo-500/30 text-indigo-100 text-xs">
             {sender.name.charAt(0)}

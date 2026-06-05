@@ -9,6 +9,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -44,8 +45,13 @@ interface ContributionRequest {
   updatedAt: number;
   idea: {
     title: string;
-    description: string;
+    description?: string;
     _id: Id<"ideas">;
+  } | null;
+  author?: {
+    avatar?: string;
+    displayName: string;
+    username: string;
   } | null;
   contributor: {
     avatar?: string;
@@ -176,61 +182,78 @@ export default function ContributionRequestsPage() {
     }
   };
 
-  const renderRequestCard = (request: ContributionRequest, kind: Tab) => (
-    <div
-      key={request._id}
-      className="rounded-2xl border border-white/[0.07] bg-[#111827]/80 backdrop-blur-xl p-4 sm:p-5 shadow-[0_1px_0_rgba(255,255,255,0.04)] transition-all hover:border-indigo-500/30 hover:bg-[#111827]"
-    >
-      {/* Top row */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-        <div className="flex items-center gap-3 min-w-0">
-          {request.contributor && (
-            <>
-              <Avatar className="w-11 h-11 shrink-0 ring-2 ring-indigo-500/20">
-                <AvatarImage src={request.contributor.avatar} alt={request.contributor.displayName} />
-                <AvatarFallback className="bg-indigo-500/20 text-indigo-300">
-                  {request.contributor.displayName.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <p className="font-semibold truncate text-foreground">{request.contributor.displayName}</p>
-                <p className="text-sm text-muted-foreground truncate">@{request.contributor.username}</p>
-              </div>
-            </>
-          )}
-        </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2 shrink-0">
-          {getStatusBadge(request.status)}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => handleDismissRequest(request._id)}
-            disabled={loadingAction === `${request._id}:dismiss`}
-            className="h-8 w-8 rounded-full text-muted-foreground hover:bg-white/[0.08] hover:text-foreground"
-            aria-label={kind === "incoming" ? "Remove request" : "Withdraw request"}
-          >
-            {loadingAction === `${request._id}:dismiss` ? <Spinner size={14} /> : <X className="h-4 w-4" />}
-          </Button>
-        </div>
-      </div>
+  const truncateProjectTitle = (title: string) => (
+    title.length > 64 ? `${title.slice(0, 60).trimEnd()}....` : title
+  );
 
-      {/* Idea card */}
-      {request.idea && (
-        <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 mb-2.5">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-300/80">
-              Request for
-            </p>
-            <p className="text-sm font-semibold text-foreground">{request.idea.title}</p>
+  const renderRequestCard = (request: ContributionRequest, kind: Tab) => {
+    const displayUser = kind === "mine" ? request.author : request.contributor;
+    const profileHref = displayUser?.username ? `/profile/${displayUser.username}` : undefined;
+    const ideaHref = request.idea ? `/idea/${request.idea._id}` : undefined;
+
+    return (
+      <div
+        key={request._id}
+        className="rounded-2xl border border-white/[0.07] bg-[#111827]/80 backdrop-blur-xl p-4 sm:p-5 shadow-[0_1px_0_rgba(255,255,255,0.04)] transition-all hover:border-indigo-500/30 hover:bg-[#111827]"
+      >
+        {/* Top row */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            {displayUser && profileHref && (
+              <>
+                <Link href={profileHref} className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+                  <Avatar className="w-11 h-11 ring-2 ring-indigo-500/20">
+                    <AvatarImage src={displayUser.avatar} alt={displayUser.displayName} />
+                    <AvatarFallback className="bg-indigo-500/20 text-indigo-300">
+                      {displayUser.displayName.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
+                <Link href={profileHref} className="min-w-0 hover:text-indigo-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+                  <p className="font-semibold truncate text-foreground">{displayUser.displayName}</p>
+                  <p className="text-sm text-muted-foreground truncate">@{displayUser.username}</p>
+                </Link>
+              </>
+            )}
           </div>
-          {request.idea.description && (
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
-              {request.idea.description}
-            </p>
-          )}
+          <div className="ml-auto flex flex-wrap items-center gap-2 shrink-0">
+            {getStatusBadge(request.status)}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDismissRequest(request._id)}
+              disabled={loadingAction === `${request._id}:dismiss`}
+              className="h-8 w-8 rounded-full text-muted-foreground hover:bg-white/[0.08] hover:text-foreground"
+              aria-label={kind === "incoming" ? "Remove request" : "Withdraw request"}
+            >
+              {loadingAction === `${request._id}:dismiss` ? <Spinner size={14} /> : <X className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
-      )}
+
+        {/* Idea card */}
+        {request.idea && ideaHref && (
+          <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 mb-2.5">
+            <div className="flex min-w-0 items-baseline gap-2">
+              <p className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-indigo-300/80">
+                Request For:
+              </p>
+              <Link
+                href={ideaHref}
+                className="min-w-0 truncate text-sm font-semibold text-foreground hover:text-indigo-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                title={request.idea.title}
+              >
+                {truncateProjectTitle(request.idea.title)}
+              </Link>
+            </div>
+            {request.idea.description && (
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                {request.idea.description}
+              </p>
+            )}
+          </div>
+        )}
 
       {/* Message */}
       <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 mb-3">
@@ -282,7 +305,7 @@ export default function ContributionRequestsPage() {
           type="button"
           onClick={() => handleDismissRequest(request._id)}
           disabled={loadingAction === `${request._id}:dismiss`}
-          className="mt-1 h-10 w-full rounded-[10px] bg-[#6366F1] text-white hover:bg-[#5457E5]"
+          className="mt-1 h-10 w-full rounded-[10px] bg-[#3B1B8F] text-white hover:bg-[#2E156F]"
         >
           {loadingAction === `${request._id}:dismiss` ? <Spinner size={16} /> : null}
           Withdraw Request
@@ -307,7 +330,8 @@ export default function ContributionRequestsPage() {
         </div>
       )}
     </div>
-  );
+    );
+  };
 
   const renderRequestList = (requests: ContributionRequest[] | undefined, kind: Tab) => {
     if (requests === undefined) {
