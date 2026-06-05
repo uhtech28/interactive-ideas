@@ -280,8 +280,9 @@ export const getPublicIdeas = query({
     const seed = args.seed ?? 1;
 
     // 1-3. Run all independent fetches in parallel
+    // agent cap at 200 — avoids full table scan as platform grows
     const [agentUsers, topWallets, recentPublicIdeas] = await Promise.all([
-      ctx.db.query("users").withIndex("by_role", (q) => q.eq("role", "agent")).collect(),
+      ctx.db.query("users").withIndex("by_role", (q) => q.eq("role", "agent")).take(200),
       ctx.db.query("wallets").withIndex("by_balance").order("desc").take(5),
       ctx.db
         .query("ideas")
@@ -289,7 +290,7 @@ export const getPublicIdeas = query({
         .filter((q) => q.neq(q.field("isDeleted"), true))
         .filter((q) => q.or(q.eq(q.field("parentId"), undefined), q.eq(q.field("parentId"), null)))
         .order("desc")
-        .take(limit * 6),
+        .take(limit * 3),
     ]);
 
     const agentIdSet = new Set(agentUsers.map((u) => String(u._id)));
