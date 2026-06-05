@@ -4806,6 +4806,12 @@ function MapTourMount() {
   useEffect(() => {
     if (!tutorialState) return;
     if (
+      typeof window !== "undefined" &&
+      sessionStorage.getItem("feedTourClosed") === "1"
+    ) {
+      return;
+    }
+    if (
       tutorialState.state === "not_started" ||
       tutorialState.state === "in_progress"
     ) {
@@ -4817,7 +4823,12 @@ function MapTourMount() {
     <FeedTutorial
       show={show}
       initialStep={tutorialState?.step ?? 0}
-      onClose={() => setShow(false)}
+      onClose={() => {
+        setShow(false);
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("feedTourClosed", "1");
+        }
+      }}
     />
   );
 }

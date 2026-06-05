@@ -71,6 +71,15 @@ export function FeedClient({
   const [tutorialOpen, setTutorialOpen] = useState(false);
   useEffect(() => {
     if (!tutorialState) return;
+    // Hard local guard: once the user has explicitly dismissed the
+    // tour this session, don't re-open it even if convex hasn't
+    // finished propagating the completion mutation yet.
+    if (
+      typeof window !== "undefined" &&
+      sessionStorage.getItem("feedTourClosed") === "1"
+    ) {
+      return;
+    }
     if (tutorialState.state === "not_started" || tutorialState.state === "in_progress") {
       const t = window.setTimeout(() => setTutorialOpen(true), 700);
       return () => window.clearTimeout(t);
@@ -209,7 +218,12 @@ export function FeedClient({
       <FeedTutorial
         show={tutorialOpen}
         initialStep={tutorialState?.step ?? 0}
-        onClose={() => setTutorialOpen(false)}
+        onClose={() => {
+          setTutorialOpen(false);
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("feedTourClosed", "1");
+          }
+        }}
         composeDraftReady={
           inComposePhase ? !!tutorialDraft?.title?.trim() : true
         }
