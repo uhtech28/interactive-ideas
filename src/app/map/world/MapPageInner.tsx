@@ -1308,30 +1308,29 @@ function MapPageInner() {
 
   // ── Map load performance timer ────────────────────────────────────────────
   const loadMeasuredRef = useRef(false);
-  const venturesMeasuredRef = useRef(false);
-  const worldDataMeasuredRef = useRef(false);
+  const mapPerfStartRef = useRef<number>(performance.now());
 
+  // Always log each stage relative to component mount (no sessionStorage dependency)
+  const venturesMeasuredRef = useRef(false);
   useEffect(() => {
-    if (!venturesMeasuredRef.current && ventures !== undefined) {
-      venturesMeasuredRef.current = true;
-      const ms = measureMapLoad("Map ventures data arrived");
-      if (ms === null) {
-        // timer wasn't started (navigated directly); just log relative to now
-        console.log(`%c⏱ [Map] Ventures arrived (${ventures.length} ventures)`, "color:#7dd3fc;font-weight:bold");
-      }
-    }
+    if (venturesMeasuredRef.current || ventures === undefined) return;
+    venturesMeasuredRef.current = true;
+    const ms = Math.round(performance.now() - mapPerfStartRef.current);
+    console.log(`%c⏱ [Map] Ventures arrived: ${ms}ms (${ventures.length} ventures)`, "color:#7dd3fc;font-weight:bold;font-size:13px");
   }, [ventures]);
 
+  const worldDataMeasuredRef = useRef(false);
   useEffect(() => {
-    if (!worldDataMeasuredRef.current && worldMapData !== undefined) {
-      worldDataMeasuredRef.current = true;
-      console.log(`%c⏱ [Map] worldMapData arrived`, "color:#a5b4fc;font-weight:bold");
-    }
+    if (worldDataMeasuredRef.current || worldMapData === undefined) return;
+    worldDataMeasuredRef.current = true;
+    const ms = Math.round(performance.now() - mapPerfStartRef.current);
+    console.log(`%c⏱ [Map] World map data arrived: ${ms}ms`, "color:#a5b4fc;font-weight:bold;font-size:13px");
   }, [worldMapData]);
 
   useEffect(() => {
     if (!phaserReady) return;
-    console.log(`%c⏱ [Map] Phaser scene ready`, "color:#86efac;font-weight:bold");
+    const ms = Math.round(performance.now() - mapPerfStartRef.current);
+    console.log(`%c⏱ [Map] Phaser scene ready: ${ms}ms`, "color:#86efac;font-weight:bold;font-size:13px");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phaserReady]);
 
@@ -1339,12 +1338,12 @@ function MapPageInner() {
     if (loadMeasuredRef.current) return;
     if (!phaserReady || !worldMapData) return;
     loadMeasuredRef.current = true;
-    const ms = measureMapLoad("Map fully loaded (Phaser + data)");
-    if (ms !== null) {
-      setMapLoadMs(ms);
-    } else {
-      console.log(`%c⏱ [Map] Fully ready (no nav timer — direct load)`, "color:#fbbf24;font-weight:bold;font-size:13px");
-    }
+    const ms = Math.round(performance.now() - mapPerfStartRef.current);
+    const color = ms > 4000 ? "#f87171" : ms > 2000 ? "#facc15" : "#4ade80";
+    console.log(`%c⏱ [Map] Fully loaded (Phaser + data): ${ms}ms`, `color:${color};font-weight:bold;font-size:14px`);
+    setMapLoadMs(ms);
+    // Also report via sessionStorage-based timer if available
+    measureMapLoad("Map fully loaded (nav timer)");
   }, [phaserReady, worldMapData]);
 
   // Fetch chat channels for Group Chat popup modal integration
