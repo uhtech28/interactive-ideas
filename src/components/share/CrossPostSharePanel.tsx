@@ -22,6 +22,10 @@ interface Props {
   payload: ShareablePayload;
   platforms: SharePlatform[];
   onDone: () => void;
+  /** When true, a pulsing highlight + "Tap here" badge appears on the
+   *  Go to my world map button so the first-run tour visibly guides
+   *  the user to the next step. */
+  tutorialMode?: boolean;
 }
 
 // Inline X logo. lucide-react doesn't ship a post-rebrand X mark.
@@ -99,7 +103,12 @@ const PLATFORM_META: Record<
   },
 };
 
-export function CrossPostSharePanel({ payload, platforms, onDone }: Props) {
+export function CrossPostSharePanel({
+  payload,
+  platforms,
+  onDone,
+  tutorialMode = false,
+}: Props) {
   const [opened, setOpened] = useState<Set<SharePlatform>>(new Set());
   const [linkCopied, setLinkCopied] = useState(false);
 
@@ -149,7 +158,9 @@ export function CrossPostSharePanel({ payload, platforms, onDone }: Props) {
         </p>
       </div>
 
-      <div className="space-y-2">
+      <div
+        className={`space-y-2 ${tutorialMode ? "pointer-events-none opacity-40" : ""}`}
+      >
         {platforms.map((p) => {
           const meta = PLATFORM_META[p];
           const isOpened = opened.has(p);
@@ -158,6 +169,7 @@ export function CrossPostSharePanel({ payload, platforms, onDone }: Props) {
               key={p}
               type="button"
               onClick={() => handleClick(p)}
+              disabled={tutorialMode}
               className={`group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left ring-1 transition ${
                 isOpened
                   ? "bg-white/[0.04] ring-emerald-400/40"
@@ -200,7 +212,7 @@ export function CrossPostSharePanel({ payload, platforms, onDone }: Props) {
         })}
       </div>
 
-      {payload.url && (
+      {payload.url && !tutorialMode && (
         <button
           type="button"
           onClick={copyLink}
@@ -220,13 +232,27 @@ export function CrossPostSharePanel({ payload, platforms, onDone }: Props) {
         </button>
       )}
 
-      <button
-        type="button"
-        onClick={onDone}
-        className="mt-1 h-11 w-full rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-sm font-bold uppercase tracking-wide text-[#0A0E1A] transition hover:brightness-110"
-      >
-        Go to my world map
-      </button>
+      <div className="relative mt-1">
+        {tutorialMode && (
+          <>
+            <span className="pointer-events-none absolute -inset-1 rounded-2xl border-2 border-amber-300 shadow-[0_0_45px_rgba(251,191,36,0.7)]" />
+            <span
+              className="pointer-events-none absolute -top-7 left-1/2 rounded-full bg-amber-400 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#0A0E1A] shadow-[0_8px_24px_rgba(251,191,36,0.5)]"
+              style={{ animation: "tap-pulse 2.4s ease-in-out infinite" }}
+            >
+              ↓ Tap here
+            </span>
+            <style>{`@keyframes tap-pulse{0%,100%{transform:translate(-50%,0);opacity:1}50%{transform:translate(-50%,-3px);opacity:0.85}}`}</style>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={onDone}
+          className="h-11 w-full rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-sm font-bold uppercase tracking-wide text-[#0A0E1A] transition hover:brightness-110"
+        >
+          Go to my world map
+        </button>
+      </div>
     </div>
   );
 }

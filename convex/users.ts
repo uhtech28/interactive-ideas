@@ -883,6 +883,50 @@ export const generateUsernameSuggestions = query({
 })
 
 // Update user persona gender - one-time selection
+export const setBuilderRole = mutation({
+  args: {
+    role: v.union(
+      v.literal("founder"),
+      v.literal("engineer"),
+      v.literal("designer"),
+      v.literal("student"),
+      v.literal("researcher"),
+      v.literal("pm"),
+    ),
+  },
+  handler: async ({ db, auth }, args) => {
+    const identity = await auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const profile = await db
+      .query("users")
+      .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!profile) throw new Error("User profile not found");
+
+    await db.patch(profile._id, {
+      builderRole: args.role,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+export const getMyBuilderRole = query({
+  args: {},
+  handler: async ({ db, auth }) => {
+    const identity = await auth.getUserIdentity();
+    if (!identity) return null;
+    const profile = await db
+      .query("users")
+      .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", identity.subject))
+      .first();
+    return profile?.builderRole ?? null;
+  },
+});
+
 export const updatePersonaGender = mutation({
   args: {
     gender: v.union(v.literal("male"), v.literal("female")),

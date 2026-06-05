@@ -115,16 +115,25 @@ export const startCombatRound = mutation({
       return { roundId: existing._id, resumed: true };
     }
 
-    // Gate: at least 2 of 3 standard tasks must be submitted.
+    // Gate: at least 2 of 3 standard tasks must be submitted. First-run
+    // tour users only need 1 so they hit the Doubt Imp on their first
+    // checkpoint without grinding the full set.
     const standardSubmitted = await countSubmittedStandardTasks(
       ctx,
       userId,
       checkpointId,
     );
-    if (standardSubmitted < 2) {
+    const user = await ctx.db.get(userId);
+    const tourActive =
+      user?.feedTutorialState === "not_started" ||
+      user?.feedTutorialState === "in_progress";
+    // Tour users can start combat at any task count so the "Start the
+    // fight" button in the first-run tour can fire combat directly.
+    const minSubmitted = tourActive ? 0 : 2;
+    if (standardSubmitted < minSubmitted) {
       throw new ConvexError({
         code: "advance_gate_unmet",
-        required: 2,
+        required: minSubmitted,
         submitted: standardSubmitted,
       });
     }

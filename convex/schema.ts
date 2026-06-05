@@ -18,6 +18,18 @@ export default defineSchema({
     industry: v.optional(v.string()), // Primary industry (kept for backward compatibility)
     industries: v.optional(v.array(v.string())), // Multiple industries
     personaGender: v.optional(v.union(v.literal("male"), v.literal("female"))), // Character gender selection
+    // Builder persona picked during profile setup. Drives the AI
+    // pre-fill in the first-run tour.
+    builderRole: v.optional(
+      v.union(
+        v.literal("founder"),
+        v.literal("engineer"),
+        v.literal("designer"),
+        v.literal("student"),
+        v.literal("researcher"),
+        v.literal("pm"),
+      ),
+    ),
     completedOnboarding: v.boolean(), // Onboarding status
     isActive: v.optional(v.boolean()), // Account status for user management
     role: v.optional(v.string()), // User role (user, moderator, admin)

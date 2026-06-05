@@ -691,14 +691,16 @@ export function IdeaStoryCard({
             iconOnly
           />
           <StoryAction icon={MessageCircle} label="Comment" count={idea.commentCount || 0} onClick={() => onComment(idea._id)} iconOnly />
-          <ContributorsAction
-            ideaId={idea._id}
-            onClick={() => {
-              if (onContribute) onContribute(idea._id);
-              else onOpenIdea(idea._id);
-            }}
-            onCountClick={() => setContributorsOpen(true)}
-          />
+          <span data-tutorial="contribute" className="inline-flex">
+            <ContributorsAction
+              ideaId={idea._id}
+              onClick={() => {
+                if (onContribute) onContribute(idea._id);
+                else onOpenIdea(idea._id);
+              }}
+              onCountClick={() => setContributorsOpen(true)}
+            />
+          </span>
         </div>
       </div>
 

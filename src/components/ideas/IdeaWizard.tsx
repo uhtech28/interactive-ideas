@@ -102,6 +102,12 @@ interface IdeaWizardProps {
     industries?: string[];
     visibility?: "public" | "private";
   };
+  /**
+   * When set, the wizard runs in tutorial mode: shows a countdown over
+   * the Post button and auto-fires submit when it hits zero. Used by
+   * the first-run product tour.
+   */
+  tutorialMode?: boolean;
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────
@@ -110,6 +116,7 @@ export function IdeaWizard({
   isOpen,
   onOpenChange,
   initialDraft,
+  tutorialMode = false,
 }: IdeaWizardProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -152,6 +159,14 @@ export function IdeaWizard({
   const [aiHadError, setAiHadError] = useState(false);
   const [isGeneratingTags, setIsGeneratingTags] = useState(false);
 
+  // Tutorial countdown state. Counts down from 3 once the wizard is on
+  // the preview step with a pre-filled draft. User can hit Pause to
+  // cancel the auto-submit and edit the idea before posting.
+  const [tutorialCountdown, setTutorialCountdown] = useState<number | null>(
+    null,
+  );
+  const [tutorialPaused, setTutorialPaused] = useState(false);
+
   // ── Helpers ──
   const reset = () => {
     setStep("template");
@@ -184,15 +199,23 @@ export function IdeaWizard({
         setVisibility(initialDraft.visibility || "public");
 
         let mappedSkills: string[] = [];
-        if (initialDraft.skills && initialDraft.skills.length > 0) {
-          mappedSkills = initialDraft.skills;
-        } else if (initialDraft.tags && initialDraft.tags.length > 0) {
-          mappedSkills = initialDraft.tags;
-        } else if (initialDraft.category) {
+        if (Array.isArray(initialDraft.skills)) {
+          mappedSkills = initialDraft.skills.filter(
+            (entry): entry is string =>
+              typeof entry === "string" && entry.length > 0,
+          );
+        } else if (Array.isArray(initialDraft.tags)) {
+          mappedSkills = initialDraft.tags.filter(
+            (entry): entry is string =>
+              typeof entry === "string" && entry.length > 0,
+          );
+        } else if (typeof initialDraft.category === "string") {
           try {
             const parsed = JSON.parse(initialDraft.category);
             mappedSkills = Array.isArray(parsed)
-              ? parsed
+              ? parsed.filter(
+                  (entry): entry is string => typeof entry === "string",
+                )
               : [initialDraft.category];
           } catch {
             mappedSkills = [initialDraft.category];
@@ -201,16 +224,25 @@ export function IdeaWizard({
         setSkills(mappedSkills);
 
         let mappedIndustries: string[] = [];
-        if (initialDraft.industries && initialDraft.industries.length > 0) {
-          mappedIndustries = initialDraft.industries;
-        } else if (initialDraft.industries) {
+        if (Array.isArray(initialDraft.industries)) {
+          // Already a normalised array. Filter any junk (empty strings or
+          // accidental nested arrays) so the downstream string validator
+          // doesn't reject it.
+          mappedIndustries = initialDraft.industries.filter(
+            (entry): entry is string =>
+              typeof entry === "string" && entry.length > 0,
+          );
+        } else if (typeof initialDraft.industries === "string") {
+          // Legacy JSON-string payload.
           try {
-            const parsed = JSON.parse(initialDraft.industries as any);
+            const parsed = JSON.parse(initialDraft.industries);
             mappedIndustries = Array.isArray(parsed)
-              ? parsed
-              : [initialDraft.industries as any];
+              ? parsed.filter(
+                  (entry): entry is string => typeof entry === "string",
+                )
+              : [initialDraft.industries];
           } catch {
-            mappedIndustries = [initialDraft.industries as any];
+            mappedIndustries = [initialDraft.industries];
           }
         }
         setIndustries(mappedIndustries);
@@ -300,6 +332,31 @@ export function IdeaWizard({
     aiHadError,
     generateFromOutline,
   ]);
+
+  // Tutorial countdown driver. Starts at 3 once we reach preview with a
+  // populated draft; ticks every second; on 0, fires the submit. The
+  // user can pause it with the button in the banner.
+  useEffect(() => {
+    if (!tutorialMode) return;
+    if (step !== "preview") return;
+    if (!title.trim() || !description.trim()) return;
+    if (tutorialCountdown === null) {
+      setTutorialCountdown(3);
+      return;
+    }
+    if (tutorialPaused) return;
+    if (tutorialCountdown === 0) {
+      void handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+      setTutorialCountdown(null);
+      return;
+    }
+    const id = window.setTimeout(
+      () => setTutorialCountdown((c) => (c === null ? null : c - 1)),
+      1000,
+    );
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutorialMode, step, title, description, tutorialCountdown, tutorialPaused]);
 
   // ── Submit ──
   const handleSubmit = async (e: React.FormEvent) => {
@@ -418,11 +475,23 @@ export function IdeaWizard({
 
   // ───────────────────────────────────────────────────────────────────────────
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        // Tutorial mode locks the wizard: no Escape, no backdrop click,
+        // no X. The user can only progress via the highlighted button.
+        if (tutorialMode) return;
+        if (!open) close();
+      }}
+    >
       <DialogContent
+        showCloseButton={!tutorialMode}
         className={cn(
           "w-[min(100%-2rem,680px)] max-w-[680px] gap-0 flex flex-col rounded-[20px] border border-white/5 bg-[#0A0E1A] p-0 text-[#F9FAFB] shadow-[0_20px_60px_rgba(0,0,0,0.85)] overflow-hidden h-auto max-h-[85dvh] sm:max-h-[90vh]",
         )}
+        onEscapeKeyDown={(e) => tutorialMode && e.preventDefault()}
+        onPointerDownOutside={(e) => tutorialMode && e.preventDefault()}
+        onInteractOutside={(e) => tutorialMode && e.preventDefault()}
       >
         {/* ── STEP 0: Template selector ───────────────────────────────────── */}
         {step === "template" && (
@@ -928,9 +997,29 @@ export function IdeaWizard({
                   className="h-9 rounded-[10px] bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] px-5 text-sm font-semibold text-white hover:from-[#5053df] hover:to-[#7c4ee4] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? <Spinner size={14} className="mr-2" /> : null}
-                  Post Idea
+                  {tutorialMode && tutorialCountdown !== null && !tutorialPaused
+                    ? `Posting in ${tutorialCountdown}…`
+                    : "Post Idea"}
                 </Button>
               </div>
+              {tutorialMode &&
+                tutorialCountdown !== null &&
+                !isSubmitting && (
+                  <div className="mt-3 flex items-center justify-between rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2.5 text-xs">
+                    <span className="font-medium text-amber-200">
+                      {tutorialPaused
+                        ? "Auto-post paused. Edit anything you want, then hit Post."
+                        : `We'll post this for you in ${tutorialCountdown}s.`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setTutorialPaused((p) => !p)}
+                      className="rounded-lg bg-white/10 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-white/15"
+                    >
+                      {tutorialPaused ? "Resume" : "Pause"}
+                    </button>
+                  </div>
+                )}
             </div>
           </form>
         )}
@@ -951,6 +1040,7 @@ export function IdeaWizard({
               <CrossPostSharePanel
                 payload={sharePayload.payload}
                 platforms={sharePayload.platforms}
+                tutorialMode={tutorialMode}
                 onDone={() => {
                   const vId = sharePayload.ventureId;
                   setSharePayload(null);

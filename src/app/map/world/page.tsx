@@ -28,6 +28,7 @@ import { computeCumulativeVentureScores } from "@/lib/scoring/cumulativeVentureS
 import { api } from "@convex/_generated/api";
 import { LEVEL_DEFINITIONS } from "@convex/ventureConstants";
 import type { Id } from "@convex/_generated/dataModel";
+import { FeedTutorial } from "@/components/tutorial/FeedTutorial";
 import { eventBridge } from "@/lib/phaser/utils/event-bridge";
 import {
   buildCheckpointSyncSignature,
@@ -513,6 +514,7 @@ function CheckpointPanel({
   showBossGateHint = false,
   isCurrentMapCheckpoint = false,
   totalCheckpointsInStage = 4,
+  tourActive = false,
 }: {
   detail: CheckpointDetail | null;
   onClose: () => void;
@@ -522,6 +524,9 @@ function CheckpointPanel({
   showBossGateHint?: boolean;
   isCurrentMapCheckpoint?: boolean;
   totalCheckpointsInStage?: number;
+  /** First-run product tour active. Relaxes the advance threshold so
+   *  the user can fight the Doubt Imp after a single task submission. */
+  tourActive?: boolean;
   evaluationSummary?: Array<{
     taskLevel: "t1" | "t2" | "t3";
     taskStatus: string;
@@ -540,7 +545,9 @@ function CheckpointPanel({
 
   const totalTasks = detail.tasks.length;
   const doneTasks = detail.tasks.filter((t) => t.done).length;
-  const canAdvance = doneTasks >= 2;
+  // First-run tour users can advance after their very first submission so
+  // they reach the Doubt Imp combat without grinding the full checkpoint.
+  const canAdvance = doneTasks >= 2 || (tourActive && doneTasks >= 1);
   const isGold = doneTasks >= totalTasks && totalTasks > 0;
   const isLocked = detail.status === "locked";
   const bossEncounterNumber = detail.checkpointIndex;
@@ -598,25 +605,39 @@ function CheckpointPanel({
 
             {/* Tasks */}
             <div className="flex flex-col gap-1.5 sm:gap-2 md:gap-2.5 lg:gap-3">
-              {detail.tasks.map((task, i) => (
-                <TaskCard
-                  key={i}
-                  task={task}
-                  index={i}
-                  locked={isLocked}
-                  evaluationSummary={evaluationSummary?.find(
-                    (entry) => entry.taskLevel === task._taskLevel,
-                  )}
-                  onToggle={() => {
-                    audioManager.playTouch("click");
-                    onTaskToggle(i);
-                  }}
-                  onRedo={() => {
-                    audioManager.playTouch("click");
-                    onTaskRedo(i);
-                  }}
-                />
-              ))}
+              {detail.tasks.map((task, i) => {
+                // Mark the first not-yet-done task so the product tour
+                // can pulse its highlight ring around it.
+                const isFirstOpenTask =
+                  !task.done &&
+                  !isLocked &&
+                  detail.tasks.findIndex((t) => !t.done) === i;
+                return (
+                  <div
+                    key={i}
+                    {...(isFirstOpenTask
+                      ? { "data-tutorial": "first-task" }
+                      : {})}
+                  >
+                    <TaskCard
+                      task={task}
+                      index={i}
+                      locked={isLocked}
+                      evaluationSummary={evaluationSummary?.find(
+                        (entry) => entry.taskLevel === task._taskLevel,
+                      )}
+                      onToggle={() => {
+                        audioManager.playTouch("click");
+                        onTaskToggle(i);
+                      }}
+                      onRedo={() => {
+                        audioManager.playTouch("click");
+                        onTaskRedo(i);
+                      }}
+                    />
+                  </div>
+                );
+              })}
             </div>
 
           </div>
@@ -630,6 +651,7 @@ function CheckpointPanel({
                   </div>
                 )}
                 <motion.button
+                  data-tutorial={canAdvance ? "combat-trigger" : undefined}
                   onClick={() => {
                     audioManager.playTouch(canAdvance ? "confirm" : "error");
                     if (canAdvance && !isAdvancing) onAdvance();
@@ -1529,6 +1551,9 @@ function MapPageInner() {
 
   // Tour walkthrough state
   const [showTour, setShowTour] = useState(false);
+  // New product-tour state. Used to suppress the legacy WorldMapTour
+  // and to drive the first-checkpoint pulse for first-run users.
+  const tourStateForPulse = useQuery(api.tutorial.getMyFeedTutorialState, {});
 
   // Inter-checkpoint events state
   const [interCheckpointQueue, setInterCheckpointQueue] = useState<Array<"henchman" | "treasure" | "shield" | "insight" | "clear">>([]);
@@ -1614,7 +1639,18 @@ function MapPageInner() {
 
   useEffect(() => {
     if (!activeVenture) return;
-    // Only automatically show the tour guide on Stage 1
+    // Suppress the legacy WorldMapTour whenever the new product tour
+    // is (or might be) running. Treat undefined/null tour state as
+    // "still loading, assume new tour" so the legacy overlay never
+    // appears before the convex query resolves.
+    const newTourActive =
+      !tourStateForPulse ||
+      tourStateForPulse.state === "not_started" ||
+      tourStateForPulse.state === "in_progress";
+    if (newTourActive) {
+      if (showTour) setShowTour(false);
+      return;
+    }
     if (activeVenture.currentStage !== 1) return;
     const tourCompletedKey = `worldMapTourCompleted_${activeVenture._id}`;
     const isCompleted = localStorage.getItem(tourCompletedKey);
@@ -1622,7 +1658,7 @@ function MapPageInner() {
       setShowTour(true);
       localStorage.setItem(tourCompletedKey, "true");
     }
-  }, [activeVenture]);
+  }, [activeVenture, tourStateForPulse, showTour]);
 
   // Task submission state (now using Jotai atom for global access)
   const [submittingTask, setSubmittingTask] = useAtom(submittingTaskAtom);
@@ -1769,6 +1805,8 @@ function MapPageInner() {
       bossDefeatedAtCheckpoint,
       activeStage,
       activeCP,
+      tourStateForPulse?.state === "not_started" ||
+        tourStateForPulse?.state === "in_progress",
     );
   }, [
     selectedDetail,
@@ -1776,6 +1814,7 @@ function MapPageInner() {
     bossDefeatedAtCheckpoint,
     activeStage,
     activeCP,
+    tourStateForPulse,
   ]);
   const corruptionLevel = venture?.corruptionLevel ?? 0;
   const corruptionPhase = useMemo(() => {
@@ -2059,29 +2098,50 @@ function MapPageInner() {
     });
   }, [seedFlags]);
 
-  // Tutorial: Show first checkpoint pulse after map intro tutorial
+  // Listen for the tutorial's "Start the fight" button. Forces the
+  // CombatPanel open on the active checkpoint without making the user
+  // grind tasks first.
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const handler = () => {
+      if (!activeVenture) return;
+      const cp = checkpoints.find(
+        (c) => c.stage === activeStage && c.checkpoint === activeCP,
+      );
+      if (!cp) return;
+      const doneTasks = [cp.t1Completed, cp.t2Completed, cp.t3Completed].filter(
+        Boolean,
+      ).length;
+      startBossCombat(cp, doneTasks);
+    };
+    window.addEventListener("tutorial:force-combat", handler);
+    return () => window.removeEventListener("tutorial:force-combat", handler);
+  }, [activeVenture, checkpoints, activeStage, activeCP, startBossCombat]);
 
-    const tutorialCompleted =
-      localStorage.getItem("tutorial_completed") === "true";
+  // Show first-checkpoint pulse for new users on their first venture
+  // (stage 1, checkpoint 1). Two trigger paths:
+  //   1. The legacy map-intro tutorial flag in localStorage.
+  //   2. The new product tour state from Convex (feedTutorialState).
+  // Either is enough.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!phaserReady || checkpoints.length === 0) return;
+    if (activeStage !== 1 || activeCP !== 1) return;
+
     const pulseShown =
       localStorage.getItem("first_checkpoint_pulse_shown") === "true";
+    if (pulseShown) return;
 
-    // Show pulse if tutorial just completed but pulse hasn't been shown yet
-    if (
-      tutorialCompleted &&
-      !pulseShown &&
-      phaserReady &&
-      checkpoints.length > 0
-    ) {
-      // Only show if user is on checkpoint 1 of the very first stage
-      const firstCheckpoint = checkpoints[0];
-      if (firstCheckpoint && activeStage === 1 && activeCP === 1) {
-        setShowFirstCheckpointPulse(true);
-      }
+    const legacyTutorialDone =
+      localStorage.getItem("tutorial_completed") === "true";
+    const newTourActive =
+      tourStateForPulse?.state === "in_progress" ||
+      tourStateForPulse?.state === "not_started";
+
+    if (legacyTutorialDone || newTourActive) {
+      setShowFirstCheckpointPulse(true);
     }
-  }, [phaserReady, checkpoints, activeStage, activeCP]);
+  }, [phaserReady, checkpoints, activeStage, activeCP, tourStateForPulse]);
 
   // XP / Level from Convex
   const level = levelData?.level ?? 1;
@@ -2992,7 +3052,13 @@ function MapPageInner() {
     const doneTasks = [cp.t1Completed, cp.t2Completed, cp.t3Completed].filter(
       Boolean,
     ).length;
-    if (doneTasks < 2 && !skipDoneTasksCheck) return;
+    // First-run tour can advance after 1 task to reach the Doubt Imp
+    // without grinding all three.
+    const tourActiveNow =
+      tourStateForPulse?.state === "not_started" ||
+      tourStateForPulse?.state === "in_progress";
+    const minTasksToAdvance = tourActiveNow ? 1 : 2;
+    if (doneTasks < minTasksToAdvance && !skipDoneTasksCheck) return;
 
     const mapStage = venture.currentStage ?? 1;
     const mapCheckpoint = venture.currentCheckpoint ?? 1;
@@ -3006,6 +3072,7 @@ function MapPageInner() {
         bossDefeatedAtCheckpoint,
         mapStage,
         mapCheckpoint,
+        tourActiveNow,
       )
     ) {
       startBossCombat(cp, doneTasks);
@@ -3318,6 +3385,7 @@ function MapPageInner() {
     bossDefeatedAtCheckpoint,
     setBossCombatTarget,
     startBossCombat,
+    tourStateForPulse,
   ]);
 
   // Keep handleAdvanceRef always pointing at the latest handleAdvance
@@ -3657,12 +3725,31 @@ function MapPageInner() {
               }}
               onAdvanceCheckpoint={() => {
                 setActiveCombatRoundId(null);
+                // First-run tour: skip the post-combat ceremony
+                // (checkpoint walk + animations) and drop the user
+                // straight onto /feed for the final contribute step.
+                const tourActiveNow =
+                  tourStateForPulse?.state === "not_started" ||
+                  tourStateForPulse?.state === "in_progress";
+                if (tourActiveNow) {
+                  setBossCombatTarget(null);
+                  router.push("/feed");
+                  return;
+                }
                 finishBossCombatAndAdvance();
               }}
               onClose={() => {
                 dismissBossCombatVisual(bossCombatTarget.stage);
                 setBossCombatTarget(null);
                 setActiveCombatRoundId(null);
+                // Tour exits combat — win or lose — straight to /feed
+                // for the contributor step.
+                if (
+                  tourStateForPulse?.state === "not_started" ||
+                  tourStateForPulse?.state === "in_progress"
+                ) {
+                  router.push("/feed");
+                }
               }}
             />
           )}
@@ -3856,6 +3943,10 @@ function MapPageInner() {
                 activeStage={activeStage}
                 activeCheckpoint={activeCP}
                 showBossGateHint={showBossGateHint}
+                tourActive={
+                  tourStateForPulse?.state === "not_started" ||
+                  tourStateForPulse?.state === "in_progress"
+                }
                 isCurrentMapCheckpoint={
                   selectedDetail.stage === activeStage &&
                   selectedDetail.checkpointIndex === activeCP
@@ -4704,6 +4795,29 @@ export default function MapPage() {
       }
     >
       <MapPageInner />
+      <MapTourMount />
     </Suspense>
+  );
+}
+
+function MapTourMount() {
+  const tutorialState = useQuery(api.tutorial.getMyFeedTutorialState, {});
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    if (!tutorialState) return;
+    if (
+      tutorialState.state === "not_started" ||
+      tutorialState.state === "in_progress"
+    ) {
+      const t = window.setTimeout(() => setShow(true), 700);
+      return () => window.clearTimeout(t);
+    }
+  }, [tutorialState]);
+  return (
+    <FeedTutorial
+      show={show}
+      initialStep={tutorialState?.step ?? 0}
+      onClose={() => setShow(false)}
+    />
   );
 }

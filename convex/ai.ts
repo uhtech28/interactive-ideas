@@ -334,6 +334,53 @@ export const testGeminiConnection = action({
   },
 });
 
+// Sample-idea seed used by the first-run tour. Builds an outline from
+// the user's builder role + signup skills, then runs the same provider
+// chain as generateIdeaFromOutline.
+export const generateTutorialIdeaDraft = action({
+  args: {
+    role: v.optional(v.string()),
+    skills: v.optional(v.array(v.string())),
+  },
+  handler: async (_ctx, { role, skills }): Promise<GeneratedDraft> => {
+    const outline = personaOutlineFor(role, skills ?? []);
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+
+    if (openaiKey) {
+      const draft = await tryOpenAI(openaiKey, outline);
+      if (draft && draft.title) return draft;
+    }
+    if (geminiKey) {
+      const draft = await tryGemini(geminiKey, outline);
+      if (draft && draft.title) return draft;
+    }
+    return fallback(outline);
+  },
+});
+
+function personaOutlineFor(role: string | undefined, skills: string[]): string {
+  const skillSentence = skills.length
+    ? `Skills they want to use: ${skills.slice(0, 5).join(", ")}.`
+    : "";
+  switch (role) {
+    case "founder":
+      return `A solo founder is launching a small SaaS that solves a daily annoyance for early-career builders. ${skillSentence} Generate a concrete, shippable v1 idea with one core feature and a clear who-it's-for.`;
+    case "engineer":
+      return `A software engineer wants to ship a developer-tools side project that saves teammates 30 minutes a day. ${skillSentence} Make it a focused single-purpose tool with a clear technical hook.`;
+    case "designer":
+      return `A product designer is exploring a small consumer app that makes a chore feel delightful. ${skillSentence} Make it visually distinctive and easy to demo.`;
+    case "student":
+      return `An engineering student is building a side project to learn in public and impress recruiters. ${skillSentence} Make it portfolio-worthy, scoped to a weekend MVP.`;
+    case "researcher":
+      return `A graduate researcher wants to turn their thesis topic into a public-facing tool that non-experts can use. ${skillSentence} Make the idea accessible and shareable.`;
+    case "pm":
+      return `A product manager is prototyping a workflow tool for cross-functional teams. ${skillSentence} Focus on the one workflow it nails before anything else.`;
+    default:
+      return `A new builder wants to ship their first public idea. ${skillSentence} Make it a small, focused project they can finish in a week or two.`;
+  }
+}
+
 export const generateIdeaFromOutline = action({
   args: { outline: v.string() },
   handler: async (_ctx, { outline }): Promise<GeneratedDraft> => {

@@ -105,6 +105,8 @@ export function IdeaForgeExperience({
   onCompleteProfile,
   onLoadMore,
   hasMore = false,
+  tutorialDraft,
+  tutorialOpenCompose,
 }: {
   mode: "feed" | "my-ideas";
   currentUser: CurrentUserProfile | null | undefined;
@@ -121,6 +123,11 @@ export function IdeaForgeExperience({
   onCompleteProfile: () => void;
   onLoadMore?: () => void;
   hasMore?: boolean;
+  /** First-run tour draft. When the user opens the wizard during the
+   *  tour's compose phase, this seeds the form and turns on the
+   *  tutorial countdown / auto-submit. */
+  tutorialDraft?: Partial<ComposerDraft>;
+  tutorialOpenCompose?: boolean;
 }) {
   const router = useRouter();
   const publicIdeas = useQuery(api.ideas.getPublicIdeas, { limit: 60 }) || [];
@@ -162,6 +169,9 @@ export function IdeaForgeExperience({
   
   // Co-dev Wizard state
   const [showIdeaWizard, setShowIdeaWizard] = useState(false);
+  // Set true when the wizard was opened during the first-run tour, so
+  // tutorialMode (auto-submit countdown) is on. Cleared on close.
+  const [wizardTutorialMode, setWizardTutorialMode] = useState(false);
 
   const filteredFeedIdeas = useMemo(() => {
     const searchable = ideas.filter((idea) => matchesSearch(idea, searchQuery));
@@ -214,7 +224,16 @@ export function IdeaForgeExperience({
   };
 
   const openWizard = () => {
-    setWizardDraft(undefined);
+    // If the tour is in its compose phase and the AI draft is ready,
+    // pre-fill the wizard and turn on tutorialMode so the countdown +
+    // auto-submit run after the user opens the composer themselves.
+    if (tutorialDraft && tutorialOpenCompose) {
+      setWizardDraft(tutorialDraft);
+      setWizardTutorialMode(true);
+    } else {
+      setWizardDraft(undefined);
+      setWizardTutorialMode(false);
+    }
     setShowIdeaWizard(true);
   };
 
@@ -394,9 +413,13 @@ export function IdeaForgeExperience({
         isOpen={showIdeaWizard}
         onOpenChange={(open) => {
           setShowIdeaWizard(open);
-          if (!open) setWizardDraft(undefined);
+          if (!open) {
+            setWizardDraft(undefined);
+            setWizardTutorialMode(false);
+          }
         }}
         initialDraft={wizardDraft}
+        tutorialMode={wizardTutorialMode}
       />
     </div>
   );

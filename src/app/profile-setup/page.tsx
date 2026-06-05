@@ -18,6 +18,13 @@ import { useToast } from "@/components/ui/use-toast";
 import { IndustriesMultiSelect } from "@/components/IndustriesMultiSelect";
 import { SkillsMultiSelect } from "@/components/SkillsMultiSelect";
 
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[\s\/\\?#&=:@<>"'`]+/g, "")
+    .slice(0, 30);
+}
+
 export default function ProfileSetupPage() {
   const { isLoaded, userId } = useAuth();
   const { toast } = useToast();
@@ -298,55 +305,139 @@ export default function ProfileSetupPage() {
   }
 
   if (!existingProfile) {
+    const usernameReady =
+      formData.username.length >= 3 &&
+      usernameValidation.available !== false &&
+      !usernameValidation.checking;
+    const nameReady = formData.displayName.trim().length >= 2;
+
+    const handleFirstTimeSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!nameReady) {
+        toast({ title: "Add your name to continue", variant: "destructive" });
+        return;
+      }
+      if (!usernameReady) {
+        toast({ title: "Pick an available username", variant: "destructive" });
+        return;
+      }
+      if (!userId) return;
+      setLoading(true);
+      setError("");
+      try {
+        await createUserProfile({
+          username: formData.username,
+          displayName: formData.displayName.trim(),
+          avatar: formData.avatar || undefined,
+          skills: [],
+          industries: [],
+        });
+        toast({ title: "All set", description: "Loading your feed…" });
+        try {
+          router.push("/feed");
+          setTimeout(() => {
+            if (
+              typeof window !== "undefined" &&
+              window.location.pathname.includes("profile-setup")
+            ) {
+              window.location.href = "/feed";
+            }
+          }, 500);
+        } catch {
+          if (typeof window !== "undefined") window.location.href = "/feed";
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Setup failed";
+        setError(msg);
+        toast({
+          title: "Setup failed",
+          description: msg,
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
     return (
       <div className="min-h-screen flex flex-col bg-background overflow-x-hidden">
         <HeroHeader />
         <main className="flex-1 flex items-center justify-center px-4 py-12 pt-32 w-full">
-          <div className="w-full max-w-3xl">
+          <div className="w-full max-w-2xl">
             <div className="text-center mb-8">
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">
-                Complete Your Profile
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+                Let&apos;s set up your profile
               </h1>
               <p className="mt-2 text-sm md:text-base text-muted-foreground">
-                Pick a username to get started
+                Your name and a username people can find you by.
               </p>
             </div>
             <Card className="border-border/50 shadow-xl">
               <CardContent className="p-6 md:p-10">
-                <form onSubmit={handleSubmit}>
-                  {/* First-time setup is intentionally minimal:
-                   *   - No avatar upload (auto-generated from initials/Clerk image)
-                   *   - No Cancel button (forces profile completion before they
-                   *     can use the app)
-                   *   - Submit drops the user straight into /feed */}
-                  <div className="space-y-5">
-                    <div className="space-y-2">
-                      <Label htmlFor="username" className="text-sm font-medium">Username</Label>
-                      <Input
-                        id="username"
-                        value={formData.username}
-                        onChange={(e) => handleUsernameChange(e.target.value)}
-                        placeholder="yourname"
-                        className="h-11 text-sm"
-                        maxLength={30}
-                        autoFocus
-                      />
-                      <UsernameValidationStatus />
-                    </div>
-                    {error && (
-                      <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
-                        <p className="text-xs text-destructive font-medium">{error}</p>
-                      </div>
-                    )}
-                    <Button
-                      type="submit"
-                      disabled={loading || usernameValidation.available === false || usernameValidation.checking || !formData.username}
-                      size="default"
-                      className="w-full h-11"
-                    >
-                      {loading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Setting up…</>) : ("Complete Setup")}
-                    </Button>
+                <form onSubmit={handleFirstTimeSubmit} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="displayName" className="text-sm font-medium">
+                      Your name
+                    </Label>
+                    <Input
+                      id="displayName"
+                      value={formData.displayName}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setFormData((prev) => ({ ...prev, displayName: v }));
+                        if (
+                          !formData.username ||
+                          formData.username === slugify(formData.displayName)
+                        ) {
+                          const suggested = slugify(v);
+                          setFormData((prev) => ({
+                            ...prev,
+                            username: suggested,
+                          }));
+                          if (suggested.length >= 3) {
+                            if (debounceTimer.current)
+                              clearTimeout(debounceTimer.current);
+                            debounceTimer.current = setTimeout(() => {
+                              validateUsername(suggested);
+                            }, 400);
+                          }
+                        }
+                      }}
+                      placeholder="Your full name"
+                      className="h-11"
+                      autoFocus
+                      maxLength={60}
+                    />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="username" className="text-sm font-medium">
+                      Username
+                    </Label>
+                    <Input
+                      id="username"
+                      value={formData.username}
+                      onChange={(e) => handleUsernameChange(e.target.value)}
+                      placeholder="yourname"
+                      className="h-11"
+                      maxLength={30}
+                    />
+                    <UsernameValidationStatus />
+                  </div>
+                  {error && <p className="text-xs text-destructive">{error}</p>}
+                  <Button
+                    type="submit"
+                    disabled={!nameReady || !usernameReady || loading}
+                    className="w-full h-11"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Setting up…
+                      </>
+                    ) : (
+                      "Start building"
+                    )}
+                  </Button>
                 </form>
               </CardContent>
             </Card>

@@ -1026,7 +1026,13 @@ export const advanceCheckpoint = mutation({
       checkpoint as CheckpointProgressDoc,
     );
 
-    if (completedCount < 2) {
+    // First-run tour users can advance after a single task so they hit
+    // the Doubt Imp without grinding the full checkpoint.
+    const tourActive =
+      user.feedTutorialState === "not_started" ||
+      user.feedTutorialState === "in_progress";
+    const minTasksRequired = tourActive ? 1 : 2;
+    if (completedCount < minTasksRequired) {
       throw new Error("At least 2 of 3 tasks must be completed to advance");
     }
 
