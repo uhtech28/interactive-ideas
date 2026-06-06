@@ -271,6 +271,49 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
 }
 
 // Get all root public ideas (for feed) - excludes sub-ideas with limit-based pagination
+// Lightweight feed query for server-side preload — no wallet boost, no shuffle,
+// no interleaving. Just the 20 most recent public root ideas with minimal author fields.
+// Runs in ~100-200ms. Client replaces this with the full personalized feed on hydration.
+export const getPublicIdeasFast = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 20;
+
+    // Compound index: visibility + parentId + createdAt — no post-filters needed
+    const ideas = await ctx.db
+      .query("ideas")
+      .withIndex("by_visibility_parent_created", (q) =>
+        q.eq("visibility", "public").eq("parentId", undefined)
+      )
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .order("desc")
+      .take(limit);
+
+    // Batch author lookups
+    const uniqueAuthorIds = [...new Set(ideas.map((i) => String(i.authorId)))];
+    const authorDocs = await Promise.all(uniqueAuthorIds.map((id) => ctx.db.get(id as any)));
+    const authorMap = new Map<string, any>();
+    for (let i = 0; i < uniqueAuthorIds.length; i++) {
+      const doc = authorDocs[i] as any;
+      if (doc && doc.displayName !== undefined) {
+        authorMap.set(uniqueAuthorIds[i], {
+          _id: doc._id,
+          name: doc.displayName,
+          displayName: doc.displayName,
+          username: doc.username,
+          avatar: doc.avatar,
+        });
+      }
+    }
+
+    return ideas.map((idea) => ({
+      ...idea,
+      author: authorMap.get(String(idea.authorId)) ?? null,
+      contributionCount: 1 + (idea.contributionRequestCount ?? 0),
+    }));
+  },
+});
+
 export const getPublicIdeas = query({
   args: { limit: v.optional(v.number()), seed: v.optional(v.number()) },
   handler: async (ctx, args) => {
