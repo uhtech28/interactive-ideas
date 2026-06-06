@@ -591,7 +591,11 @@ export const spark = internalMutation({
 
     const idea = await ctx.db.get(args.ideaId);
     if (idea) {
-      await ctx.db.patch(args.ideaId, { sparkCount: idea.sparkCount + 1 });
+      const sparks = await ctx.db
+        .query("userIdeaSparks")
+        .withIndex("by_idea", (q) => q.eq("ideaId", args.ideaId))
+        .collect();
+      await ctx.db.patch(args.ideaId, { sparkCount: sparks.length });
     }
   },
 });
@@ -751,7 +755,7 @@ export const seedRealUserSparksForIdea = internalMutation({
     }
 
     await ctx.db.patch(ideaId, {
-      sparkCount: (idea.sparkCount || 0) + toSpark.length,
+      sparkCount: existingSparks.length + toSpark.length,
     });
     return toSpark.length;
   },

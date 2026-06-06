@@ -122,9 +122,9 @@ export const tryFireOneSpark = internalMutation({
       seeded: true,
     });
 
-    // Increment sparkCount on the idea (same as toggleSpark)
+    // Keep the denormalized spark count in sync with the source-of-truth rows.
     await ctx.db.patch(ideaId, {
-      sparkCount: idea.sparkCount + 1,
+      sparkCount: existingSparks.length + 1,
       updatedAt: now,
     });
 

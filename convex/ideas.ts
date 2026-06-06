@@ -13,6 +13,17 @@ async function getIdeaSparkCount(ctx: any, ideaId: Id<"ideas">) {
   return sparks.length;
 }
 
+async function repairIdeaSparkCount(ctx: any, idea: any) {
+  const sparkCount = await getIdeaSparkCount(ctx, idea._id);
+  if ((idea.sparkCount ?? 0) !== sparkCount) {
+    await ctx.db.patch(idea._id, {
+      sparkCount,
+      updatedAt: Date.now(),
+    });
+  }
+  return sparkCount;
+}
+
 async function getCurrentUserFromAuth(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return null;
@@ -525,6 +536,7 @@ export const getIdeaById = query({
         isAuthor = user._id === idea.authorId;
       }
     }
+    const realSparkCount = await repairIdeaSparkCount(ctx, idea);
 
     return {
       ...idea,
@@ -535,6 +547,7 @@ export const getIdeaById = query({
       } : null,
       hasSparked,
       isAuthor,
+      sparkCount: realSparkCount,
     };
   },
 });
@@ -1351,7 +1364,28 @@ export const getUserIdeas = query({
       })
     );
 
-    return ideasWithDetails;
+    return await enrichIdeasWithSparkState(ctx, ideasWithDetails);
+  },
+});
+
+export const repairAllIdeaSparkCounts = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const ideas = await ctx.db.query("ideas").collect();
+    let repaired = 0;
+
+    for (const idea of ideas) {
+      const sparkCount = await getIdeaSparkCount(ctx, idea._id);
+      if ((idea.sparkCount ?? 0) !== sparkCount) {
+        await ctx.db.patch(idea._id, {
+          sparkCount,
+          updatedAt: Date.now(),
+        });
+        repaired++;
+      }
+    }
+
+    return { processed: ideas.length, repaired };
   },
 });
 
@@ -1609,9 +1643,11 @@ export const getPublicSparkedIdeasForUser = query({
     );
 
     // Filter out nulls and sort by spark timestamp
-    return ideas
+    const visibleIdeas = ideas
       .filter(idea => idea !== null)
       .sort((a, b) => (b.sparkedAt || 0) - (a.sparkedAt || 0));
+
+    return await enrichIdeasWithSparkState(ctx, visibleIdeas);
   },
 });
 
@@ -1676,9 +1712,11 @@ export const getPublicContributedIdeasForUser = query({
     );
 
     // Filter out nulls and sort by contribution timestamp
-    return ideas
+    const visibleIdeas = ideas
       .filter(idea => idea !== null)
       .sort((a, b) => (b.contributedAt || 0) - (a.contributedAt || 0));
+
+    return await enrichIdeasWithSparkState(ctx, visibleIdeas);
   },
 });
 
@@ -1705,7 +1743,7 @@ export const getPublicIdeasForUser = query({
       .order("desc")
       .take(limit);
 
-    return userIdeas;
+    return await enrichIdeasWithSparkState(ctx, userIdeas);
   },
 });
 
@@ -1744,7 +1782,7 @@ export const getProfileIdeas = query({
 
     const ideas = await ideasQuery.order("desc").take(limit);
 
-    return ideas;
+    return await enrichIdeasWithSparkState(ctx, ideas);
   },
 });
 // Internal query for the AI agent to fetch recent ideas
