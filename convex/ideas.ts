@@ -13,17 +13,6 @@ async function getIdeaSparkCount(ctx: any, ideaId: Id<"ideas">) {
   return sparks.length;
 }
 
-async function repairIdeaSparkCount(ctx: any, idea: any) {
-  const sparkCount = await getIdeaSparkCount(ctx, idea._id);
-  if ((idea.sparkCount ?? 0) !== sparkCount) {
-    await ctx.db.patch(idea._id, {
-      sparkCount,
-      updatedAt: Date.now(),
-    });
-  }
-  return sparkCount;
-}
-
 async function getCurrentUserFromAuth(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return null;
@@ -536,7 +525,7 @@ export const getIdeaById = query({
         isAuthor = user._id === idea.authorId;
       }
     }
-    const realSparkCount = await repairIdeaSparkCount(ctx, idea);
+    const realSparkCount = await getIdeaSparkCount(ctx, idea._id);
 
     return {
       ...idea,
