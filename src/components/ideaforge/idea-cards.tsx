@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Lightbulb, MessageCircle, PencilLine, Send, Sparkles, Trash2, UserPlus, Repeat2, Bookmark, Skull } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
@@ -58,8 +58,9 @@ function getProgressPercentage(summary: VentureSummary) {
 }
 
 function formatDollarValue(value?: number) {
-  const safeValue = Math.max(0, Math.round(value ?? 0));
-  return `Value: $${safeValue.toLocaleString("en-US")}`;
+  const baseIdeaValue = 100_000;
+  const earnedValue = Math.max(0, Math.round(value ?? 0));
+  return `$${(baseIdeaValue + earnedValue).toLocaleString("en-US")}`;
 }
 
 function getStageSummary(summary: VentureSummary) {
@@ -223,9 +224,9 @@ function StoryAction({ icon: Icon, label, count, active = false, onClick, animat
           icon: "text-blue-300",
         }
       : {
-          base: "text-violet-300 hover:bg-[#111827] hover:text-violet-300",
-          active: "bg-[#111827] text-violet-300",
-          icon: "text-violet-300",
+          base: "text-fuchsia-300 hover:bg-[#111827] hover:text-fuchsia-300",
+          active: "bg-[#111827] text-fuchsia-300",
+          icon: "text-fuchsia-300",
         };
   const handleClick = () => {
     if (animateOnClick) {
@@ -350,9 +351,11 @@ function IdeaVentureProgressBar({
             tabIndex={authorHref ? 0 : undefined}
             onClick={openAuthor}
             onKeyDown={(event) => {
-              if (authorHref && (event.key === "Enter" || event.key === " ")) openAuthor(event as unknown as React.MouseEvent<HTMLElement>);
+              if (!authorHref || (event.key !== "Enter" && event.key !== " ")) return;
+              event.stopPropagation();
+              router.push(authorHref);
             }}
-            className={cn("flex min-w-0 items-center gap-1.5", authorHref && "cursor-pointer")}
+            className={cn("inline-flex w-fit max-w-full min-w-0 items-center gap-1.5 self-start", authorHref && "cursor-pointer")}
             title={authorHref ? `View ${authorName}'s profile` : authorName}
           >
             <Avatar className="h-5 w-5 shrink-0 border border-violet-300/30">
@@ -394,16 +397,11 @@ function IdeaVentureProgressBar({
             style={{ background: "linear-gradient(to bottom, transparent, rgba(245,158,11,0.3), rgba(245,158,11,0.65), rgba(245,158,11,0.3), transparent)" }}
           />
           <motion.div
-            className="relative z-10 flex h-4 w-4 items-center justify-center rounded-full"
-            style={{
-              background: "linear-gradient(135deg, #f59e0b 0%, #b45309 50%, #92400e 100%)",
-              border: "1px solid rgba(253,230,138,0.8)",
-              boxShadow: "0 0 8px rgba(245,158,11,0.7), inset 0 1px 0 rgba(255,255,255,0.3)",
-            }}
+            className="relative z-10 grid h-5 w-5 place-items-center rounded-full bg-[#FACC15] text-[#0A0D12] shadow-[0_0_8px_rgba(250,204,21,0.45)]"
             animate={{ scale: [1, 1.04, 1] }}
             transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
           >
-            <span className="select-none text-[7.5px] font-black italic leading-none tracking-tighter text-black">
+            <span className="select-none text-[7px] font-black leading-none">
               VS
             </span>
           </motion.div>
@@ -478,6 +476,10 @@ export function IdeaStoryCard({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [industriesExpanded, setIndustriesExpanded] = useState(false);
   const [skillsExpanded, setSkillsExpanded] = useState(false);
+  const [optimisticSpark, setOptimisticSpark] = useState({
+    count: idea.sparkCount || 0,
+    hasSparked: !!idea.hasSparked,
+  });
   const skillTags = useMemo(() => parseTags(idea.category), [idea.category]);
   const industryTags = useMemo(() => parseTags(idea.industries || ""), [idea.industries]);
   const industriesAreExpanded = showAllTags || industriesExpanded;
@@ -496,6 +498,21 @@ export function IdeaStoryCard({
     api.aiScoring.getVentureCumulativeHUDScores,
     ventureSummary?._id ? { ventureId: ventureSummary._id as Id<"ventures"> } : "skip",
   );
+
+  useEffect(() => {
+    setOptimisticSpark({
+      count: idea.sparkCount || 0,
+      hasSparked: !!idea.hasSparked,
+    });
+  }, [idea.hasSparked, idea.sparkCount]);
+
+  const handleSpark = () => {
+    setOptimisticSpark((current) => ({
+      count: current.hasSparked ? Math.max(0, current.count - 1) : current.count + 1,
+      hasSparked: !current.hasSparked,
+    }));
+    onSpark(idea._id);
+  };
 
   // Whole-card click-to-open. Skip when the click originated from any inner
   // interactive element (button, link, input, etc.) so Spark / Save /
@@ -683,7 +700,7 @@ export function IdeaStoryCard({
 
       <div className="mt-5 border-t border-white/8 pt-3">
         <div className="flex flex-nowrap items-center gap-1">
-          <StoryAction icon={Sparkles} label="Spark" count={idea.sparkCount || 0} active={!!idea.hasSparked} onClick={() => onSpark(idea._id)} animateOnClick iconOnly />
+          <StoryAction icon={Sparkles} label="Spark" count={optimisticSpark.count} active={optimisticSpark.hasSparked} onClick={handleSpark} animateOnClick iconOnly />
           <StoryAction icon={MessageCircle} label="Comment" count={idea.commentCount || 0} active={(idea.commentCount || 0) > 0} onClick={() => onComment(idea._id)} iconOnly />
           <ContributorsAction
             ideaId={idea._id}

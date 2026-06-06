@@ -8,7 +8,7 @@ import { api } from "../../../convex/_generated/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, AlertCircle, Lightbulb, Sparkles, Send, Trophy } from "lucide-react";
+import { Users, AlertCircle, Lightbulb, Sparkles, Send, Trophy, UserPlus } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import { HeroHeader } from "@/components/header";
 import { Spinner } from "@/components/ui/spinner";
@@ -491,7 +491,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUserId, onTagClick }) 
               className="flex flex-col items-center justify-center rounded-md border-l border-border/40 py-1 text-center transition-colors hover:bg-violet-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40"
               aria-label={`${user.displayName} contributed ideas`}
             >
-              <Users className="w-3 h-3 text-violet-500 mb-0.5" />
+              <UserPlus className="w-3 h-3 text-violet-500 mb-0.5" />
               <span className="text-[9px] font-bold leading-none">{user.ideasContributed || 0}</span>
             </button>
           </div>
