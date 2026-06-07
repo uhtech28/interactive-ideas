@@ -8,7 +8,7 @@
 // pair on Convex, so the tour resumes wherever the user left off even
 // across page reloads.
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQuery } from "convex/react";
 import { usePathname, useRouter } from "next/navigation";
@@ -32,6 +32,10 @@ interface Props {
    *  While false, the compose step shows a "Generating..." state so
    *  the user doesn't open the wizard before pre-fill is available. */
   composeDraftReady?: boolean;
+  /** Idea count piped down from the parent so we don't open a duplicate
+   *  Convex subscription. Undefined while parent's query is still
+   *  loading. */
+  myIdeaCount?: number;
 }
 
 // Phases are derived from the user's real platform state, so we always
@@ -48,10 +52,11 @@ const PHASES = [
 ] as const;
 type Phase = (typeof PHASES)[number];
 
-export function FeedTutorial({
+function FeedTutorialInner({
   show,
   onClose,
   composeDraftReady = true,
+  myIdeaCount,
 }: Props) {
   const pathname = usePathname();
   const router = useRouter();
@@ -59,8 +64,9 @@ export function FeedTutorial({
   const complete = useMutation(api.tutorial.completeFeedTutorial);
   const skip = useMutation(api.tutorial.skipFeedTutorial);
 
-  // Pull what we need to detect real platform progress.
-  const myIdeaCount = useQuery(api.tutorial_metrics.getMyIdeaCount, {});
+  // Pull what we need to detect real platform progress. myIdeaCount
+  // comes from the parent as a prop to avoid a duplicate Convex
+  // websocket subscription (FeedClient already queries it).
   const myTaskCount = useQuery(api.tutorial_metrics.getMyCompletedTaskCount, {});
   const myCombatCount = useQuery(api.tutorial_metrics.getMyCombatCount, {});
 
@@ -166,10 +172,11 @@ export function FeedTutorial({
 // Hook returning the live bounding rect for an element selector. Polls
 // + listens for scroll/resize so the rect stays in sync as the user
 // moves around the page.
-// Polls the DOM for any modal dialog. We match both Radix's
+// Watches the DOM for any open modal dialog. Matches both Radix's
 // data-state="open" pattern and bare role="dialog" + aria-modal="true"
-// (used by the CombatPanel and other custom modals). If one is on
-// screen we hand off so the tour's dim doesn't layer over it.
+// (used by CombatPanel and other custom modals). MutationObserver
+// fires only when dialogs actually mount/unmount or toggle their open
+// state — no polling cost while a dialog is steady-open or absent.
 function useAnyDialogOpen(): boolean {
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -177,11 +184,30 @@ function useAnyDialogOpen(): boolean {
       const hasOpen =
         !!document.querySelector('[role="dialog"][data-state="open"]') ||
         !!document.querySelector('[role="dialog"][aria-modal="true"]');
-      setOpen(hasOpen);
+      setOpen((prev) => (prev === hasOpen ? prev : hasOpen));
     };
     check();
-    const id = window.setInterval(check, 150);
-    return () => window.clearInterval(id);
+
+    let rafId: number | null = null;
+    const schedule = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        check();
+      });
+    };
+
+    const obs = new MutationObserver(schedule);
+    obs.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["role", "data-state", "aria-modal"],
+    });
+    return () => {
+      obs.disconnect();
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+    };
   }, []);
   return open;
 }
@@ -193,36 +219,100 @@ function useTargetRect(selector: string | null): DOMRect | null {
       setRect(null);
       return;
     }
-    const update = () => {
-      // Support comma-separated selectors in priority order. Each part
-      // is tried left-to-right; the first one with a painted match wins.
-      // Within one part, we still walk candidates in DOM order in case
-      // multiple matches exist (e.g. mobile vs desktop + buttons).
-      const parts = selector.split(",").map((s) => s.trim()).filter(Boolean);
-      let best: DOMRect | null = null;
+    // Comma-separated priority list — try each part left-to-right and
+    // pick the first painted match. Within one part we still walk
+    // candidates in DOM order so mobile/desktop variants both work.
+    const parts = selector.split(",").map((s) => s.trim()).filter(Boolean);
+    const resolveTarget = (): HTMLElement | null => {
       for (const part of parts) {
         const candidates = Array.from(
           document.querySelectorAll(part),
         ) as HTMLElement[];
         for (const el of candidates) {
           const r = el.getBoundingClientRect();
-          if (r.width > 0 && r.height > 0) {
-            best = r;
-            break;
-          }
+          if (r.width > 0 && r.height > 0) return el;
         }
-        if (best) break;
       }
-      setRect(best);
+      return null;
     };
-    update();
-    const id = window.setInterval(update, 200);
-    window.addEventListener("resize", update);
-    window.addEventListener("scroll", update, true);
+
+    let currentTarget: HTMLElement | null = null;
+    let lastRect: DOMRect | null = null;
+    const pushRect = () => {
+      if (!currentTarget) {
+        if (lastRect !== null) {
+          lastRect = null;
+          setRect(null);
+        }
+        return;
+      }
+      const r = currentTarget.getBoundingClientRect();
+      // Skip update if rect hasn't visually moved more than a pixel.
+      if (
+        lastRect &&
+        Math.abs(r.left - lastRect.left) < 1 &&
+        Math.abs(r.top - lastRect.top) < 1 &&
+        Math.abs(r.width - lastRect.width) < 1 &&
+        Math.abs(r.height - lastRect.height) < 1
+      ) {
+        return;
+      }
+      lastRect = r;
+      setRect(r);
+    };
+
+    let resizeObs: ResizeObserver | null = null;
+    let rafId: number | null = null;
+    const schedulePush = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        pushRect();
+      });
+    };
+
+    // Watch DOM for the target appearing / disappearing without polling.
+    // When mutations change the layout we re-resolve in case a better
+    // candidate appeared (mobile→desktop nav swap, for example).
+    const mutObs = new MutationObserver(() => {
+      const next = resolveTarget();
+      if (next !== currentTarget) {
+        currentTarget = next;
+        if (resizeObs) {
+          resizeObs.disconnect();
+          resizeObs = null;
+        }
+        if (currentTarget) {
+          resizeObs = new ResizeObserver(schedulePush);
+          resizeObs.observe(currentTarget);
+        }
+      }
+      schedulePush();
+    });
+    mutObs.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "style", "hidden", "data-state"],
+    });
+
+    // Initial resolve.
+    currentTarget = resolveTarget();
+    if (currentTarget) {
+      resizeObs = new ResizeObserver(schedulePush);
+      resizeObs.observe(currentTarget);
+    }
+    schedulePush();
+
+    window.addEventListener("resize", schedulePush);
+    window.addEventListener("scroll", schedulePush, true);
+
     return () => {
-      window.clearInterval(id);
-      window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update, true);
+      mutObs.disconnect();
+      if (resizeObs) resizeObs.disconnect();
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", schedulePush);
+      window.removeEventListener("scroll", schedulePush, true);
     };
   }, [selector]);
   return rect;
@@ -623,3 +713,8 @@ function FinaleStep({
     />
   );
 }
+
+// Memoize the whole tour so parent re-renders (feed scroll, idea card
+// updates) don't cascade through. Props are primitives + onClose
+// callback identity, so shallow compare is enough.
+export const FeedTutorial = memo(FeedTutorialInner);

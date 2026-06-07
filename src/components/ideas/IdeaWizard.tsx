@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useMutation, useAction } from "convex/react";
 import { useRouter } from "next/navigation";
 import { api } from "@convex/_generated/api";
@@ -159,12 +159,10 @@ export function IdeaWizard({
   const [aiHadError, setAiHadError] = useState(false);
   const [isGeneratingTags, setIsGeneratingTags] = useState(false);
 
-  // Tutorial countdown state. Counts down from 3 once the wizard is on
-  // the preview step with a pre-filled draft. User can hit Pause to
-  // cancel the auto-submit and edit the idea before posting.
-  const [tutorialCountdown, setTutorialCountdown] = useState<number | null>(
-    null,
-  );
+  // Tutorial countdown state. The countdown number itself lives in a
+  // leaf component (TutorialCountdownBanner) so its 1-Hz tick doesn't
+  // re-render the whole 1000-line wizard. We only track the pause flag
+  // and the active boolean up here.
   const [tutorialPaused, setTutorialPaused] = useState(false);
 
   // ── Helpers ──
@@ -333,30 +331,13 @@ export function IdeaWizard({
     generateFromOutline,
   ]);
 
-  // Tutorial countdown driver. Starts at 3 once we reach preview with a
-  // populated draft; ticks every second; on 0, fires the submit. The
-  // user can pause it with the button in the banner.
-  useEffect(() => {
-    if (!tutorialMode) return;
-    if (step !== "preview") return;
-    if (!title.trim() || !description.trim()) return;
-    if (tutorialCountdown === null) {
-      setTutorialCountdown(3);
-      return;
-    }
-    if (tutorialPaused) return;
-    if (tutorialCountdown === 0) {
-      void handleSubmit({ preventDefault: () => {} } as React.FormEvent);
-      setTutorialCountdown(null);
-      return;
-    }
-    const id = window.setTimeout(
-      () => setTutorialCountdown((c) => (c === null ? null : c - 1)),
-      1000,
-    );
-    return () => window.clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tutorialMode, step, title, description, tutorialCountdown, tutorialPaused]);
+  // Whether the countdown should be live. The leaf banner owns the
+  // actual timer; we only feed it derived booleans.
+  const countdownActive =
+    tutorialMode &&
+    step === "preview" &&
+    !!title.trim() &&
+    !!description.trim();
 
   // ── Submit ──
   const handleSubmit = async (e: React.FormEvent) => {
@@ -997,29 +978,20 @@ export function IdeaWizard({
                   className="h-9 rounded-[10px] bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] px-5 text-sm font-semibold text-white hover:from-[#5053df] hover:to-[#7c4ee4] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? <Spinner size={14} className="mr-2" /> : null}
-                  {tutorialMode && tutorialCountdown !== null && !tutorialPaused
-                    ? `Posting in ${tutorialCountdown}…`
-                    : "Post Idea"}
+                  Post Idea
                 </Button>
               </div>
-              {tutorialMode &&
-                tutorialCountdown !== null &&
-                !isSubmitting && (
-                  <div className="mt-3 flex items-center justify-between rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2.5 text-xs">
-                    <span className="font-medium text-amber-200">
-                      {tutorialPaused
-                        ? "Auto-post paused. Edit anything you want, then hit Post."
-                        : `We'll post this for you in ${tutorialCountdown}s.`}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setTutorialPaused((p) => !p)}
-                      className="rounded-lg bg-white/10 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-white/15"
-                    >
-                      {tutorialPaused ? "Resume" : "Pause"}
-                    </button>
-                  </div>
-                )}
+              {countdownActive && !isSubmitting && (
+                <TutorialCountdownBanner
+                  paused={tutorialPaused}
+                  onTogglePause={() => setTutorialPaused((p) => !p)}
+                  onFire={() => {
+                    void handleSubmit(
+                      { preventDefault: () => {} } as React.FormEvent,
+                    );
+                  }}
+                />
+              )}
             </div>
           </form>
         )}
@@ -1054,5 +1026,49 @@ export function IdeaWizard({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Self-contained 3-second countdown banner. Lives in its own component
+// so the per-second tick only re-renders this banner, not the entire
+// 1000-line wizard.
+function TutorialCountdownBanner({
+  paused,
+  onTogglePause,
+  onFire,
+}: {
+  paused: boolean;
+  onTogglePause: () => void;
+  onFire: () => void;
+}) {
+  const [seconds, setSeconds] = useState(3);
+  const firedRef = useRef(false);
+
+  useEffect(() => {
+    if (paused || firedRef.current) return;
+    if (seconds === 0) {
+      firedRef.current = true;
+      onFire();
+      return;
+    }
+    const id = window.setTimeout(() => setSeconds((s) => s - 1), 1000);
+    return () => window.clearTimeout(id);
+  }, [seconds, paused, onFire]);
+
+  return (
+    <div className="mt-3 flex items-center justify-between rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2.5 text-xs">
+      <span className="font-medium text-amber-200">
+        {paused
+          ? "Auto-post paused. Edit anything you want, then hit Post."
+          : `We'll post this for you in ${seconds}s.`}
+      </span>
+      <button
+        type="button"
+        onClick={onTogglePause}
+        className="rounded-lg bg-white/10 px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-white/15"
+      >
+        {paused ? "Resume" : "Pause"}
+      </button>
+    </div>
   );
 }

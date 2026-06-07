@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useAction, useMutation, usePreloadedQuery } from "convex/react";
@@ -69,6 +69,14 @@ export function FeedClient({
   const tutorialState = useQuery(api.tutorial.getMyFeedTutorialState, {});
   const myIdeaCount = useQuery(api.tutorial_metrics.getMyIdeaCount, {});
   const [tutorialOpen, setTutorialOpen] = useState(false);
+  // Stable callback so the memoized FeedTutorial doesn't re-render on
+  // every parent tick.
+  const closeFeedTutorial = useCallback(() => {
+    setTutorialOpen(false);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("feedTourClosed", "1");
+    }
+  }, []);
   useEffect(() => {
     if (!tutorialState) return;
     // Hard local guard: once the user has explicitly dismissed the
@@ -218,15 +226,11 @@ export function FeedClient({
       <FeedTutorial
         show={tutorialOpen}
         initialStep={tutorialState?.step ?? 0}
-        onClose={() => {
-          setTutorialOpen(false);
-          if (typeof window !== "undefined") {
-            sessionStorage.setItem("feedTourClosed", "1");
-          }
-        }}
+        onClose={closeFeedTutorial}
         composeDraftReady={
           inComposePhase ? !!tutorialDraft?.title?.trim() : true
         }
+        myIdeaCount={myIdeaCount}
       />
     </>
   );

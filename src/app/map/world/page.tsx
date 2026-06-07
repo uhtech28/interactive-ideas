@@ -4803,6 +4803,13 @@ export default function MapPage() {
 function MapTourMount() {
   const tutorialState = useQuery(api.tutorial.getMyFeedTutorialState, {});
   const [show, setShow] = useState(false);
+  // Stable callback so the memoized FeedTutorial doesn't re-render.
+  const onClose = useCallback(() => {
+    setShow(false);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("feedTourClosed", "1");
+    }
+  }, []);
   useEffect(() => {
     if (!tutorialState) return;
     if (
@@ -4823,12 +4830,7 @@ function MapTourMount() {
     <FeedTutorial
       show={show}
       initialStep={tutorialState?.step ?? 0}
-      onClose={() => {
-        setShow(false);
-        if (typeof window !== "undefined") {
-          sessionStorage.setItem("feedTourClosed", "1");
-        }
-      }}
+      onClose={onClose}
     />
   );
 }
