@@ -574,7 +574,7 @@ export function IdeaWizard({
                   onChange={(e) => setOutline(e.target.value)}
                   placeholder="e.g. An app that helps remote teams pick a meet-up city based on flight cost and weather. Built for distributed startup teams that retreat 2-3 times a year."
                   className={cn(
-                    "min-h-[136px] resize-none rounded-[12px] border-white/5 bg-[#0D1117] p-4 pr-4 text-sm leading-6 text-white placeholder:text-[#6B7280] focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-[#8B5CF6] focus-visible:ring-offset-0",
+                    "min-h-[136px] resize-none rounded-[12px] border-white/5 bg-[#0D1117] p-4 pr-4 text-base leading-6 text-white placeholder:text-[#6B7280] focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-[#8B5CF6] focus-visible:ring-offset-0 lg:text-sm",
                     isOverOutlineLimit && "border-rose-500/80 focus-visible:ring-rose-400",
                   )}
                   autoFocus
@@ -699,7 +699,7 @@ export function IdeaWizard({
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="A short, specific title"
                   maxLength={100}
-                  className="h-11 rounded-[10px] border-white/5 bg-[#0D1117] px-3 text-sm text-white placeholder:text-[#6B7280] focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-0"
+                  className="h-11 rounded-[10px] border-white/5 bg-[#0D1117] px-3 text-base text-white placeholder:text-[#6B7280] focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-0 lg:text-sm"
                   required
                   autoFocus
                 />
@@ -719,7 +719,7 @@ export function IdeaWizard({
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="What's the idea? Who is it for?"
                     className={cn(
-                      "w-full resize-none border-0 bg-transparent p-4 pb-12 pr-14 text-sm leading-6 text-white outline-none placeholder:text-[#6B7280] focus:ring-0 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-track]:bg-transparent",
+                      "w-full resize-none border-0 bg-transparent p-4 pb-12 pr-14 text-base leading-6 text-white outline-none placeholder:text-[#6B7280] focus:ring-0 lg:text-sm [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-track]:bg-transparent",
                       selectedFile ? "h-[136px]" : "h-full overflow-y-auto",
                     )}
                     required

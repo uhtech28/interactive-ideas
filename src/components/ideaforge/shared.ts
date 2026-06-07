@@ -246,19 +246,21 @@ export function formatRelativeTime(timestamp: number) {
 }
 
 export function parseTags(tagStr?: string) {
+  const cleanTags = (entries: unknown[]) =>
+    entries
+      .map((entry) => String(entry).trim())
+      .filter((entry) => entry && !/^__.*__$/.test(entry));
+
   if (!tagStr) return [] as string[];
   try {
     const parsed = JSON.parse(tagStr);
     if (Array.isArray(parsed)) {
-      return parsed.map((entry) => String(entry).trim()).filter(Boolean);
+      return cleanTags(parsed);
     }
   } catch {
     // Ignore JSON parse errors and fall back to CSV parsing.
   }
-  return tagStr
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
+  return cleanTags(tagStr.split(","));
 }
 
 export function getDisplayName(author?: IdeaAuthor | null) {

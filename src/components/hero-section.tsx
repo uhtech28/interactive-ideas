@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import { SignUpButton, useClerk, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { GraduationCap, TrendingUp, Rocket, Building2, ArrowRight } from "lucide-react";
+import { GraduationCap, TrendingUp, Rocket, Building2 } from "lucide-react";
 
 const SELECTED_ROLE_KEY = "ii.selectedRole";
 
@@ -123,6 +123,16 @@ export default function HeroSection() {
           from { opacity: 0; transform: translateY(10px) scale(0.97); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
+        @keyframes lp-card-cta-glow {
+          0%, 18%, 100% {
+            border-color: rgba(255,255,255,0.10);
+            box-shadow: 0 0 0 rgba(255,255,255,0), 0 8px 32px rgba(0,0,0,0.40);
+          }
+          8% {
+            border-color: var(--role-color);
+            box-shadow: 0 0 20px var(--role-glow-strong), 0 0 44px var(--role-glow), 0 8px 32px rgba(0,0,0,0.55);
+          }
+        }
       `}</style>
 
       <section className="relative flex flex-col items-center justify-center min-h-dvh px-4 py-10 overflow-hidden">
@@ -195,41 +205,38 @@ export default function HeroSection() {
                       className="absolute -right-5 -top-5 h-20 w-20 rounded-full blur-2xl"
                       style={{ background: role.glow }}
                     />
-                    <div className="relative z-10 flex flex-col items-start gap-3 h-full">
+                    <div className="relative z-10 h-full">
                       <div
-                        className="grid h-10 w-10 place-items-center rounded-xl border border-white/10"
+                        className="absolute left-0 top-0 grid h-10 w-10 place-items-center rounded-xl border border-white/10"
                         style={{ background: `${role.color}18` }}
                       >
                         <Icon className="h-5 w-5" style={{ color: role.color }} />
                       </div>
-                      <div className="flex-1">
+                      <div className="flex h-full flex-col items-center justify-center text-center">
                         <p
-                          className="text-[9px] font-bold uppercase tracking-[0.26em] mb-0.5"
+                          className="text-[10px] font-bold uppercase tracking-[0.3em] mb-1"
                           style={{ color: role.color }}
                         >
                           {role.eyebrow}
                         </p>
-                        <p className="text-sm sm:text-base font-black text-white">{role.label}</p>
+                        <p className="text-lg font-black text-white sm:text-xl">{role.label}</p>
                         <p className="mt-1 text-[11px] text-slate-400 leading-4 hidden sm:block">
                           {role.description}
                         </p>
-                      </div>
-                      <div
-                        className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider"
-                        style={{ color: role.color }}
-                      >
-                        Enter <ArrowRight className="h-2.5 w-2.5" />
                       </div>
                     </div>
                   </>
                 );
 
                 const cardClass =
-                  "relative overflow-hidden rounded-[20px] border border-white/10 bg-[#0B111A] min-h-[150px] sm:min-h-[170px] p-4 transition-all duration-200 hover:border-white/20 hover:scale-[1.025] hover:shadow-[0_8px_32px_rgba(0,0,0,0.55)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 cursor-pointer text-left flex flex-col";
+                  "relative aspect-square overflow-hidden rounded-[20px] border border-white/10 bg-[#0B111A] p-4 transition-transform duration-200 hover:scale-[1.025] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 cursor-pointer text-left";
 
                 const style = {
-                  animation: `lp-card-in 450ms ${index * 80}ms ease both`,
-                };
+                  animation: `lp-card-in 450ms ${index * 80}ms ease both, lp-card-cta-glow 5200ms ${900 + index * 650}ms ease-in-out infinite`,
+                  "--role-color": role.color,
+                  "--role-glow": role.glow,
+                  "--role-glow-strong": `${role.color}66`,
+                } as React.CSSProperties;
 
                 if (isSignedIn) {
                   return (

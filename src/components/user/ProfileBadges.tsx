@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Award, Filter, ArrowUpDown, Star, EyeOff } from "lucide-react";
+import { Search, Award, Filter, ArrowLeft, ArrowUpDown, Star, EyeOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ interface ProfileBadgesProps {
   userId: Id<"users">;
   isOwner: boolean;
   profile: any; // UserProfile from parent
+  onBack?: () => void;
 }
 
 const GENERAL_BADGES_DEFS = [
@@ -79,7 +80,7 @@ const shouldHideDisabledBadge = (badge: Partial<BadgeItem>) =>
 const isLockedHiddenBadge = (badge: BadgeItem) =>
   !badge.awardedAt && (badge.category === "hidden" || badge.rarity === "hidden");
 
-export const ProfileBadges: React.FC<ProfileBadgesProps> = ({ userId, isOwner, profile }) => {
+export const ProfileBadges: React.FC<ProfileBadgesProps> = ({ userId, isOwner, profile, onBack }) => {
   const [activeCategory, setActiveCategory] = useState<"all" | "onboarding" | "idea_milestones" | "community" | "consistency" | "skill" | "locked">("all");
   const [activeRarity, setActiveRarity] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"recent" | "prestige" | "name">("recent");
@@ -320,7 +321,7 @@ export const ProfileBadges: React.FC<ProfileBadgesProps> = ({ userId, isOwner, p
   const activeAwardBadge = badgeQueue[0] || null;
 
   return (
-    <Card className="mt-8 shadow-xl border-white/5 bg-slate-950/40 backdrop-blur-md overflow-hidden relative">
+    <Card className="mt-0 shadow-xl border-white/5 bg-slate-950/40 backdrop-blur-md overflow-hidden relative">
       {/* Decorative gradient overlay */}
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
 
@@ -392,16 +393,29 @@ export const ProfileBadges: React.FC<ProfileBadgesProps> = ({ userId, isOwner, p
         </Dialog>
       )}
 
-      <CardHeader className="relative pb-4">
+      <CardHeader className="relative pb-4 px-5 sm:px-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <CardTitle className="text-2xl font-black text-white">
+          <div className="grid min-w-0 grid-cols-[2rem_1fr] items-center gap-2 sm:grid-cols-[2.25rem_1fr]">
+            {onBack ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onBack}
+                aria-label="Go back"
+                className="h-8 w-8 rounded-full text-slate-300 hover:bg-white/[0.06] hover:text-white sm:h-9 sm:w-9"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            ) : (
+              <span aria-hidden="true" />
+            )}
+            <CardTitle className="min-w-0 text-xl font-black leading-tight text-white sm:text-2xl">
               {profile.displayName}&apos;s Badge Showcase
             </CardTitle>
           </div>
 
           {/* Prestige Progress Stats */}
-          <div className="bg-slate-900/60 border border-white/5 rounded-2xl px-5 py-3 flex items-center gap-4 self-start md:self-auto backdrop-blur-md shadow-lg">
+          <div className="bg-slate-900/60 border border-white/5 rounded-2xl px-5 py-3 flex items-center gap-4 self-start md:self-auto backdrop-blur-md shadow-lg overflow-visible">
             <Award className="w-6 h-6 text-yellow-400 animate-[bounce_3s_infinite]" />
             <div className="flex flex-col">
               <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Badges Earned</span>
@@ -410,8 +424,8 @@ export const ProfileBadges: React.FC<ProfileBadgesProps> = ({ userId, isOwner, p
               </span>
             </div>
             {/* Circular Progress Gauge */}
-            <div className="relative w-11 h-11 flex items-center justify-center shrink-0">
-              <svg className="w-full h-full transform -rotate-90">
+            <div className="relative h-12 w-12 shrink-0 overflow-visible p-0.5 flex items-center justify-center">
+              <svg className="h-11 w-11 overflow-visible transform -rotate-90">
                 <circle cx="22" cy="22" r="18" fill="transparent" stroke="rgba(255,255,255,0.03)" strokeWidth="4" />
                 <circle
                   cx="22"
@@ -433,7 +447,7 @@ export const ProfileBadges: React.FC<ProfileBadgesProps> = ({ userId, isOwner, p
         </div>
       </CardHeader>
 
-      <CardContent className="p-6 pt-0 space-y-8 relative">
+      <CardContent className="relative space-y-5 p-5 pt-0 sm:space-y-8 sm:p-6 sm:pt-0">
 
         {/* ============================================================== */}
         {/* EQUIPPED BADGES PROFILE HEADER SHOWCASE                         */}
@@ -539,7 +553,7 @@ export const ProfileBadges: React.FC<ProfileBadgesProps> = ({ userId, isOwner, p
         {/* ============================================================== */}
         {/* FILTERS & SEARCH CONTROLS                                      */}
         {/* ============================================================== */}
-        <div className="flex flex-col gap-4 bg-slate-900/30 border border-white/5 p-4 rounded-3xl backdrop-blur-md">
+        <div className="flex flex-col gap-3 bg-slate-900/30 border border-white/5 p-3 rounded-2xl backdrop-blur-md sm:gap-4 sm:p-4 sm:rounded-3xl">
           {/* Top Row: Search and Sorting */}
           <div className="flex flex-col lg:flex-row gap-3">
             <div className="relative flex-1">
@@ -589,33 +603,6 @@ export const ProfileBadges: React.FC<ProfileBadgesProps> = ({ userId, isOwner, p
             </div>
           </div>
 
-          {/* Bottom Row: Tab categories selection */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 border-t border-white/5 pt-3">
-            {[
-              { id: "all", label: "All Achievements" },
-              { id: "onboarding", label: "Onboarding" },
-              { id: "idea_milestones", label: "Milestones" },
-              { id: "community", label: "Community" },
-              { id: "consistency", label: "Consistency" },
-              { id: "skill", label: "Skills" },
-              { id: "locked", label: "Locked" },
-            ].map((tab) => (
-              <Button
-                key={tab.id}
-                variant="ghost"
-                size="sm"
-                onClick={() => setActiveCategory(tab.id as any)}
-                className={cn(
-                  "h-8 w-full rounded-lg text-xs font-bold transition-all px-2",
-                  activeCategory === tab.id
-                    ? "bg-white text-slate-950 shadow-md font-black hover:bg-slate-100"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                )}
-              >
-                <span className="truncate">{tab.label}</span>
-              </Button>
-            ))}
-          </div>
         </div>
 
         {/* ============================================================== */}

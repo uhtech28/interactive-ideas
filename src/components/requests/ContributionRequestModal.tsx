@@ -203,8 +203,7 @@ export const ContributionRequestModal: React.FC<ContributionRequestModalProps> =
               placeholder={`Tell ${displayAuthorName} how you can help!`}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="block min-h-[120px] w-full resize-none rounded-[22px] bg-transparent p-4 text-sm leading-5 text-white placeholder:text-[#6B7280] outline-none focus:ring-0"
-              autoFocus
+              className="block min-h-[120px] w-full resize-none rounded-[22px] bg-transparent p-4 text-base leading-6 text-white placeholder:text-[#6B7280] outline-none focus:ring-0 lg:text-sm lg:leading-5"
               required
             />
           </div>

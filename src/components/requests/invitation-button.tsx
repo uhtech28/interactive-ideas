@@ -180,13 +180,22 @@ export const InvitationButton: React.FC<InvitationButtonProps> = ({ targetUser, 
             {!iconOnly && "Send Invitation"}
           </Button>
         </PopoverTrigger>
+        {isPopoverOpen && (
+          <button
+            type="button"
+            aria-label="Close invitation overlay"
+            className="fixed inset-0 z-[10090] hidden bg-black/55 backdrop-blur-sm max-sm:block"
+            onClick={() => setIsPopoverOpen(false)}
+          />
+        )}
 
         <PopoverContent
           side="right"
           align="center"
           sideOffset={12}
           collisionPadding={16}
-          className="relative w-[min(92vw,384px)] max-h-[80vh] overflow-y-auto pr-3 pt-3"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+          className="relative w-[min(92vw,384px)] max-h-[80vh] overflow-y-auto pr-3 pt-3 max-sm:fixed max-sm:left-1/2 max-sm:top-1/2 max-sm:z-[10100] max-sm:w-[calc(100vw-2rem)] max-sm:max-w-[384px] max-sm:max-h-[min(72dvh,560px)] max-sm:-translate-x-1/2 max-sm:-translate-y-1/2 max-sm:overflow-hidden max-sm:rounded-2xl max-sm:border-white/10 max-sm:bg-[#111827] max-sm:p-3 max-sm:shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
         >
           <button
             type="button"
@@ -196,12 +205,12 @@ export const InvitationButton: React.FC<InvitationButtonProps> = ({ targetUser, 
           >
             <X className="h-4 w-4" />
           </button>
-          <div className="space-y-4">
+          <div className="space-y-4 max-sm:flex max-sm:max-h-[calc(min(72dvh,560px)-1.5rem)] max-sm:flex-col max-sm:space-y-3">
             <div className="pr-8">
               <h4 className="font-semibold text-sm">Invite {targetUser.displayName} to</h4>
             </div>
 
-            <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+            <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1 max-sm:min-h-0 max-sm:flex-1">
               {myIdeas.map((idea) => {
                 const isSelected = selectedIdeas.includes(idea._id);
                 return (
@@ -238,7 +247,7 @@ export const InvitationButton: React.FC<InvitationButtonProps> = ({ targetUser, 
                 }`}
               >
                 <textarea
-                  className="block w-full resize-none rounded-md bg-transparent p-3 text-sm outline-none focus:ring-0"
+                  className="block w-full resize-none rounded-md bg-transparent p-3 text-base outline-none focus:ring-0 lg:text-sm"
                   rows={3}
                   placeholder={`Hi ${targetUser.displayName}, I'd love for you to contribute to this idea...`}
                   value={invitationMessage}

@@ -153,21 +153,21 @@ export default function ContributionRequestsPage() {
     switch (status) {
       case "pending":
         return (
-          <Badge variant="secondary" className="bg-yellow-500/15 text-yellow-300 border border-yellow-500/30">
+          <Badge variant="secondary" className="h-6 shrink-0 bg-yellow-500/15 px-2 text-[11px] leading-none text-yellow-300 border border-yellow-500/30">
             <Clock className="w-3 h-3 mr-1" />
             Pending
           </Badge>
         );
       case "accepted":
         return (
-          <Badge variant="secondary" className="bg-green-500/15 text-green-300 border border-green-500/30">
+          <Badge variant="secondary" className="h-6 shrink-0 bg-green-500/15 px-2 text-[11px] leading-none text-green-300 border border-green-500/30">
             <CheckCircle className="w-3 h-3 mr-1" />
             Accepted
           </Badge>
         );
       case "rejected":
         return (
-          <Badge variant="secondary" className="bg-red-500/15 text-red-300 border border-red-500/30">
+          <Badge variant="secondary" className="h-6 shrink-0 bg-red-500/15 px-2 text-[11px] leading-none text-red-300 border border-red-500/30">
             <XCircle className="w-3 h-3 mr-1" />
             Rejected
           </Badge>
@@ -194,15 +194,15 @@ export default function ContributionRequestsPage() {
     return (
       <div
         key={request._id}
-        className="rounded-2xl border border-white/[0.07] bg-[#111827]/80 backdrop-blur-xl p-4 sm:p-5 shadow-[0_1px_0_rgba(255,255,255,0.04)] transition-all hover:border-indigo-500/30 hover:bg-[#111827]"
+        className="rounded-2xl border border-white/[0.07] bg-[#111827]/80 backdrop-blur-xl p-3.5 sm:p-5 shadow-[0_1px_0_rgba(255,255,255,0.04)] transition-all hover:border-indigo-500/30 hover:bg-[#111827]"
       >
         {/* Top row */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             {displayUser && profileHref && (
               <>
                 <Link href={profileHref} className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
-                  <Avatar className="w-11 h-11 ring-2 ring-indigo-500/20">
+                  <Avatar className="w-10 h-10 ring-2 ring-indigo-500/20 sm:w-11 sm:h-11">
                     <AvatarImage src={displayUser.avatar} alt={displayUser.displayName} />
                     <AvatarFallback className="bg-indigo-500/20 text-indigo-300">
                       {displayUser.displayName.charAt(0).toUpperCase()}
@@ -210,13 +210,13 @@ export default function ContributionRequestsPage() {
                   </Avatar>
                 </Link>
                 <Link href={profileHref} className="min-w-0 hover:text-indigo-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
-                  <p className="font-semibold truncate text-foreground">{displayUser.displayName}</p>
-                  <p className="text-sm text-muted-foreground truncate">@{displayUser.username}</p>
+                  <p className="truncate text-sm font-semibold leading-tight text-foreground sm:text-base">{displayUser.displayName}</p>
+                  <p className="truncate text-xs leading-tight text-muted-foreground sm:text-sm">@{displayUser.username}</p>
                 </Link>
               </>
             )}
           </div>
-          <div className="ml-auto flex flex-wrap items-center gap-2 shrink-0">
+          <div className="flex shrink-0 items-center gap-1.5">
             {getStatusBadge(request.status)}
             <Button
               type="button"
@@ -224,17 +224,17 @@ export default function ContributionRequestsPage() {
               size="icon"
               onClick={() => handleDismissRequest(request._id)}
               disabled={loadingAction === `${request._id}:dismiss`}
-              className="h-8 w-8 rounded-full text-muted-foreground hover:bg-white/[0.08] hover:text-foreground"
+              className="h-7 w-7 rounded-full text-muted-foreground hover:bg-white/[0.08] hover:text-foreground"
               aria-label={kind === "incoming" ? "Remove request" : "Withdraw request"}
             >
-              {loadingAction === `${request._id}:dismiss` ? <Spinner size={14} /> : <X className="h-4 w-4" />}
+              {loadingAction === `${request._id}:dismiss` ? <Spinner size={14} /> : <X className="h-3.5 w-3.5" />}
             </Button>
           </div>
         </div>
 
         {/* Idea card */}
         {request.idea && ideaHref && (
-          <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 mb-2.5">
+          <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-2.5 sm:p-3 mb-2">
             <div className="flex min-w-0 items-baseline gap-2">
               <p className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-indigo-300/80">
                 Request For:
@@ -256,7 +256,7 @@ export default function ContributionRequestsPage() {
         )}
 
       {/* Message */}
-      <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 mb-3">
+      <div className="rounded-xl border border-white/5 bg-white/[0.02] p-2.5 sm:p-3 mb-2.5">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
           Message
         </p>
@@ -267,11 +267,11 @@ export default function ContributionRequestsPage() {
 
       {/* Actions */}
       {kind === "incoming" && request.status === "pending" && (
-        <div className="flex flex-col sm:flex-row gap-2 pt-1">
+        <div className="flex flex-col sm:flex-row gap-1.5 pt-0.5 sm:gap-2">
           <Button
             onClick={() => handleAccept(request._id)}
             disabled={loadingAction === request._id}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 h-10"
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 h-9 sm:h-10"
           >
             {loadingAction === request._id ? <Spinner size={16} /> : <CheckCircle className="w-4 h-4" />}
             {loadingAction === request._id ? "Accepting…" : "Accept"}
@@ -280,7 +280,7 @@ export default function ContributionRequestsPage() {
             onClick={() => handleReject(request._id)}
             disabled={loadingAction === request._id}
             variant="destructive"
-            className="flex-1 flex items-center justify-center gap-2 h-10"
+            className="flex-1 flex items-center justify-center gap-2 h-9 sm:h-10"
           >
             {loadingAction === request._id ? <Spinner size={16} /> : <XCircle className="w-4 h-4" />}
             {loadingAction === request._id ? "Rejecting…" : "Reject"}
@@ -293,7 +293,7 @@ export default function ContributionRequestsPage() {
           type="button"
           onClick={() => handleDismissRequest(request._id)}
           disabled={loadingAction === `${request._id}:dismiss`}
-          className="mt-1 h-10 w-full rounded-[10px] bg-[#6366F1] text-white hover:bg-[#5457E5]"
+          className="mt-0.5 h-9 w-full rounded-[10px] bg-[#6366F1] text-white hover:bg-[#5457E5] sm:h-10"
         >
           {loadingAction === `${request._id}:dismiss` ? <Spinner size={16} /> : null}
           Remove from Row
@@ -305,7 +305,7 @@ export default function ContributionRequestsPage() {
           type="button"
           onClick={() => handleDismissRequest(request._id)}
           disabled={loadingAction === `${request._id}:dismiss`}
-          className="mt-1 h-10 w-full rounded-[10px] bg-[#3B1B8F] text-white hover:bg-[#2E156F]"
+          className="mt-0.5 h-9 w-full rounded-[10px] bg-[#3B1B8F] text-white hover:bg-[#2E156F] sm:h-10"
         >
           {loadingAction === `${request._id}:dismiss` ? <Spinner size={16} /> : null}
           Withdraw Request
@@ -317,7 +317,7 @@ export default function ContributionRequestsPage() {
           type="button"
           onClick={() => handleDismissRequest(request._id)}
           disabled={loadingAction === `${request._id}:dismiss`}
-          className="mt-1 h-10 w-full rounded-[10px] bg-[#6366F1] text-white hover:bg-[#5457E5]"
+          className="mt-0.5 h-9 w-full rounded-[10px] bg-[#6366F1] text-white hover:bg-[#5457E5] sm:h-10"
         >
           {loadingAction === `${request._id}:dismiss` ? <Spinner size={16} /> : null}
           Remove from Row
