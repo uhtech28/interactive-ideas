@@ -41,7 +41,7 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (!isPublicRoute(req)) {
-    await auth.protect()
+    await auth.protect({ unauthenticatedUrl: new URL('/', req.url).toString() })
 
     const { userId } = await auth()
 
