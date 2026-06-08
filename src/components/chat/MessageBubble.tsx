@@ -175,8 +175,10 @@ function MessageImage({
       </button>
       {lightboxOpen && (
         <ImageLightbox
-          src={url}
+          url={url}
           alt={alt}
+          width={width}
+          height={height}
           onClose={() => setLightboxOpen(false)}
         />
       )}
