@@ -187,28 +187,32 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
   const headerSubtitle = !ideaId && otherUser?.username ? `@${otherUser.username}` : null;
 
   return (
-    <div className="flex flex-col h-full bg-background max-w-full">
-      <div className="px-4 py-3 border-b flex items-center justify-between bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="flex items-center gap-2 min-w-0">
-          <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 -ml-2 hover:bg-muted/50 shrink-0">
+    <div className="flex flex-col h-full bg-[#0B101B] max-w-full overflow-hidden">
+      <div className="relative flex h-16 shrink-0 items-center border-b border-white/10 bg-[#0B101B] px-4 py-0">
+        <div className="absolute inset-y-0 left-4 flex items-center">
+          <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 hover:bg-white/[0.08] shrink-0">
             <ArrowLeft className="w-4 h-4" />
           </Button>
+        </div>
+
+        <div className="mx-auto flex h-full min-w-0 max-w-[240px] items-center justify-center gap-2 text-center">
           {!ideaId && otherUser && (
-            <Avatar className="h-7 w-7 shrink-0 ring-1 ring-indigo-500/30">
+            <Avatar className="h-8 w-8 shrink-0 ring-1 ring-indigo-500/30">
               <AvatarImage src={otherUser.avatar} alt={headerTitle} />
               <AvatarFallback className="bg-indigo-500/20 text-indigo-200 text-[11px]">
                 {(otherUser.displayName || otherUser.username || "U").charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           )}
-          <div className="min-w-0">
+          <div className="min-w-0 text-center">
             <h3 className="font-semibold text-sm text-foreground truncate">{headerTitle}</h3>
             {headerSubtitle && (
               <p className="text-[11px] text-muted-foreground truncate leading-tight">{headerSubtitle}</p>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1">
+
+        <div className="absolute inset-y-0 right-4 flex items-center gap-1">
           {ideaId && activeConversationId && (
             <>
               {/* Members pill — opens read-only members popup; admins
@@ -217,10 +221,10 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowMembers(true)}
-                className="h-8 gap-1.5 px-2.5 text-xs"
-                aria-label="See channel members"
-                title="See channel members"
+                onClick={() => setShowSettings(true)}
+                className="h-8 gap-1.5 px-2.5 text-xs border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
+                aria-label="Manage members"
+                title="Manage members"
               >
                 <Users className="w-3.5 h-3.5" />
                 <span className="tabular-nums">{groupMembers?.length ?? 0}</span>
@@ -231,78 +235,65 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
                 variant="ghost" 
                 size="icon" 
                 onClick={() => window.open(`https://meet.jit.si/InteractiveVenture_${ideaId}`, '_blank')} 
-                className="h-8 w-8 hover:bg-muted/50"
+                className="h-8 w-8 hover:bg-white/[0.08]"
                 title="Start Video Call"
               >
                 <Video className="w-4 h-4" />
               </Button>
 
-              <Button variant="ghost" size="icon" onClick={() => setShowSettings(true)} className="h-8 w-8 hover:bg-muted/50" aria-label="Channel settings" title="Channel settings">
+              <Button variant="ghost" size="icon" onClick={() => setShowSettings(true)} className="h-8 w-8 hover:bg-white/[0.08]" aria-label="Channel settings" title="Channel settings">
                 <Settings className="w-4 h-4" />
               </Button>
             </>
           )}
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 -mr-2 hover:bg-muted/50">
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 hover:bg-white/[0.08]">
             <X className="w-4 h-4" />
           </Button>
         </div>
       </div>
-      <div className="flex-1 p-4 max-w-full overflow-y-auto" ref={scrollAreaRef}>
-        <div className="space-y-4 max-w-full overflow-x-auto pb-2">
+      <div className="flex-1 max-w-full overflow-y-auto bg-[#0B101B]" ref={scrollAreaRef}>
+        <div className="flex min-h-full max-w-full overflow-x-auto">
           {displayedMessages === undefined ? (
             receiverId && !conversationId && directConversationId === undefined ? (
-              <div className="text-center text-muted-foreground mt-8 text-sm">
+              <div className="flex flex-1 items-center justify-center text-center text-muted-foreground text-sm">
                 Loading conversation...
               </div>
             ) : receiverId && !conversationId && directConversationId === null ? (
-              <div className="text-center text-muted-foreground mt-8 text-sm">
+              <div className="flex flex-1 items-center justify-center text-center text-muted-foreground text-sm">
                 No messages yet. Start the conversation!
               </div>
             ) : (
-              <div className="text-center text-muted-foreground mt-8 text-sm">
+              <div className="flex flex-1 items-center justify-center text-center text-muted-foreground text-sm">
                 Loading messages...
               </div>
             )
           ) : displayedMessages.length === 0 ? (
-            <div className="text-center text-muted-foreground mt-8 text-sm">
+            <div className="flex flex-1 items-center justify-center text-center text-muted-foreground text-sm">
               No messages yet. Start the conversation!
             </div>
           ) : (
-            displayedMessages.map((message) => {
-              const senderUser = users?.find(u => u.id === message.senderId);
-              // Image messages carry imageStorageId/Width/Height on the
-              // server row; pass them through so MessageBubble can render
-              // the picture instead of an empty bubble.
-              const msgWithImage = message as typeof message & {
-                imageStorageId?: Id<"_storage">;
-                imageWidth?: number;
-                imageHeight?: number;
-              };
-              const image = msgWithImage.imageStorageId
-                ? {
-                    storageId: msgWithImage.imageStorageId,
-                    width: msgWithImage.imageWidth ?? 0,
-                    height: msgWithImage.imageHeight ?? 0,
-                  }
-                : null;
-              return (
-                <MessageBubble
-                  key={message._id}
-                  message={{
-                    id: message._id,
-                    text: message.content,
-                    sender: {
-                      id: message.senderId,
-                      name: senderUser?.displayName || "Unknown",
-                      avatar: senderUser?.avatar || null,
-                    },
-                    timestamp: new Date(message.createdAt),
-                    isCurrentUser: message.senderId === currentUserId,
-                    image,
-                  }}
-                />
-              );
-            })
+            <div className="w-full space-y-2.5 px-3.5 py-3">
+              {displayedMessages.map((message) => {
+                const senderUser = users?.find(u => u.id === message.senderId);
+                return (
+                  <MessageBubble
+                    key={message._id}
+                    variant={ideaId ? "group" : "direct"}
+                    message={{
+                      id: message._id,
+                      text: message.content,
+                      sender: {
+                        id: message.senderId,
+                        name: senderUser?.displayName || "Unknown",
+                        avatar: senderUser?.avatar || null,
+                      },
+                      timestamp: new Date(message.createdAt),
+                      isCurrentUser: message.senderId === currentUserId,
+                    }}
+                  />
+                );
+              })}
+            </div>
           )}
         </div>
       </div>
@@ -311,7 +302,7 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
           {sendError}
         </div>
       )}
-      <div className="p-3 border-t bg-card/50 backdrop-blur-sm">
+      <div className="flex h-[72px] shrink-0 items-center border-t border-white/10 bg-[#0B101B]">
         <ChatInput
           onSend={handleSendMessage}
           typingUsers={[]}

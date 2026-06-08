@@ -4,6 +4,54 @@ import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { createContributionRequest, updateRequestStatus, getRequestsByIdea, getIncomingRequests } from "./contributionRequests";
 
+async function getIdeaSparkCount(ctx: any, ideaId: Id<"ideas">) {
+  const sparks = await ctx.db
+    .query("userIdeaSparks")
+    .withIndex("by_idea", (q: any) => q.eq("ideaId", ideaId))
+    .collect();
+
+  return sparks.length;
+}
+
+async function getCurrentUserFromAuth(ctx: any) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) return null;
+
+  return await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", identity.subject))
+    .unique();
+}
+
+async function enrichIdeasWithSparkState(ctx: any, ideas: any[]) {
+  const currentUser = await getCurrentUserFromAuth(ctx);
+
+  return await Promise.all(
+    ideas.map(async (idea) => {
+      const [sparks, currentUserSpark] = await Promise.all([
+        ctx.db
+          .query("userIdeaSparks")
+          .withIndex("by_idea", (q: any) => q.eq("ideaId", idea._id))
+          .collect(),
+        currentUser
+          ? ctx.db
+              .query("userIdeaSparks")
+              .withIndex("by_user_idea", (q: any) =>
+                q.eq("userId", currentUser._id).eq("ideaId", idea._id),
+              )
+              .first()
+          : Promise.resolve(null),
+      ]);
+
+      return {
+        ...idea,
+        sparkCount: sparks.length,
+        hasSparked: currentUserSpark !== null,
+      };
+    }),
+  );
+}
+
 // Create a new idea (root or with parent) with proper authorization checks
 export const createIdea = mutation({
   args: {
@@ -155,9 +203,10 @@ export const createIdea = mutation({
       description: "Created a new idea"
     });
 
-    // PRD §9 — posting an idea no longer advances the streak. The
-    // qualifying-action set is narrowed to: made_contribution,
-    // submitted_task, fired_flare, responded_to_flare.
+    await ctx.scheduler.runAfter(0, internal.badges.checkBadges, {
+      userId: user._id,
+      trigger: "create_idea",
+    });
 
     return { ideaId, message: "Idea created successfully" };
   },
@@ -261,15 +310,76 @@ export const attachFileToIdea = mutation({
   },
 });
 
+// Deterministic Fisher-Yates shuffle seeded by a small integer (0–4).
+// Same seed → same order, different seed → different order.
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const a = [...arr];
+  let s = (seed + 1) * 1664525 + 1013904223;
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (s * 1664525 + 1013904223) & 0x7fffffff;
+    const j = s % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 // Get all root public ideas (for feed) - excludes sub-ideas with limit-based pagination
-export const getPublicIdeas = query({
+// Lightweight feed query for server-side preload — no wallet boost, no shuffle,
+// no interleaving. Just the 20 most recent public root ideas with minimal author fields.
+// Runs in ~100-200ms. Client replaces this with the full personalized feed on hydration.
+export const getPublicIdeasFast = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const limit = args.limit || 20;
 
+    // Use existing visibility index, filter parentId/isDeleted in memory
+    const ideas = await ctx.db
+      .query("ideas")
+      .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .filter((q) => q.or(q.eq(q.field("parentId"), undefined), q.eq(q.field("parentId"), null)))
+      .order("desc")
+      .take(limit);
+
+    // Batch author lookups
+    const uniqueAuthorIds = [...new Set(ideas.map((i) => String(i.authorId)))];
+    const authorDocs = await Promise.all(uniqueAuthorIds.map((id) => ctx.db.get(id as any)));
+    const authorMap = new Map<string, any>();
+    for (let i = 0; i < uniqueAuthorIds.length; i++) {
+      const doc = authorDocs[i] as any;
+      if (doc && doc.displayName !== undefined) {
+        authorMap.set(uniqueAuthorIds[i], {
+          _id: doc._id,
+          name: doc.displayName,
+          displayName: doc.displayName,
+          username: doc.username,
+          avatar: doc.avatar,
+        });
+      }
+    }
+
+    const enrichedIdeas = await enrichIdeasWithSparkState(ctx, ideas);
+
+    return enrichedIdeas.map((idea) => ({
+      ...idea,
+      author: authorMap.get(String(idea.authorId)) ?? null,
+      contributionCount: 1 + (idea.contributionRequestCount ?? 0),
+    }));
+  },
+});
+
+export const getPublicIdeas = query({
+  args: { limit: v.optional(v.number()), seed: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 20;
+    // seed is 0–4, generated client-side once per page load.
+    // Controls human-pool shuffle order and rare agent injection (seed === 0 → ~20%).
+    const seed = args.seed ?? 1;
+
     // 1-3. Run all independent fetches in parallel
+    // agent cap at 200 — avoids full table scan as platform grows
     const [agentUsers, topWallets, recentPublicIdeas] = await Promise.all([
-      ctx.db.query("users").withIndex("by_role", (q) => q.eq("role", "agent")).collect(),
+      ctx.db.query("users").withIndex("by_role", (q) => q.eq("role", "agent")).take(200),
       ctx.db.query("wallets").withIndex("by_balance").order("desc").take(5),
       ctx.db
         .query("ideas")
@@ -277,7 +387,7 @@ export const getPublicIdeas = query({
         .filter((q) => q.neq(q.field("isDeleted"), true))
         .filter((q) => q.or(q.eq(q.field("parentId"), undefined), q.eq(q.field("parentId"), null)))
         .order("desc")
-        .take(limit * 6),
+        .take(limit * 3),
     ]);
 
     const agentIdSet = new Set(agentUsers.map((u) => String(u._id)));
@@ -296,18 +406,31 @@ export const getPublicIdeas = query({
         ? idea.createdAt + BOOST_AMOUNT
         : idea.createdAt;
 
-    const humanPool = humanIdeasRaw.sort((a, b) => score(b) - score(a));
+    // Sort each pool by score, then shuffle the human pool so returning users
+    // don't see the same posts at the top every visit.
+    const humanSorted = humanIdeasRaw.sort((a, b) => score(b) - score(a));
+    const humanPool = seededShuffle(humanSorted, seed);
     const agentPool = recentAgentIdeas
       .filter((i) => agentIdSet.has(String(i.authorId)))
       .sort((a, b) => score(b) - score(a));
 
-    // 6. Interleave: first 3 human → (2 agent, 2 human) groups → remaining agents
+    // Interleave: first 3 human → (2 agent, 2 human) groups → remaining agents
     const interleaved: typeof humanPool = [];
     let hi = 0, ai = 0;
     while (hi < 3 && hi < humanPool.length) interleaved.push(humanPool[hi++]);
     while (hi < humanPool.length || ai < agentPool.length) {
       for (let n = 0; n < 2 && ai < agentPool.length; n++) interleaved.push(agentPool[ai++]);
       for (let n = 0; n < 2 && hi < humanPool.length; n++) interleaved.push(humanPool[hi++]);
+    }
+
+    // Rare agent injection (~20%): when seed === 0, splice one agent post into
+    // position 2 so it appears mid-screen without dominating the top.
+    if (seed === 0 && agentPool.length > 0) {
+      const agentPost = agentPool[0];
+      // Only inject if it isn't already sitting at position 2 from the interleave
+      if (String(interleaved[2]?._id) !== String(agentPost._id)) {
+        interleaved.splice(2, 0, agentPost);
+      }
     }
 
     // Deduplicate (human and agent pools are disjoint, but leader ideas could overlap)
@@ -331,7 +454,8 @@ export const getPublicIdeas = query({
     }
 
     // Use denormalized contributionRequestCount — no extra queries needed
-    const ideasWithAuthors = finalIdeas.map((idea) => {
+    const enrichedIdeas = await enrichIdeasWithSparkState(ctx, finalIdeas);
+    const ideasWithAuthors = enrichedIdeas.map((idea) => {
       const author = authorMap.get(String(idea.authorId)) ?? null;
       return {
         ...idea,
@@ -429,6 +553,7 @@ export const getIdeaById = query({
         isAuthor = user._id === idea.authorId;
       }
     }
+    const realSparkCount = await getIdeaSparkCount(ctx, idea._id);
 
     return {
       ...idea,
@@ -439,6 +564,7 @@ export const getIdeaById = query({
       } : null,
       hasSparked,
       isAuthor,
+      sparkCount: realSparkCount,
     };
   },
 });
@@ -510,17 +636,20 @@ export const toggleSpark = mutation({
       )
       .unique();
 
+    const currentSparkCount = await getIdeaSparkCount(ctx, idea._id);
+
     if (existingSpark) {
       // Remove spark
       await ctx.db.delete(existingSpark._id);
 
       // Decrement spark count
+      const nextSparkCount = Math.max(0, currentSparkCount - 1);
       await ctx.db.patch(idea._id, {
-        sparkCount: Math.max(0, idea.sparkCount - 1),
+        sparkCount: nextSparkCount,
         updatedAt: Date.now(),
       });
 
-      return { action: "removed", sparkCount: Math.max(0, idea.sparkCount - 1) };
+      return { action: "removed", sparkCount: nextSparkCount };
     } else {
       // Add spark
       const now = Date.now();
@@ -531,8 +660,9 @@ export const toggleSpark = mutation({
       });
 
       // Increment spark count
+      const nextSparkCount = currentSparkCount + 1;
       await ctx.db.patch(idea._id, {
-        sparkCount: idea.sparkCount + 1,
+        sparkCount: nextSparkCount,
         updatedAt: now,
       });
 
@@ -590,9 +720,7 @@ export const toggleSpark = mutation({
         });
       }
 
-      // PRD §9 — sparking no longer advances the streak.
-
-      return { action: "added", sparkCount: idea.sparkCount + 1 };
+      return { action: "added", sparkCount: nextSparkCount };
     }
   },
 });
@@ -1255,7 +1383,28 @@ export const getUserIdeas = query({
       })
     );
 
-    return ideasWithDetails;
+    return await enrichIdeasWithSparkState(ctx, ideasWithDetails);
+  },
+});
+
+export const repairAllIdeaSparkCounts = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const ideas = await ctx.db.query("ideas").collect();
+    let repaired = 0;
+
+    for (const idea of ideas) {
+      const sparkCount = await getIdeaSparkCount(ctx, idea._id);
+      if ((idea.sparkCount ?? 0) !== sparkCount) {
+        await ctx.db.patch(idea._id, {
+          sparkCount,
+          updatedAt: Date.now(),
+        });
+        repaired++;
+      }
+    }
+
+    return { processed: ideas.length, repaired };
   },
 });
 
@@ -1513,9 +1662,11 @@ export const getPublicSparkedIdeasForUser = query({
     );
 
     // Filter out nulls and sort by spark timestamp
-    return ideas
+    const visibleIdeas = ideas
       .filter(idea => idea !== null)
       .sort((a, b) => (b.sparkedAt || 0) - (a.sparkedAt || 0));
+
+    return await enrichIdeasWithSparkState(ctx, visibleIdeas);
   },
 });
 
@@ -1580,9 +1731,11 @@ export const getPublicContributedIdeasForUser = query({
     );
 
     // Filter out nulls and sort by contribution timestamp
-    return ideas
+    const visibleIdeas = ideas
       .filter(idea => idea !== null)
       .sort((a, b) => (b.contributedAt || 0) - (a.contributedAt || 0));
+
+    return await enrichIdeasWithSparkState(ctx, visibleIdeas);
   },
 });
 
@@ -1609,7 +1762,7 @@ export const getPublicIdeasForUser = query({
       .order("desc")
       .take(limit);
 
-    return userIdeas;
+    return await enrichIdeasWithSparkState(ctx, userIdeas);
   },
 });
 
@@ -1648,7 +1801,7 @@ export const getProfileIdeas = query({
 
     const ideas = await ideasQuery.order("desc").take(limit);
 
-    return ideas;
+    return await enrichIdeasWithSparkState(ctx, ideas);
   },
 });
 // Internal query for the AI agent to fetch recent ideas

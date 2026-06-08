@@ -837,3 +837,13 @@
     padding-top: 4.5rem;
   }
 }
+
+/* iOS Safari zooms focused form fields below 16px on touch devices. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select,
+  [cmdk-input] {
+    font-size: 16px !important;
+  }
+}

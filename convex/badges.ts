@@ -261,6 +261,24 @@ const REQUIRED_TEMPLATE_CATEGORIES = [
   "experimental",
 ] as const;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function ensureGeneralBadgeDefinition(ctx: any, slug: string) {
+  let badge = await ctx.db
+    .query("badges")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .withIndex("by_slug", (q: any) => q.eq("slug", slug))
+    .first();
+
+  if (badge) return badge;
+
+  const fallback = INITIAL_BADGES.find((entry) => entry.slug === slug);
+  if (!fallback) return null;
+
+  const badgeId = await ctx.db.insert("badges", fallback);
+  badge = await ctx.db.get(badgeId);
+  return badge;
+}
+
 // Internal: Award a badge if not already owned
 export const awardBadge = internalMutation({
   args: {
@@ -268,18 +286,8 @@ export const awardBadge = internalMutation({
     slug: v.string(),
   },
   handler: async (ctx, args) => {
-    let badge = await ctx.db
-      .query("badges")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .first();
-
-    if (!badge) {
-      const fallback = INITIAL_BADGES.find((entry) => entry.slug === args.slug);
-      if (!fallback) return;
-      const badgeId = await ctx.db.insert("badges", fallback);
-      badge = await ctx.db.get(badgeId);
-      if (!badge) return;
-    }
+    const badge = await ensureGeneralBadgeDefinition(ctx, args.slug);
+    if (!badge) return;
 
     const existing = await ctx.db
       .query("userBadges")
@@ -368,12 +376,7 @@ export const checkBadges = internalMutation({
 // Helper for awarding
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function checkAndAward(ctx: any, userId: Id<"users">, slug: string) {
-  const badge = await ctx.db
-    .query("badges")
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .withIndex("by_slug", (q: any) => q.eq("slug", slug))
-    .first();
-
+  const badge = await ensureGeneralBadgeDefinition(ctx, slug);
   if (!badge) return;
 
   const existing = await ctx.db
@@ -673,6 +676,21 @@ export async function recalculateAndAwardBadgesHelper(ctx: any, userId: Id<"user
     .withIndex("by_author", (q: any) => q.eq("authorId", userId))
     .collect();
   const ideasCreated = ideas.length;
+  const ideaSparkCounts = new Map<string, number>();
+  for (const idea of ideas) {
+    const ideaSparks = await ctx.db
+      .query("userIdeaSparks")
+      .withIndex("by_idea", (q: any) => q.eq("ideaId", idea._id))
+      .collect();
+    ideaSparkCounts.set(String(idea._id), ideaSparks.length);
+
+    if ((idea.sparkCount ?? 0) !== ideaSparks.length) {
+      await ctx.db.patch(idea._id, {
+        sparkCount: ideaSparks.length,
+        updatedAt: now,
+      });
+    }
+  }
 
   const comments = await ctx.db
     .query("comments")
@@ -963,17 +981,14 @@ export async function recalculateAndAwardBadgesHelper(ctx: any, userId: Id<"user
   if (ideasCreated >= 1) generalBadgesToAward.push("first-idea");
   if (ideasCreated >= 5) generalBadgesToAward.push("idea-machine");
   if (commentsCount >= 5) generalBadgesToAward.push("chatterbox");
-  if (userLevel.collaboratorsJoined >= 1) generalBadgesToAward.push("collaborator");
+  if (acceptedCollaborations.length >= 1 || userLevel.collaboratorsJoined >= 1) generalBadgesToAward.push("collaborator");
   
   // Trendsetter: check if any idea has sparkCount >= 10
-  const hasTrendsetter = ideas.some((idea: any) => idea.sparkCount >= 10);
+  const hasTrendsetter = ideas.some((idea: any) => (ideaSparkCounts.get(String(idea._id)) ?? idea.sparkCount ?? 0) >= 10);
   if (hasTrendsetter) generalBadgesToAward.push("trendsetter");
 
   for (const slug of generalBadgesToAward) {
-    const badge = await ctx.db
-      .query("badges")
-      .withIndex("by_slug", (q: any) => q.eq("slug", slug))
-      .first();
+    const badge = await ensureGeneralBadgeDefinition(ctx, slug);
 
     if (badge && !existingUserBadgeIds.has(badge._id)) {
       await ctx.db.insert("userBadges", {
@@ -1048,12 +1063,12 @@ export async function recalculateAndAwardBadgesHelper(ctx: any, userId: Id<"user
     { id: 28, shouldAward: sparkCount.length >= 25 }, // The Advocate
     { id: 29, shouldAward: userLevel.upvotedCommentsCount >= 10 }, // The Critic
     { id: 30, shouldAward: userLevel.upvotedCommentsCount >= 50 }, // The Trusted Voice
-    { id: 31, shouldAward: userLevel.collaboratorsJoined >= 1 }, // The Ally
+    { id: 31, shouldAward: acceptedCollaborations.length >= 1 || userLevel.collaboratorsJoined >= 1 }, // The Ally
     { id: 32, shouldAward: userLevel.collaboratorsRecruited >= 5 }, // The Recruiter (Assembler)
     { id: 33, shouldAward: userLevel.helpfulFlareResponses >= 5 }, // The Catalyst
     { id: 34, shouldAward: (user.followersCount ?? 0) >= 10 }, // The Followed
-    { id: 35, shouldAward: ideas.some((idea: any) => idea.sparkCount >= 25) }, // The Celebrated
-    { id: 36, shouldAward: ideas.some((idea: any) => idea.sparkCount >= 50) }, // The Beloved
+    { id: 35, shouldAward: ideas.some((idea: any) => (ideaSparkCounts.get(String(idea._id)) ?? idea.sparkCount ?? 0) >= 25) }, // The Celebrated
+    { id: 36, shouldAward: ideas.some((idea: any) => (ideaSparkCounts.get(String(idea._id)) ?? idea.sparkCount ?? 0) >= 50) }, // The Beloved
     { id: 37, shouldAward: hasDraw }, // The Draw
     { id: 38, shouldAward: collaboratedAuthors.size >= 3 }, // The Connector
     
@@ -1145,6 +1160,19 @@ export const recalculateUserBadges = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     await recalculateAndAwardBadgesHelper(ctx, args.userId);
+  },
+});
+
+export const recalculateAllUserBadges = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+
+    for (const user of users) {
+      await recalculateAndAwardBadgesHelper(ctx, user._id);
+    }
+
+    return { processed: users.length };
   },
 });
 

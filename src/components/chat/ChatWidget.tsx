@@ -17,21 +17,18 @@ const CARD_CLASS = [
   "relative",
   "h-full",
   "w-full",
-  "rounded-none",
-  "border-0",
-  "bg-card",
-  "shadow-none",
+  "rounded-2xl",
+  "border",
+  "border-white/10",
+  "bg-[#0B101B]",
+  "shadow-[0_24px_80px_rgba(0,0,0,0.55)]",
   "transition-all",
   "duration-300",
   "ease-in-out",
   "overflow-hidden",
-  "md:h-full",
-  "md:w-[400px]",
-  "md:max-w-md",
-  "md:rounded-none",
-  "md:border-l",
-  "md:border-border/40",
-  "md:shadow-2xl",
+  "md:h-[min(760px,calc(100vh-48px))]",
+  "md:w-[420px]",
+  "md:max-w-[calc(100vw-32px)]",
 ].join(" ");
 
 const BACKDROP_CLASS = "fixed inset-0 z-[55] bg-black/60 backdrop-blur-sm";
@@ -104,8 +101,7 @@ const ChatWidget: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  // Always anchor the chat to the right edge, full height — matches the GlobalChatSheet from the top nav.
-  const positionClass = "fixed inset-0 z-[60] md:inset-y-0 md:right-0 md:left-auto md:top-0 md:bottom-0";
+  const positionClass = "fixed inset-3 z-[60] flex items-center justify-center md:inset-y-6 md:right-6 md:left-auto md:justify-end";
 
   if (authLoading || !isAuthenticated || !user) {
     return null;

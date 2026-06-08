@@ -182,7 +182,7 @@ const VENTURE_STAGES: StageConfig[] = [
   {
     id: 1,
     name: "Ideation",
-    biomeName: "Ideation Hub",
+    biomeName: "The Village",
     subtitle: "Stage 1 · Birth of Ideas",
     checkpoints: 4,
     monster: VENTURE_MONSTERS[0],
@@ -194,7 +194,7 @@ const VENTURE_STAGES: StageConfig[] = [
   {
     id: 2,
     name: "Research",
-    biomeName: "Research Lab",
+    biomeName: "The Forest",
     subtitle: "Stage 2 · Climb to Knowledge",
     checkpoints: 5,
     monster: VENTURE_MONSTERS[1],

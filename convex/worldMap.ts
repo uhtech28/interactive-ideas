@@ -1774,7 +1774,7 @@ export const submitTaskContent = mutation({
     if (!checkpoint) throw new Error("Checkpoint not found");
     const checkpointBeforeUpdate = checkpoint as WorldMapCheckpointDoc;
 
-    // ── Verify ownership ──────────────────────────────────────────────────────
+    // ── Verify ownership or contributor status ────────────────────────────────
     const venture = await ctx.db.get(checkpoint.ventureId);
     if (!venture) throw new Error("Venture not found");
     await assertVentureAccess(ctx, venture, user._id);

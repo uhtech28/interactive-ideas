@@ -121,7 +121,7 @@ function SuggestedBuilderCard({ builder }: { builder: BuilderSuggestion }) {
         disabled={!builderId}
         aria-label={`Message ${displayName}`}
         title={`Message ${displayName}`}
-        className="h-8 w-8 rounded-[9px] border-0 bg-[#26306A] p-0 text-[#C7D2FE] shadow-none hover:bg-[#3B45A0] hover:text-white disabled:opacity-50"
+        className="h-8 w-8 rounded-[9px] border border-white/8 bg-white/[0.04] p-0 text-[#AEB7D8] shadow-none hover:border-[#6366F1]/25 hover:bg-[#6366F1]/10 hover:text-[#E0E7FF] disabled:opacity-50"
       >
         <MessageCircle className="h-4 w-4" />
       </Button>
@@ -255,7 +255,6 @@ export function IdeaForgeLeftRail({
                       {getInitials(currentUser?.displayName).slice(0, 1)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#111827] bg-emerald-500" />
                 </div>
               </Link>
               <div className="min-w-0 flex-1">
@@ -269,6 +268,11 @@ export function IdeaForgeLeftRail({
                       {currentUser?.displayName || "Ibhaveda Member"}
                     </h2>
                   </Link>
+                </div>
+                <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
+                  {currentUser?.username && (
+                    <p className="min-w-0 truncate text-xs text-[#9CA3AF]">@{currentUser.username}</p>
+                  )}
                   {profileBadges.length > 0 && (
                     <div className="flex shrink-0 items-center gap-1">
                       {profileBadges.map((badge) => {
@@ -279,17 +283,17 @@ export function IdeaForgeLeftRail({
                           <span
                             key={badge.id}
                             title={`${badge.name}: ${badge.description}`}
-                            className="inline-flex h-5 w-5 items-center justify-center rounded-[6px]"
+                            className="inline-flex h-4 w-4 items-center justify-center rounded-[5px]"
                             style={{
                               backgroundColor: `${accentColor}20`,
                               border: `1px solid ${accentColor}80`,
                               color: accentColor,
-                              boxShadow: `0 0 8px ${accentColor}45`,
+                              boxShadow: `0 0 6px ${accentColor}35`,
                             }}
                           >
                             <PremiumIcon
                               name={badge.icon || getVentureBadgeEmoji(badge.id, badge.name)}
-                              className="h-3 w-3"
+                              className="h-2.5 w-2.5"
                               strokeWidth={1.7}
                             />
                           </span>
@@ -298,9 +302,6 @@ export function IdeaForgeLeftRail({
                     </div>
                   )}
                 </div>
-                {currentUser?.username && (
-                  <p className="truncate text-xs text-[#9CA3AF]">@{currentUser.username}</p>
-                )}
               </div>
             </div>
 

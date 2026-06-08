@@ -102,6 +102,7 @@ export function IdeaForgeExperience({
   onContributeClick,
   onDeleteIdea,
   isProfileComplete,
+  isProfileLoading = true,
   onCompleteProfile,
   onLoadMore,
   hasMore = false,
@@ -113,12 +114,13 @@ export function IdeaForgeExperience({
   isLoading: boolean;
   searchQuery: string;
   onSearchChange: (value: string) => void;
-  onSpark: (ideaId: string) => void;
+  onSpark: (ideaId: string) => void | Promise<{ action: string; sparkCount: number } | void>;
   onIdeaClick: (ideaId: string) => void;
   onCommentClick: (ideaId: string) => void;
   onContributeClick?: (ideaId: string) => void;
   onDeleteIdea?: (ideaId: string) => void;
   isProfileComplete: boolean;
+  isProfileLoading?: boolean;
   onCompleteProfile: () => void;
   onLoadMore?: () => void;
   hasMore?: boolean;
@@ -128,7 +130,8 @@ export function IdeaForgeExperience({
   tutorialOpenCompose?: boolean;
 }) {
   const router = useRouter();
-  const publicIdeas = useQuery(api.ideas.getPublicIdeas, { limit: 60 }) || [];
+  const seed = useMemo(() => Math.floor(Math.random() * 5), []);
+  const publicIdeas = useQuery(api.ideas.getPublicIdeas, { limit: 60, seed }) || [];
   const showSkeleton = useDelayedLoading(isLoading);
 
   // Infinite scroll sentinel
@@ -162,7 +165,7 @@ export function IdeaForgeExperience({
   
   const [feedTab, setFeedTab] = useState<FeedTabKey>("for-you");
   const [myIdeasTab, setMyIdeasTab] = useState<MyIdeasTabKey>("public");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [savedIdeaIds, setSavedIdeaIds] = usePersistentIds(SAVED_STORAGE_KEY);
   
   // Co-dev Wizard state
@@ -257,7 +260,7 @@ export function IdeaForgeExperience({
             <div className="w-full space-y-5">
               {mode === "feed" ? (
                 <>
-                  {!isProfileComplete && (
+                  {!isProfileLoading && !isProfileComplete && (
                     <section className="rounded-[16px] border border-[#F59E0B]/20 bg-[#2A1A07]/70 p-5 text-[#FCD34D]">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
@@ -279,12 +282,19 @@ export function IdeaForgeExperience({
                       <h1 className={cn(displayFontClass, "text-2xl font-semibold text-white")}>My Ideas</h1>
                       <p className="text-sm text-[#9CA3AF]">Your posted ideas, drafts, and saved concepts.</p>
                     </div>
-                    <div className="hidden md:flex items-center gap-2">
-                      <button type="button" onClick={() => setViewMode("grid")} className={cn(transitionBase, "rounded-[10px] p-2", viewMode === "grid" ? "bg-[#6366F1]/14 text-[#C7D2FE]" : "text-[#9CA3AF] hover:bg-white/[0.04] hover:text-white")} aria-label="Grid view">
-                        <Grid2X2 className="h-4 w-4" />
-                      </button>
-                      <button type="button" onClick={() => setViewMode("list")} className={cn(transitionBase, "rounded-[10px] p-2", viewMode === "list" ? "bg-[#6366F1]/14 text-[#C7D2FE]" : "text-[#9CA3AF] hover:bg-white/[0.04] hover:text-white")} aria-label="List view">
-                        <LayoutList className="h-4 w-4" />
+                    <div className="hidden md:flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setViewMode(viewMode === "list" ? "grid" : "list")}
+                        className={cn(transitionBase, "rounded-[10px] bg-[#6366F1]/14 p-2 text-[#C7D2FE] hover:bg-[#6366F1]/20 hover:text-white")}
+                        aria-label={viewMode === "list" ? "Switch to grid view" : "Switch to list view"}
+                        title={viewMode === "list" ? "Switch to grid view" : "Switch to list view"}
+                      >
+                        {viewMode === "list" ? (
+                          <Grid2X2 className="h-4 w-4" />
+                        ) : (
+                          <LayoutList className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                   </div>

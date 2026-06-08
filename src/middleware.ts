@@ -7,6 +7,7 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
 const isPublicRoute = createRouteMatcher([
   '/',
+  '/demo(.*)',
   '/contact',
   '/api/vcard',
   '/intro-preview',
@@ -40,7 +41,7 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (!isPublicRoute(req)) {
-    await auth.protect()
+    await auth.protect({ unauthenticatedUrl: new URL('/', req.url).toString() })
 
     const { userId } = await auth()
 

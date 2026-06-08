@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useAction, useMutation, usePreloadedQuery } from "convex/react";
-import { Preloaded } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
@@ -17,14 +16,9 @@ import { CommentsSection } from "@/components/comments/CommentsSection";
 import { ContributionRequestModal } from "@/components/requests/ContributionRequestModal";
 import { useToast } from "@/components/ui/use-toast";
 import { useProfileCompletion } from "@/lib/hooks/use-profile-completion";
-import { useQuery } from "convex/react";
 import { FeedTutorial } from "@/components/tutorial/FeedTutorial";
 
-export function FeedClient({
-  preloadedIdeas,
-}: {
-  preloadedIdeas: Preloaded<typeof api.ideas.getPublicIdeas>;
-}) {
+export function FeedClient() {
   const { isLoaded, userId } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -33,11 +27,35 @@ export function FeedClient({
 
   const PAGE_SIZE = 20;
   const [limit, setLimit] = useState(PAGE_SIZE);
+  const seed = useMemo(() => Math.floor(Math.random() * 5), []);
 
-  // usePreloadedQuery gives us the SSR data immediately, then stays live
-  const ideasQuery = usePreloadedQuery(preloadedIdeas);
+  // ── Feed load performance timing ──────────────────────────────────────────
+  const feedTimerRef = useRef<number | null>(null);
+  const feedMeasuredRef = useRef(false);
+  useEffect(() => {
+    feedTimerRef.current = performance.now();
+    feedMeasuredRef.current = false;
+    console.log("%c⏱ [Feed] Query started", "color:#7dd3fc;font-weight:bold");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const ideasQuery = useQuery(api.ideas.getPublicIdeas, { limit, seed });
   const toggleSpark = useMutation(api.ideas.toggleSpark);
 
+  const [stableIdeas, setStableIdeas] = useState<IdeaForgeIdea[]>([]);
+  useEffect(() => {
+    if (ideasQuery !== undefined) {
+      setStableIdeas(ideasQuery as IdeaForgeIdea[]);
+      if (!feedMeasuredRef.current && feedTimerRef.current !== null) {
+        feedMeasuredRef.current = true;
+        const ms = Math.round(performance.now() - feedTimerRef.current);
+        const color = ms > 2000 ? "#f87171" : ms > 800 ? "#facc15" : "#4ade80";
+        console.log(`%c⏱ [Feed] Data arrived: ${ms}ms (${ideasQuery.length} posts)`, `color:${color};font-weight:bold;font-size:13px`);
+      }
+    }
+  }, [ideasQuery]);
+
+  const isInitialLoading = ideasQuery === undefined && stableIdeas.length === 0;
   const hasMore = ideasQuery !== undefined && ideasQuery.length >= limit;
 
   function loadMore() {
@@ -105,7 +123,7 @@ export function FeedClient({
   const inComposePhase =
     tourActiveOrLoading && (!ideaCountKnown || myIdeaCount === 0);
 
-  const ideas = useMemo(() => (ideasQuery || []) as IdeaForgeIdea[], [ideasQuery]);
+  const ideas = stableIdeas;
 
   return (
     <>
@@ -113,12 +131,12 @@ export function FeedClient({
         mode="feed"
         currentUser={currentUser || null}
         ideas={ideas}
-        isLoading={false}
+        isLoading={isInitialLoading}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         tutorialOpenCompose={inComposePhase}
         onSpark={async (ideaId) => {
-          await toggleSpark({ ideaId: ideaId as Id<"ideas"> });
+          return await toggleSpark({ ideaId: ideaId as Id<"ideas"> });
         }}
         onIdeaClick={(ideaId) => router.push(`/idea/${ideaId}`)}
         onCommentClick={(ideaId) => {
@@ -130,6 +148,7 @@ export function FeedClient({
           if (idea) setActiveContributeIdea(idea);
         }}
         isProfileComplete={isProfileComplete}
+        isProfileLoading={isProfileLoading}
         onCompleteProfile={() => router.push("/profile-setup")}
         onLoadMore={loadMore}
         hasMore={hasMore}

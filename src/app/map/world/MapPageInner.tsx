@@ -23,6 +23,7 @@ import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { audioManager } from "@/lib/audio/audioManager";
+import { measureMapLoad } from "@/lib/perf/mapLoadTimer";
 import { computeCumulativeVentureScores } from "@/lib/scoring/cumulativeVentureScore";
 import { api } from "@convex/_generated/api";
 import { LEVEL_DEFINITIONS } from "@convex/ventureConstants";
@@ -528,6 +529,7 @@ function CheckpointPanel({
   isAdvancing,
   activeStage,
   activeCheckpoint,
+  canSubmitTasks,
 }: {
   detail: CheckpointDetail | null;
   onClose: () => void;
@@ -547,6 +549,7 @@ function CheckpointPanel({
   isAdvancing: boolean;
   activeStage: number;
   activeCheckpoint: number;
+  canSubmitTasks: boolean;
 }) {
   if (!detail) return null;
 
@@ -608,20 +611,28 @@ function CheckpointPanel({
 
             {/* Tasks */}
             <div className="flex flex-col gap-1.5 sm:gap-2 md:gap-2.5 lg:gap-3">
+              {!canSubmitTasks && (
+                <div className="flex items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-300">
+                  <Lock className="h-3.5 w-3.5 shrink-0" />
+                  <span>Join as a contributor to work on tasks</span>
+                </div>
+              )}
               {detail.tasks.map((task, i) => (
                 <TaskCard
                   key={i}
                   task={task}
                   index={i}
-                  locked={isLocked}
+                  locked={isLocked || !canSubmitTasks}
                   evaluationSummary={evaluationSummary?.find(
                     (entry) => entry.taskLevel === task._taskLevel,
                   )}
                   onToggle={() => {
+                    if (!canSubmitTasks) return;
                     audioManager.playTouch("click");
                     onTaskToggle(i);
                   }}
                   onRedo={() => {
+                    if (!canSubmitTasks) return;
                     audioManager.playTouch("click");
                     onTaskRedo(i);
                   }}
@@ -1013,11 +1024,11 @@ function LoadingScreen() {
   return (
     <div
       className="absolute inset-0 z-[60] flex flex-col items-center justify-center"
-      style={{ background: "#050810", fontFamily: "var(--font-sans)" }}
+      style={{ background: "#050810" }}
     >
       <div
-        className="text-xs tracking-[0.3em] uppercase font-black"
-        style={{ color: "#6366f1" }}
+        className="map-load-glitch"
+        data-text="Entering the World..."
       >
         Entering the World…
       </div>
@@ -1029,16 +1040,64 @@ function LoadingScreen() {
           className="absolute inset-y-0 left-0 w-full rounded-full"
           style={{
             background: "linear-gradient(90deg, #4f46e5, #818cf8)",
-            animation: "smooth-load 2s infinite ease-in-out",
+            animation: "map-load-bar 0.65s ease-in-out infinite",
             transform: "translate3d(-100%, 0, 0)",
           }}
         />
       </div>
       <style>{`
-        @keyframes smooth-load {
-          0% { transform: translate3d(-100%, 0, 0); }
-          50% { transform: translate3d(-30%, 0, 0); }
-          100% { transform: translate3d(100%, 0, 0); }
+        .map-load-glitch {
+          position: relative;
+          color: #6366f1;
+          font-family: "Courier New", "Lucida Console", monospace;
+          font-size: 13px;
+          font-weight: 900;
+          letter-spacing: 0.16em;
+          line-height: 1;
+          text-transform: uppercase;
+          text-shadow: 2px 0 0 rgba(129, 140, 248, 0.38);
+          image-rendering: pixelated;
+          animation: map-text-jitter 1.15s steps(2, end) infinite;
+        }
+        .map-load-glitch::before,
+        .map-load-glitch::after {
+          content: attr(data-text);
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          opacity: 0.65;
+        }
+        .map-load-glitch::before {
+          color: #818cf8;
+          transform: translate3d(-1px, 0, 0);
+          clip-path: inset(0 0 54% 0);
+          animation: map-glitch-top 1.35s steps(2, end) infinite;
+        }
+        .map-load-glitch::after {
+          color: #4f46e5;
+          transform: translate3d(1px, 0, 0);
+          clip-path: inset(48% 0 0 0);
+          animation: map-glitch-bottom 1.05s steps(2, end) infinite;
+        }
+        @keyframes map-text-jitter {
+          0%, 76%, 100% { transform: translate3d(0, 0, 0); }
+          78% { transform: translate3d(1px, -1px, 0); }
+          80% { transform: translate3d(-1px, 1px, 0); }
+          82% { transform: translate3d(0, 0, 0); }
+        }
+        @keyframes map-glitch-top {
+          0%, 72%, 100% { transform: translate3d(-1px, 0, 0); }
+          74% { transform: translate3d(4px, -1px, 0); }
+          77% { transform: translate3d(-3px, 1px, 0); }
+        }
+        @keyframes map-glitch-bottom {
+          0%, 64%, 100% { transform: translate3d(1px, 0, 0); }
+          66% { transform: translate3d(-4px, 1px, 0); }
+          70% { transform: translate3d(3px, 0, 0); }
+        }
+        @keyframes map-load-bar {
+          0% { transform: translate3d(-120%, 0, 0); }
+          100% { transform: translate3d(220%, 0, 0); }
         }
       `}</style>
     </div>
@@ -1077,6 +1136,7 @@ interface BadgePayload {
 
 function MapPageInner() {
   const { containerRef, phaserReady } = useMapGame();
+  const [mapLoadMs, setMapLoadMs] = useState<number | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -1247,6 +1307,46 @@ function MapPageInner() {
     activeVenture ? { ventureId: activeVenture._id } : "skip",
   );
 
+  // ── Map load performance timer ────────────────────────────────────────────
+  const loadMeasuredRef = useRef(false);
+  const mapPerfStartRef = useRef<number>(performance.now());
+
+  // Always log each stage relative to component mount (no sessionStorage dependency)
+  const venturesMeasuredRef = useRef(false);
+  useEffect(() => {
+    if (venturesMeasuredRef.current || ventures === undefined) return;
+    venturesMeasuredRef.current = true;
+    const ms = Math.round(performance.now() - mapPerfStartRef.current);
+    console.log(`%c⏱ [Map] Ventures arrived: ${ms}ms (${ventures.length} ventures)`, "color:#7dd3fc;font-weight:bold;font-size:13px");
+  }, [ventures]);
+
+  const worldDataMeasuredRef = useRef(false);
+  useEffect(() => {
+    if (worldDataMeasuredRef.current || worldMapData === undefined) return;
+    worldDataMeasuredRef.current = true;
+    const ms = Math.round(performance.now() - mapPerfStartRef.current);
+    console.log(`%c⏱ [Map] World map data arrived: ${ms}ms`, "color:#a5b4fc;font-weight:bold;font-size:13px");
+  }, [worldMapData]);
+
+  useEffect(() => {
+    if (!phaserReady) return;
+    const ms = Math.round(performance.now() - mapPerfStartRef.current);
+    console.log(`%c⏱ [Map] Phaser scene ready: ${ms}ms`, "color:#86efac;font-weight:bold;font-size:13px");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phaserReady]);
+
+  useEffect(() => {
+    if (loadMeasuredRef.current) return;
+    if (!phaserReady || !worldMapData) return;
+    loadMeasuredRef.current = true;
+    const ms = Math.round(performance.now() - mapPerfStartRef.current);
+    const color = ms > 4000 ? "#f87171" : ms > 2000 ? "#facc15" : "#4ade80";
+    console.log(`%c⏱ [Map] Fully loaded (Phaser + data): ${ms}ms`, `color:${color};font-weight:bold;font-size:14px`);
+    setMapLoadMs(ms);
+    // Also report via sessionStorage-based timer if available
+    measureMapLoad("Map fully loaded (nav timer)");
+  }, [phaserReady, worldMapData]);
+
   // Fetch chat channels for Group Chat popup modal integration
   const chatChannels = useQuery(
     api.communities.getChannels,
@@ -1284,17 +1384,6 @@ function MapPageInner() {
     api.aiScoring.getVentureQualityScores,
     activeVenture ? { ventureId: activeVenture._id } : "skip",
   );
-  // Keep the per-stage query too (still used by the passage event overlay)
-  const stageQuality = useQuery(
-    api.aiScoring.getStageQualityScore,
-    activeVenture && worldMapData?.venture
-      ? {
-        ventureId: activeVenture._id,
-        stageNumber: worldMapData.venture.currentStage,
-      }
-      : "skip",
-  );
-
   // Template metric (JIF Score / p-value / Fan Score)
   const templateMetric = useQuery(
     api.templateMetrics.getTemplateMetric,
@@ -1363,21 +1452,21 @@ function MapPageInner() {
 
   const kanbanData = useQuery(
     api.worldMap.getToolData,
-    activeVenture?._id
+    activeVenture?._id && activeToolsTab === "kanban"
       ? { ventureId: activeVenture._id, toolType: "kanban" }
       : "skip",
   );
 
   const calendarData = useQuery(
     api.worldMap.getToolData,
-    activeVenture?._id
+    activeVenture?._id && activeToolsTab === "calendar"
       ? { ventureId: activeVenture._id, toolType: "calendar" }
       : "skip",
   );
 
   const journalData = useQuery(
     api.worldMap.getToolData,
-    activeVenture?._id
+    activeVenture?._id && activeToolsTab === "journal"
       ? { ventureId: activeVenture._id, toolType: "journal" }
       : "skip",
   );
@@ -1598,6 +1687,7 @@ function MapPageInner() {
   const brightness = worldMapData?.brightness;
   const ideaTitle = worldMapData?.ideaTitle ?? "Your Venture";
   const superBoss = worldMapData?.superBoss ?? null;
+
   type WorldMapCheckpoint = (typeof checkpoints)[number];
   type WorldMapTask = WorldMapCheckpoint["tasks"][number];
   const checkpointEvaluationSummary = useQuery(
@@ -2342,6 +2432,11 @@ function MapPageInner() {
     activeVenture?.ideaId ? { ideaId: activeVenture.ideaId } : "skip",
   );
 
+  // ── Contributor access gate (zero extra queries — uses already-fetched data) ──
+  const isVentureOwner = !!(currentUser?._id && venture?.userId === currentUser._id);
+  const isContributor = !!(contributors?.some((c) => c.userId === currentUser?._id));
+  const canSubmitTasks = isVentureOwner || isContributor;
+
   useEffect(() => {
     if (!phaserReady || !contributors) return;
 
@@ -2434,6 +2529,10 @@ function MapPageInner() {
   const handleTaskToggle = useCallback(
     async (taskIdx: number) => {
       if (!selectedDetail) return;
+      if (!canSubmitTasks) {
+        audioManager.playUI("error");
+        return;
+      }
       const task = selectedDetail.tasks[taskIdx];
       if (!task || task.done) return; // tasks can only be marked done, not undone
 
@@ -2466,13 +2565,17 @@ function MapPageInner() {
         points: taskLevel === "t1" ? 20 : taskLevel === "t2" ? 20 : 35,
       });
     },
-    [selectedDetail, setSubmittingTask],
+    [selectedDetail, setSubmittingTask, canSubmitTasks],
   );
 
   // ── Task redo → Reset and reopen submission modal ────────────────────────
   const handleTaskRedo = useCallback(
     async (taskIdx: number) => {
       if (!selectedDetail) return;
+      if (!canSubmitTasks) {
+        audioManager.playUI("error");
+        return;
+      }
       const task = selectedDetail.tasks[taskIdx];
       if (!task || !task.done) return; // can only redo completed tasks
 
@@ -2517,7 +2620,7 @@ function MapPageInner() {
         audioManager.playUI("error");
       }
     },
-    [selectedDetail, redoTask, setSubmittingTask],
+    [selectedDetail, redoTask, setSubmittingTask, canSubmitTasks],
   );
 
   // Stable ref so handleTaskSubmissionSuccess can call handleAdvance
@@ -3129,6 +3232,23 @@ function MapPageInner() {
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
       `}</style>
 
+      {/* Dev-only load timer badge */}
+      {process.env.NODE_ENV === "development" && mapLoadMs !== null && (
+        <div className="fixed bottom-4 right-4 z-[9999] flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-black/80 px-3 py-1.5 text-xs font-mono font-bold text-amber-300 shadow-lg backdrop-blur-sm">
+          <span>⏱</span>
+          <span>{mapLoadMs < 1000 ? `${mapLoadMs}ms` : `${(mapLoadMs / 1000).toFixed(2)}s`}</span>
+          <span className={mapLoadMs < 1000 ? "text-emerald-400" : mapLoadMs < 3000 ? "text-amber-400" : "text-red-400"}>
+            {mapLoadMs < 1000 ? "✓ fast" : mapLoadMs < 3000 ? "⚠ slow" : "✗ too slow"}
+          </span>
+          <button
+            onClick={() => setMapLoadMs(null)}
+            className="ml-1 text-white/40 hover:text-white/80 transition-colors"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* IdeaForge Navbar at top */}
       <IdeaForgeNavbar
         currentUser={currentUser}
@@ -3486,6 +3606,7 @@ function MapPageInner() {
               onOpenCalendar={() => setIsCalendarOpen(true)}
               onOpenKanban={() => setIsKanbanOpen(true)}
               onOpenJournal={() => setIsJournalOpen(true)}
+              canSubmitTasks={canSubmitTasks}
             />
           </div>
 
@@ -3502,6 +3623,7 @@ function MapPageInner() {
                 isAdvancing={isAdvancingCheckpoint}
                 activeStage={activeStage}
                 activeCheckpoint={activeCP}
+                canSubmitTasks={canSubmitTasks}
               />
             )}
           </AnimatePresence>

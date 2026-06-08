@@ -75,12 +75,17 @@ crons.daily(
 );
 
 // Schedule: Weekly League Promotion / Relegation (Monday 00:00 UTC)
-// Promotes the top X% of each tier into the next, relegates the bottom X%,
-// resets weeklyLeagueXp to 0 across all rows, and stamps lastLeagueResetAt.
 crons.weekly(
   "Weekly League Promotion",
   { dayOfWeek: "monday", hourUTC: 0, minuteUTC: 0 },
   api.leagues.runWeeklyPromotion,
+);
+
+// One-time XP backfill: runs hourly until all agents have XP, then becomes a no-op
+crons.hourly(
+  "Backfill Agent XP",
+  { minuteUTC: 0 },
+  api.agent.backfillAgentXP,
 );
 
 export default crons;
