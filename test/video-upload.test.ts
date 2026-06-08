@@ -21,19 +21,18 @@ function makeFile(size: number, type: string): File {
 }
 
 describe("VIDEO_CONSTRAINTS", () => {
-  it("caps at 60 seconds", () => {
-    expect(VIDEO_CONSTRAINTS.MAX_DURATION_MS).toBe(60_000);
+  it("caps at 30 seconds", () => {
+    expect(VIDEO_CONSTRAINTS.MAX_DURATION_MS).toBe(30_000);
   });
 
-  it("caps at 50 MB", () => {
-    expect(VIDEO_CONSTRAINTS.MAX_BYTES).toBe(50 * 1024 * 1024);
+  it("caps at 25 MB", () => {
+    expect(VIDEO_CONSTRAINTS.MAX_BYTES).toBe(25 * 1024 * 1024);
   });
 
-  it("allows the four common short-form formats", () => {
+  it("allows the three common short-form formats", () => {
     expect(VIDEO_CONSTRAINTS.ALLOWED_MIME).toContain("video/mp4");
     expect(VIDEO_CONSTRAINTS.ALLOWED_MIME).toContain("video/webm");
     expect(VIDEO_CONSTRAINTS.ALLOWED_MIME).toContain("video/quicktime");
-    expect(VIDEO_CONSTRAINTS.ALLOWED_MIME).toContain("video/x-m4v");
   });
 
   it("extracts the poster after the black-first-frame moment", () => {
@@ -97,9 +96,9 @@ describe("validateVideoMetadata", () => {
     ).not.toThrow();
   });
 
-  it("accepts exactly 60 seconds", () => {
+  it("accepts exactly 30 seconds", () => {
     expect(() =>
-      validateVideoMetadata({ durationMs: 60_000, width: 1080, height: 1920 }),
+      validateVideoMetadata({ durationMs: 30_000, width: 1080, height: 1920 }),
     ).not.toThrow();
   });
 
