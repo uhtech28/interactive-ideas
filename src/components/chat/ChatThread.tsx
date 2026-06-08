@@ -315,7 +315,7 @@ const ChatThread: React.FC<ChatThreadProps> = memo(({ conversationId, onBack, on
           {sendError}
         </div>
       )}
-      <div className="flex h-[72px] shrink-0 items-center border-t border-white/10 bg-[#0B101B]">
+      <div className="shrink-0 border-t border-white/10 bg-[#0B101B]">
         <ChatInput
           onSend={handleSendMessage}
           typingUsers={[]}

@@ -122,7 +122,7 @@ const ChatInput: React.FC<Props> = memo(({
 
   return (
     <div
-      className={`flex h-full w-full flex-col justify-center bg-[#0B101B] px-4 py-2 transition ${
+      className={`flex w-full flex-col bg-[#0B101B] px-3 py-3 transition ${
         isDragging ? "ring-2 ring-[#6366F1]/45" : ""
       }`}
       onDragOver={(e) => {
