@@ -21,7 +21,6 @@ import {
   MapPin,
   Swords,
   HandHelping,
-  PartyPopper,
 } from "lucide-react";
 
 interface Props {
@@ -47,7 +46,6 @@ const PHASES = [
   "task",
   "combat",
   "contribute",
-  "finale",
   "done",
 ] as const;
 type Phase = (typeof PHASES)[number];
@@ -70,12 +68,6 @@ function FeedTutorialInner({
   const myTaskCount = useQuery(api.tutorial_metrics.getMyCompletedTaskCount, {});
   const myCombatCount = useQuery(api.tutorial_metrics.getMyCombatCount, {});
 
-  // The finale phase is the only one that isn't derivable from Convex
-  // signals — it's flipped on locally when the user clicks the
-  // contribute step's CTA. We hold it in React state so the user can't
-  // accidentally back-track past it.
-  const [finaleArmed, setFinaleArmed] = useState(false);
-
   const phase: Phase = useMemo(() => {
     if (typeof myIdeaCount !== "number") return "compose";
     if (myIdeaCount === 0) return "compose";
@@ -83,9 +75,8 @@ function FeedTutorialInner({
     if (myTaskCount === 0) return "task";
     if (typeof myCombatCount !== "number") return "combat";
     if (myCombatCount === 0) return "combat";
-    if (finaleArmed) return "finale";
     return "contribute";
-  }, [myIdeaCount, myTaskCount, myCombatCount, finaleArmed]);
+  }, [myIdeaCount, myTaskCount, myCombatCount]);
 
   // Persist phase index whenever it changes.
   useEffect(() => {
@@ -157,13 +148,7 @@ function FeedTutorialInner({
         <CombatStep onSkip={handleSkip} />
       )}
       {phase === "contribute" && onFeed && (
-        <ContributeStep
-          onFinish={() => setFinaleArmed(true)}
-          onSkip={handleSkip}
-        />
-      )}
-      {phase === "finale" && onFeed && (
-        <FinaleStep onFinish={handleFinish} onSkip={handleSkip} />
+        <ContributeStep onFinish={handleFinish} onSkip={handleSkip} />
       )}
     </>
   );
@@ -648,67 +633,24 @@ function ContributeStep({
   onFinish: () => void;
   onSkip: () => void;
 }) {
-  const [showFinale, setShowFinale] = useState(false);
   const router = useRouter();
-
-  const goToFeed = () => {
-    if (
-      typeof window !== "undefined" &&
-      !window.location.pathname.startsWith("/feed")
-    ) {
-      router.push("/feed");
-    }
-  };
-
-  if (showFinale) {
-    return (
-      <GuidedStep
-        eyebrow="You're ready"
-        title="Time to ship something real"
-        body="That's the loop — post an idea, walk the map, defeat the doubt, help others ship. The platform is yours now. All the best, builder."
-        icon={<PartyPopper className="h-6 w-6 text-amber-300" />}
-        cta="Start building"
-        onCtaClick={() => {
-          goToFeed();
-          onFinish();
-        }}
-        onSkip={onFinish}
-      />
-    );
-  }
-
   return (
     <GuidedStep
       selector="[data-tutorial='contribute']"
-      eyebrow="Step 4 of 4"
+      eyebrow="Last step"
       title="Help someone else ship"
-      body="Scroll the feed. When you find an idea you can help with, tap Contribute to join their project."
+      body="Scroll the feed. When you find an idea you can help with, tap Contribute to join their project. That's the loop — all the best, builder."
       icon={<HandHelping className="h-6 w-6 text-emerald-300" />}
       cta="I understand"
       onCtaClick={() => {
-        goToFeed();
-        setShowFinale(true);
+        if (
+          typeof window !== "undefined" &&
+          !window.location.pathname.startsWith("/feed")
+        ) {
+          router.push("/feed");
+        }
+        onFinish();
       }}
-      onSkip={onSkip}
-    />
-  );
-}
-
-function FinaleStep({
-  onFinish,
-  onSkip,
-}: {
-  onFinish: () => void;
-  onSkip: () => void;
-}) {
-  return (
-    <GuidedStep
-      eyebrow="You're set"
-      title="You're ready to begin your journey"
-      body="That's the loop. Post ideas, ship checkpoints, fight the doubts, and help other builders ship theirs. All the best, builder."
-      icon={<PartyPopper className="h-6 w-6 text-amber-300" />}
-      cta="Start building"
-      onCtaClick={onFinish}
       onSkip={onSkip}
     />
   );

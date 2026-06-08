@@ -4823,15 +4823,36 @@ function MapTourMount() {
       return;
     }
     if (
-      tutorialState.state === "not_started" ||
-      tutorialState.state === "in_progress"
+      tutorialState.state !== "not_started" &&
+      tutorialState.state !== "in_progress"
     ) {
-      // Wait long enough for the Phaser scene + initial Convex queries
-      // to settle, otherwise FeedTutorial's mutation observers fire
-      // alongside Phaser boot and the spotlight tracks a moving DOM.
-      const t = window.setTimeout(() => setShow(true), 1800);
-      return () => window.clearTimeout(t);
+      return;
     }
+
+    // Don't show the tour until Phaser has reported its boot scene
+    // finished, plus a 400ms breath so the world-map idle animations
+    // can hand off. Fallback timeout of 3.5s in case PHASER_READY
+    // never fires (e.g. WebGL unsupported, slow assets).
+    let bufferTimer: number | undefined;
+    let fallbackTimer: number | undefined;
+    let cancelled = false;
+
+    const arm = () => {
+      if (cancelled) return;
+      bufferTimer = window.setTimeout(() => {
+        if (!cancelled) setShow(true);
+      }, 400);
+    };
+
+    const off = eventBridge.onReact("PHASER_READY", arm);
+    fallbackTimer = window.setTimeout(arm, 3500);
+
+    return () => {
+      cancelled = true;
+      off?.();
+      if (bufferTimer) window.clearTimeout(bufferTimer);
+      if (fallbackTimer) window.clearTimeout(fallbackTimer);
+    };
   }, [tutorialState]);
   return (
     <FeedTutorial
