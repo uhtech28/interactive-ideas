@@ -157,7 +157,7 @@ function IdeaDetailVideo({ src, mimeType }: { src: string; mimeType?: string }) 
         className="mx-auto block max-h-[85vh] max-w-full"
         style={{
           imageRendering: "high-quality",
-          // @ts-ignore — vendor-prefix smoothing hints
+          // @ts-expect-error — vendor-prefix smoothing hints
           WebkitBackfaceVisibility: "hidden",
           backfaceVisibility: "hidden",
           transform: "translateZ(0)",

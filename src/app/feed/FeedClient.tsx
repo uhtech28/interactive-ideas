@@ -9,19 +9,16 @@ import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { IdeaForgeExperience } from "@/components/ideaforge/experience";
 import { IdeaForgeIdea } from "@/components/ideaforge/shared";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { MessageCircle } from "lucide-react";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { ContributionRequestModal } from "@/components/requests/ContributionRequestModal";
-import { useToast } from "@/components/ui/use-toast";
 import { useProfileCompletion } from "@/lib/hooks/use-profile-completion";
 import { FeedTutorial } from "@/components/tutorial/FeedTutorial";
 
 export function FeedClient() {
   const { isLoaded, userId } = useAuth();
   const router = useRouter();
-  const { toast } = useToast();
   const { isComplete: isProfileComplete, isLoading: isProfileLoading } = useProfileCompletion();
   const currentUser = useQuery(api.users.getCurrentUser);
 

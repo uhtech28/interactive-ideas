@@ -4892,7 +4892,6 @@ function MapTourMount() {
     // can hand off. Fallback timeout of 3.5s in case PHASER_READY
     // never fires (e.g. WebGL unsupported, slow assets).
     let bufferTimer: number | undefined;
-    let fallbackTimer: number | undefined;
     let cancelled = false;
 
     const arm = () => {
@@ -4903,7 +4902,7 @@ function MapTourMount() {
     };
 
     const off = eventBridge.onReact("PHASER_READY", arm);
-    fallbackTimer = window.setTimeout(arm, 3500);
+    const fallbackTimer = window.setTimeout(arm, 3500);
 
     return () => {
       cancelled = true;
