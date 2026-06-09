@@ -288,6 +288,37 @@ function useMapGame() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [phaserReady, setPhaserReady] = useState(false);
 
+  // Pause Phaser when any Radix dialog / role=dialog is open. Phaser's
+  // 60fps game loop is the main reason INP shows huge "presentation
+  // delay" — even after the React click handler finishes in 189ms, the
+  // browser can't paint because Phaser keeps grabbing the main thread
+  // every 16ms. When the user is interacting with a modal the canvas
+  // is covered anyway, so pausing is invisible.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const apply = () => {
+      const game = gameRef.current;
+      if (!game) return;
+      const dialogOpen = !!document.querySelector(
+        '[role="dialog"][aria-modal="true"], [data-state="open"][role="dialog"]',
+      );
+      if (dialogOpen) {
+        game.loop.sleep();
+      } else if (game.loop.sleeping) {
+        game.loop.wake();
+      }
+    };
+    const observer = new MutationObserver(apply);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-state", "aria-modal", "role"],
+    });
+    apply();
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     if (!containerRef.current || gameRef.current) return;
 
