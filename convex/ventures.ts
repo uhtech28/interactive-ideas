@@ -533,6 +533,8 @@ export const ensureVentureStructure = mutation({
     const venturePatch: Partial<{
       corruptionLevel: number;
       lastActivityAt: number;
+      templateId: "venture" | "academic" | "lab" | "creative";
+      assignedBosses: number[];
       updatedAt: number;
     }> = {};
 
@@ -541,6 +543,19 @@ export const ensureVentureStructure = mutation({
     }
     if (typeof venture.lastActivityAt !== "number") {
       venturePatch.lastActivityAt = venture.updatedAt ?? now;
+    }
+    // Old rows persisted before templateId existed silently default to
+    // "venture" everywhere. Materialise that so all downstream readers
+    // (template helpers, biome resolvers) see a concrete value rather
+    // than undefined.
+    if (!venture.templateId) {
+      venturePatch.templateId = "venture";
+    }
+    // assignedBosses is required by the schema but pre-PRD venture
+    // rows may have an empty array. Default to the full 8-boss roster
+    // so the world map can render the boss icons over each checkpoint.
+    if (!Array.isArray(venture.assignedBosses) || venture.assignedBosses.length === 0) {
+      venturePatch.assignedBosses = [1, 2, 3, 4, 5, 6, 7, 8];
     }
     if (Object.keys(venturePatch).length > 0) {
       venturePatch.updatedAt = now;
