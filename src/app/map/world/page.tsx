@@ -1738,16 +1738,10 @@ function MapPageInner() {
     api.ideas.getIdeaById,
     venture?.ideaId ? { ideaId: venture.ideaId } : "skip",
   );
-  // Skip the source-idea subscription when it points at the same idea the
-  // venture is built on — common case (own ventures + most contributor
-  // flows) — to avoid two live queries for identical data.
-  const needsSeparateSourceIdea =
-    !!sourceIdeaId && sourceIdeaId !== venture?.ideaId;
-  const sourceIdeaQuery = useQuery(
+  const sourceIdea = useQuery(
     api.ideas.getIdeaById,
-    needsSeparateSourceIdea ? { ideaId: sourceIdeaId } : "skip",
+    sourceIdeaId ? { ideaId: sourceIdeaId } : "skip",
   );
-  const sourceIdea = needsSeparateSourceIdea ? sourceIdeaQuery : ideaForContributors;
   const templateStages = useMemo(
     () => getStageMetadata((venture?.templateId ?? "venture") as TemplateId),
     [venture?.templateId],
@@ -1909,17 +1903,13 @@ function MapPageInner() {
   useEffect(() => {
     if (!activeVenture?._id) return;
     if (structureEnsuredForRef.current === activeVenture._id) return;
-    // Only the owner can write to ventureCheckpoints / ventureTasks. For
-    // someone else's venture (forked view), the mutation throws
-    // "no access" and we waste a server round trip on every visit.
-    if (!currentUser?._id || activeVenture.userId !== currentUser._id) return;
 
     structureEnsuredForRef.current = activeVenture._id;
     ensureVentureStructure({ ventureId: activeVenture._id }).catch((error) => {
       console.error("[MapPage] Failed to ensure venture structure:", error);
       structureEnsuredForRef.current = null;
     });
-  }, [activeVenture?._id, activeVenture?.userId, currentUser?._id, ensureVentureStructure]);
+  }, [activeVenture?._id, ensureVentureStructure]);
 
   useEffect(() => {
     if (!activeVenture?._id) return;
