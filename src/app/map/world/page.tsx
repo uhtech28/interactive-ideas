@@ -1916,13 +1916,23 @@ function MapPageInner() {
   useEffect(() => {
     if (!activeVenture?._id) return;
     if (structureEnsuredForRef.current === activeVenture._id) return;
+    // Skip when the viewer is not the venture owner. The mutation
+    // requires assertVentureAccess, so for someone else's venture it
+    // throws "no access" → catch resets the guard → effect re-fires
+    // → infinite failing mutations, which is the dominant lag source
+    // on forked-venture views. Stamping the guard with the activeVenture
+    // id below ALSO suppresses retry when we did skip.
+    if (!currentUser?._id || activeVenture.userId !== currentUser._id) {
+      structureEnsuredForRef.current = activeVenture._id;
+      return;
+    }
 
     structureEnsuredForRef.current = activeVenture._id;
     ensureVentureStructure({ ventureId: activeVenture._id }).catch((error) => {
       console.error("[MapPage] Failed to ensure venture structure:", error);
       structureEnsuredForRef.current = null;
     });
-  }, [activeVenture?._id, ensureVentureStructure]);
+  }, [activeVenture?._id, activeVenture?.userId, currentUser?._id, ensureVentureStructure]);
 
   useEffect(() => {
     if (!activeVenture?._id) return;
@@ -2153,15 +2163,18 @@ function MapPageInner() {
   ]);
 
   // ── Persist gender to DB whenever venture + gender are known ─────────────
+  // Only writes when the viewer owns the venture — otherwise we'd
+  // silently overwrite the author's persona gender on every visit to
+  // their map.
   useEffect(() => {
-    if (activeVenture?._id && selectedGender) {
-      savePersonaGender({
-        ventureId: activeVenture._id,
-        gender: selectedGender,
-      }).catch(() => { });
-    }
+    if (!activeVenture?._id || !selectedGender) return;
+    if (!currentUser?._id || activeVenture.userId !== currentUser._id) return;
+    savePersonaGender({
+      ventureId: activeVenture._id,
+      gender: selectedGender,
+    }).catch(() => { });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeVenture?._id, selectedGender]);
+  }, [activeVenture?._id, activeVenture?.userId, currentUser?._id, selectedGender]);
 
   // Seed feature flags once on first load (idempotent mutation)
   const flagsSeededRef = useRef(false);
