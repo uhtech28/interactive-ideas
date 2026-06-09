@@ -1909,18 +1909,30 @@ function MapPageInner() {
   useEffect(() => {
     if (!activeVenture?._id) return;
     if (structureEnsuredForRef.current === activeVenture._id) return;
+    // Only the owner can write to ventureCheckpoints / ventureTasks. For
+    // someone else's venture (forked view), the mutation throws
+    // "no access" and we waste a server round trip on every visit.
+    if (!currentUser?._id || activeVenture.userId !== currentUser._id) return;
 
     structureEnsuredForRef.current = activeVenture._id;
     ensureVentureStructure({ ventureId: activeVenture._id }).catch((error) => {
       console.error("[MapPage] Failed to ensure venture structure:", error);
       structureEnsuredForRef.current = null;
     });
-  }, [activeVenture?._id, ensureVentureStructure]);
+  }, [activeVenture?._id, activeVenture?.userId, currentUser?._id, ensureVentureStructure]);
 
+  // backfillPendingEvaluations scans every venture this user owns and
+  // every completed task in them. Re-running it on every venture switch
+  // is expensive when the user is browsing other people's maps. Fire
+  // once per session instead.
+  const backfillRanRef = useRef(false);
   useEffect(() => {
     if (!activeVenture?._id) return;
+    if (backfillRanRef.current) return;
+    backfillRanRef.current = true;
     backfillPendingEvaluations().catch((error) => {
       console.error("[MapPage] Failed to backfill pending evaluations:", error);
+      backfillRanRef.current = false;
     });
   }, [activeVenture?._id, backfillPendingEvaluations]);
 
