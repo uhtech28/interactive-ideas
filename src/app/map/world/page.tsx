@@ -10,6 +10,7 @@
  */
 
 import {
+  memo,
   useEffect,
   useRef,
   useState,
@@ -509,7 +510,7 @@ function StageStrip({
 }
 
 /** Checkpoint detail slide-in panel */
-function CheckpointPanel({
+const CheckpointPanel = memo(function CheckpointPanelInner({
   detail,
   onClose,
   onAdvance,
@@ -739,7 +740,7 @@ function CheckpointPanel({
       </div>
     </motion.div>
   );
-}
+});
 
 function StatusDot({ status }: { status: CheckpointStatus }) {
   const colors: Record<CheckpointStatus, string> = {
@@ -769,7 +770,7 @@ function StatusDot({ status }: { status: CheckpointStatus }) {
   );
 }
 
-function TaskCard({
+const TaskCard = memo(function TaskCardInner({
   task,
   locked,
   evaluationSummary,
@@ -902,7 +903,7 @@ function TaskCard({
       </div>
     </motion.div>
   );
-}
+});
 
 /** Gold flash overlay on checkpoint advance */
 function CrossingFlash({ trigger }: { trigger: number }) {
