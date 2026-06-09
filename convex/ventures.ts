@@ -562,27 +562,64 @@ export const ensureVentureStructure = mutation({
       await ctx.db.patch(venture._id, venturePatch);
     }
 
-    // Auto-heal checkpoints so the persisted status matches the 2-of-3 gate.
+    // Auto-heal checkpoints so the persisted status matches the 2-of-3 gate,
+    // and patch any missing required fields on very old rows. The boolean
+    // task flags occasionally have `undefined` instead of `false` on the
+    // oldest data — normalise those, and ensure goldBonusEarned exists so
+    // the gold-checkpoint pipeline doesn't trip on it.
     for (const cp of refreshedCheckpoints) {
+      const checkpointPatch: Partial<{
+        t1Completed: boolean;
+        t2Completed: boolean;
+        t3Completed: boolean;
+        goldBonusEarned: boolean;
+        status: "not_started" | "in_progress" | "completed" | "skipped";
+        completedAt: number;
+        partialStartedAt: number | undefined;
+      }> = {};
+
+      if (typeof cp.t1Completed !== "boolean") checkpointPatch.t1Completed = false;
+      if (typeof cp.t2Completed !== "boolean") checkpointPatch.t2Completed = false;
+      if (typeof cp.t3Completed !== "boolean") checkpointPatch.t3Completed = false;
+      if (typeof cp.goldBonusEarned !== "boolean") checkpointPatch.goldBonusEarned = false;
+
       const completedCount = [
-        cp.t1Completed,
-        cp.t2Completed,
-        cp.t3Completed,
+        checkpointPatch.t1Completed ?? cp.t1Completed,
+        checkpointPatch.t2Completed ?? cp.t2Completed,
+        checkpointPatch.t3Completed ?? cp.t3Completed,
       ].filter(Boolean).length;
 
       if (completedCount >= 2 && cp.status !== "completed") {
-        await ctx.db.patch(cp._id, {
-          status: "completed",
-          completedAt: cp.completedAt ?? now,
-          partialStartedAt: undefined,
-        });
-        cp.status = "completed"; // mutate local copy for downstream logic
+        checkpointPatch.status = "completed";
+        checkpointPatch.completedAt = cp.completedAt ?? now;
+        checkpointPatch.partialStartedAt = undefined;
+        cp.status = "completed";
       } else if (completedCount === 1 && cp.status !== "in_progress") {
-        await ctx.db.patch(cp._id, {
-          status: "in_progress",
-          partialStartedAt: cp.partialStartedAt ?? now,
-        });
+        checkpointPatch.status = "in_progress";
+        if (typeof cp.partialStartedAt !== "number") {
+          checkpointPatch.partialStartedAt = now;
+        }
         cp.status = "in_progress";
+      }
+
+      if (Object.keys(checkpointPatch).length > 0) {
+        await ctx.db.patch(cp._id, checkpointPatch);
+      }
+    }
+
+    // Normalise legacy task toolType values that aren't supported by the
+    // current tool renderers. Old rows persisted "oauth" before that
+    // tool was retired; treat them as "link" submissions so the world
+    // map task panel doesn't crash trying to render an unknown tool.
+    for (const cp of refreshedCheckpoints) {
+      const cpTasks = await ctx.db
+        .query("ventureTasks")
+        .withIndex("by_checkpoint", (q) => q.eq("checkpointId", cp._id))
+        .collect();
+      for (const task of cpTasks) {
+        if (task.toolType === "oauth") {
+          await ctx.db.patch(task._id, { toolType: "link" });
+        }
       }
     }
 
