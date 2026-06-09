@@ -1738,10 +1738,16 @@ function MapPageInner() {
     api.ideas.getIdeaById,
     venture?.ideaId ? { ideaId: venture.ideaId } : "skip",
   );
-  const sourceIdea = useQuery(
+  // Skip the source-idea subscription when it points at the same idea the
+  // venture is built on — common case (own ventures + most contributor
+  // flows) — to avoid two live queries for identical data.
+  const needsSeparateSourceIdea =
+    !!sourceIdeaId && sourceIdeaId !== venture?.ideaId;
+  const sourceIdeaQuery = useQuery(
     api.ideas.getIdeaById,
-    sourceIdeaId ? { ideaId: sourceIdeaId } : "skip",
+    needsSeparateSourceIdea ? { ideaId: sourceIdeaId } : "skip",
   );
+  const sourceIdea = needsSeparateSourceIdea ? sourceIdeaQuery : ideaForContributors;
   const templateStages = useMemo(
     () => getStageMetadata((venture?.templateId ?? "venture") as TemplateId),
     [venture?.templateId],
