@@ -16,6 +16,24 @@
 const STORAGE_KEY = "phaserLiteMode";
 
 let cached: boolean | null = null;
+let ventureProgressOverride = false;
+
+/**
+ * Called by the WorldMapScene when it learns about the venture's
+ * progression. Once any venture has 6+ completed checkpoints we treat
+ * it as "advanced" and auto-enable lite mode — that's the exact data
+ * profile where users start reporting lag (fresh ideas with 1-2
+ * completed remain on full visuals).
+ *
+ * Reset to false on venture switch so a fresh idea opened after an
+ * advanced one snaps back to full visuals.
+ */
+export function setVentureAdvanced(advanced: boolean): void {
+  if (ventureProgressOverride !== advanced) {
+    ventureProgressOverride = advanced;
+    cached = null;
+  }
+}
 
 function detectAutomatic(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -63,6 +81,15 @@ export function isLiteMode(): boolean {
   if (stored === "false") {
     cached = false;
     return false;
+  }
+
+  // Auto-enable for advanced ventures (6+ completed checkpoints). This
+  // is the data profile where users start reporting lag — the cost of
+  // ambient + atmospheric visuals stacks with the cost of rendering
+  // many completed-state nodes.
+  if (ventureProgressOverride) {
+    cached = true;
+    return true;
   }
 
   cached = detectAutomatic();

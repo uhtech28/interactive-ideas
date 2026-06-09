@@ -1,5 +1,6 @@
 import * as Phaser from "phaser";
 import { audioManager } from "../../audio/audioManager";
+import { isLiteMode } from "../performance-mode";
 
 export type CheckpointStatus =
   | "locked"
@@ -351,6 +352,11 @@ export class CheckpointNode extends Phaser.GameObjects.Container {
 
   private startGoldShimmer(): void {
     this.shimmerTween?.stop();
+    // Skip entirely in lite mode (auto-enabled on advanced ventures
+    // with 6+ completed checkpoints, or on low-spec devices). The
+    // shimmer was contributing ~600 tint operations per second on a
+    // map with 20 gold checkpoints.
+    if (isLiteMode()) return;
     // Slowed to 1800ms (from 900ms) — halves the per-frame tint work for
     // every gold node we DO shimmer. Before this change an advanced
     // venture with 20 gold checkpoints was running 20 * 60fps = 1200

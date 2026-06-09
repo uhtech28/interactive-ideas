@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import { AssetLoader } from "../utils/asset-loader";
-import { isLiteMode } from "../performance-mode";
+import { isLiteMode, setVentureAdvanced } from "../performance-mode";
 import { CheckpointNode, CheckpointStatus } from "../entities/Checkpoint";
 import { Persona, PersonaGender } from "../entities/Persona";
 import {
@@ -7581,6 +7581,12 @@ export class WorldMapScene extends Phaser.Scene {
         totalCompleted++;
       }
     });
+
+    // 6+ completed checkpoints → "advanced venture" → auto-enable lite
+    // mode for ambient effects. New ideas (0-5 completed) keep full
+    // visuals; older ventures with lots of progress get the stripped
+    // path so they render as smoothly as fresh ones.
+    setVentureAdvanced(totalCompleted >= 6);
 
     const superBossObj = this.bosses.get("super_boss");
     if (superBossObj) {
