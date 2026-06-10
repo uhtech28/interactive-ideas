@@ -304,6 +304,23 @@ function useMapGame() {
   useEffect(() => {
     if (typeof document === "undefined") return;
     let manualPause = false;
+    // Tracks whether a text-editable element currently has focus.
+    // Field data: /feed (no Phaser) keyboard INP = 40ms; /map/world
+    // (Phaser running) keyboard INP = 1,400-1,700ms; on the rare frame
+    // when a modal happened to pause Phaser the same keypress dropped
+    // to 40ms. The single biggest INP win available is sleeping the
+    // game loop while the user is actually typing/clicking inside an
+    // input. That's what this flag drives.
+    let inputFocused = false;
+    const isEditableTarget = (el: EventTarget | null): boolean => {
+      if (!(el instanceof HTMLElement)) return false;
+      if (el.isContentEditable) return true;
+      const tag = el.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+        return true;
+      }
+      return false;
+    };
     const apply = () => {
       const game = gameRef.current;
       if (!game) return;
@@ -323,7 +340,9 @@ function useMapGame() {
       // `sleeping` is a runtime field on Phaser's TimeStep but the
       // typed surface doesn't expose it.
       const phaserLoop = game.loop as Phaser.Core.TimeStep & { sleeping?: boolean };
-      if (manualPause || fullModalOpen) {
+      // SLEEP if a text input has focus — keyboard INP drops from
+      // ~1,700ms to ~40ms. This is the dominant lag the user feels.
+      if (manualPause || fullModalOpen || inputFocused) {
         if (!phaserLoop.sleeping) phaserLoop.sleep();
         return;
       }
@@ -348,8 +367,32 @@ function useMapGame() {
     };
     const onPause = () => { manualPause = true; apply(); };
     const onResume = () => { manualPause = false; apply(); };
+    const onFocusIn = (e: FocusEvent) => {
+      if (isEditableTarget(e.target)) {
+        if (!inputFocused) {
+          inputFocused = true;
+          apply();
+        }
+      }
+    };
+    const onFocusOut = (e: FocusEvent) => {
+      if (isEditableTarget(e.target)) {
+        // Defer: focus may immediately move to another input (e.g.
+        // tab between fields in TaskSubmissionModal). Re-check on the
+        // next microtask so we don't pause/resume/pause flicker.
+        queueMicrotask(() => {
+          const active = document.activeElement;
+          if (!isEditableTarget(active)) {
+            inputFocused = false;
+            apply();
+          }
+        });
+      }
+    };
     window.addEventListener("phaser:pause", onPause);
     window.addEventListener("phaser:resume", onResume);
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
     const observer = new MutationObserver(apply);
     observer.observe(document.body, {
       childList: true,
@@ -362,6 +405,8 @@ function useMapGame() {
       observer.disconnect();
       window.removeEventListener("phaser:pause", onPause);
       window.removeEventListener("phaser:resume", onResume);
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
     };
   }, []);
 
