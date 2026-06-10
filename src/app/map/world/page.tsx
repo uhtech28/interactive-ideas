@@ -320,11 +320,14 @@ function useMapGame() {
         '[data-phaser-pause="true"]',
       );
 
+      // `sleeping` is a runtime field on Phaser's TimeStep but the
+      // typed surface doesn't expose it.
+      const phaserLoop = game.loop as Phaser.Core.TimeStep & { sleeping?: boolean };
       if (manualPause || fullModalOpen) {
-        if (!game.loop.sleeping) game.loop.sleep();
+        if (!phaserLoop.sleeping) phaserLoop.sleep();
         return;
       }
-      if (game.loop.sleeping) game.loop.wake();
+      if (phaserLoop.sleeping) phaserLoop.wake();
 
       // Set FPS based on overlay + lite-mode state. Lite-mode kicks in
       // automatically for advanced ventures (6+ completed checkpoints
