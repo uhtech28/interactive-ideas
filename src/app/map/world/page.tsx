@@ -31,6 +31,7 @@ import { LEVEL_DEFINITIONS } from "@convex/ventureConstants";
 import type { Id } from "@convex/_generated/dataModel";
 import { FeedTutorial } from "@/components/tutorial/FeedTutorial";
 import { eventBridge } from "@/lib/phaser/utils/event-bridge";
+import { isLiteMode } from "@/lib/phaser/performance-mode";
 import {
   buildCheckpointSyncSignature,
   mapCheckpointsToPhaserState,
@@ -325,9 +326,15 @@ function useMapGame() {
       }
       if (game.loop.sleeping) game.loop.wake();
 
-      // Set FPS based on overlay state. The TimeStep `setLimitFPS` API
-      // adjusts the delta cap without re-creating the loop.
-      const targetFps = sideOverlayOpen ? 15 : 60;
+      // Set FPS based on overlay + lite-mode state. Lite-mode kicks in
+      // automatically for advanced ventures (6+ completed checkpoints
+      // — see WorldMapScene.setVentureAdvanced) and we drop the steady
+      // FPS to 30. With smoothStep on, pixel-art world maps look fine
+      // at 30fps and the main thread has roughly half the per-frame
+      // cost, which is the dominant remaining lag source for veterans.
+      const lite = isLiteMode();
+      const baseFps = lite ? 30 : 60;
+      const targetFps = sideOverlayOpen ? 15 : baseFps;
       const loop = game.loop as Phaser.Core.TimeStep & { setFpsLimit?: (n: number) => void };
       if (typeof loop.setFpsLimit === "function") {
         loop.setFpsLimit(targetFps);
