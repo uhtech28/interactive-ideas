@@ -29,6 +29,7 @@ import { api } from "@convex/_generated/api";
 import { TutorialProgressBar } from "./TutorialProgressBar";
 import { Step1Welcome } from "./steps/Step1Welcome";
 import { Step2TemplatePick } from "./steps/Step2TemplatePick";
+import { Step3MapGuide } from "./steps/Step3MapGuide";
 import {
   TutorialContext,
   TUTORIAL_TOTAL_STEPS,
@@ -247,6 +248,8 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
       <Step1Welcome />
       {/* Step 2 mounts on /feed when tutorial step === 2. */}
       <Step2TemplatePick />
+      {/* Step 3 mounts on /map/world */}
+      <Step3MapGuide />
     </TutorialContext.Provider>
   );
 }
