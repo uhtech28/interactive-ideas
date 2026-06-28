@@ -17,7 +17,24 @@ export default defineSchema({
     skills: v.optional(v.array(v.string())), // Array of user skills (handled via userSkills table)
     industry: v.optional(v.string()), // Primary industry (kept for backward compatibility)
     industries: v.optional(v.array(v.string())), // Multiple industries
-    personaGender: v.optional(v.union(v.literal("male"), v.literal("female"))), // Character gender selection
+    personaGender: v.optional(v.union(v.literal("male"), v.literal("female"))), // Legacy — kept for back-compat
+    // PRD § 3.1 — 10 named personas. New ventures pick one of these
+    // and the world-map renders the painted sprite. If unset on a
+    // legacy venture, the Phaser scene falls back to personaGender.
+    personaId: v.optional(
+      v.union(
+        v.literal("arcanist"),
+        v.literal("ranger"),
+        v.literal("alchemist"),
+        v.literal("artisan"),
+        v.literal("drifter"),
+        v.literal("oracle"),
+        v.literal("engineer"),
+        v.literal("healer"),
+        v.literal("pathfinder"),
+        v.literal("sage"),
+      ),
+    ),
     // Builder persona picked during profile setup. Drives the AI
     // pre-fill in the first-run tour.
     builderRole: v.optional(
@@ -176,6 +193,41 @@ export default defineSchema({
     .index("by_created_at", ["createdAt"]),
 
   // Contribution requests table
+  // PRD § 9.1 — inline path henchman resolutions. One row per
+  // henchman defeated or fled, scoped per user for idempotency.
+  henchmanResolutions: defineTable({
+    userId: v.id("users"),
+    spawnId: v.string(),
+    henchmanId: v.string(),
+    ventureId: v.id("ventures"),
+    stage: v.number(),
+    resolution: v.union(v.literal("defeated"), v.literal("fled")),
+    xpAwarded: v.number(),
+    resolvedAt: v.number(),
+  })
+    .index("by_user_spawn", ["userId", "spawnId"])
+    .index("by_venture", ["ventureId"]),
+
+  // PRD § 9.2 — inter-checkpoint treasure chest claims. One row per
+  // chest opened, scoped per user so idempotency guarantees a chest
+  // can only be claimed once even if the React event fires twice.
+  treasureChestClaims: defineTable({
+    userId: v.id("users"),
+    chestId: v.string(),
+    ventureId: v.id("ventures"),
+    reward: v.union(
+      v.literal("xp_cache"),
+      v.literal("flare_charge"),
+      v.literal("corruption_shield"),
+      v.literal("insight_fragment"),
+    ),
+    stage: v.number(),
+    xpAwarded: v.optional(v.number()),
+    claimedAt: v.number(),
+  })
+    .index("by_user_chest", ["userId", "chestId"])
+    .index("by_venture", ["ventureId"]),
+
   contributionRequests: defineTable({
     ideaId: v.id("ideas"),
     contributorId: v.id("users"),
@@ -478,7 +530,29 @@ export default defineSchema({
       v.literal("lab"),
       v.literal("creative"),
     )),
-    personaGender: v.optional(v.union(v.literal("male"), v.literal("female"))),
+    personaGender: v.optional(v.union(v.literal("male"), v.literal("female"))), // Legacy — kept for back-compat
+    // PRD § 3.1 — 10 named personas selected per venture. Drives which
+    // painted sprite renders as the world-map avatar. New ventures
+    // populate this; legacy ventures fall back to personaGender via
+    // legacyGenderToPersonaId in src/config/personas.ts.
+    personaId: v.optional(
+      v.union(
+        v.literal("arcanist"),
+        v.literal("ranger"),
+        v.literal("alchemist"),
+        v.literal("artisan"),
+        v.literal("drifter"),
+        v.literal("oracle"),
+        v.literal("engineer"),
+        v.literal("healer"),
+        v.literal("pathfinder"),
+        v.literal("sage"),
+      ),
+    ),
+    // PRD § 9.2 — treasure chest reward state. Optional so legacy
+    // ventures aren't broken by the schema migration.
+    freeFlareCredits: v.optional(v.number()),
+    corruptionShieldExpiresAt: v.optional(v.number()),
     currentStage: v.number(), // 1-N (varies by template: Venture=8, Academic=6, Lab=7, Creative=6)
     currentCheckpoint: v.number(), // 1-N within current stage
     corruptionLevel: v.optional(v.number()), // Backward-compatible for legacy venture rows
@@ -654,17 +728,27 @@ export default defineSchema({
     ventureId: v.optional(v.id("ventures")),
     checkpointId: v.optional(v.id("ventureCheckpoints")),
     description: v.string(), // What they need help with
+    // Free-text expertise tag — what field/skill the helper should
+    // have (e.g. "marketing", "react", "fundraising"). Optional so
+    // legacy flares fired before this column existed don't break.
+    expertiseTag: v.optional(v.string()),
     status: v.union(
       v.literal("open"),
       v.literal("resolved"),
       v.literal("closed"),
+      v.literal("expired"),
     ),
     createdAt: v.number(),
+    // Auto-expiry timestamp — set to createdAt + 7 days when fired.
+    // A daily cron moves status="open" flares with expiresAt < now
+    // to status="expired" so the feed stays clean.
+    expiresAt: v.optional(v.number()),
     resolvedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
     .index("by_status", ["status"])
     .index("by_status_created", ["status", "createdAt"])
+    .index("by_status_expires", ["status", "expiresAt"])
     .index("by_venture", ["ventureId"]),
 
   // Flare responses — community responses to flares
